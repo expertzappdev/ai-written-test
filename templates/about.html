@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+</head>
+<body>
+    <header>
+        <h1>{{ title }}</h1>
+        <nav>
+            <a href="{% url 'home' %}">Home</a> |
+            <a href="{% url 'about' %}">About Us</a>
+        </nav>
+    </header>
+    
+    <main>
+        <h2>{{ content }}</h2>
+        <p>Backend (Python) aur Frontend (Template) ka flow sahi tareeke se set ho gaya hai.</p>
+    </main>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>{{ content }}</h1>
+    <p>Logged in as: <strong>{{ user.first_name }} {{ user.last_name }}</strong> ({{ user.email }})</p>
+    <p>Phone: {{ user.phone_number }}</p>
+    <a href="{% url 'logout' %}">Logout</a>
+</body>
+</html>
