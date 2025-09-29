@@ -7,7 +7,22 @@
 <body>
     <h1>{{ content }}</h1>
     <p>Logged in as: <strong>{{ user.first_name }} {{ user.last_name }}</strong> ({{ user.email }})</p>
-    <p>Phone: {{ user.phone_number }}</p>
+    
+    {% if user.profile %}
+        <p>Phone: {{ user.profile.phone_number }}</p>
+    {% endif %}
+
+    <hr>
+    
+    <h3>Application Tools:</h3>
+    <ul>
+        <li>
+            <a href="{% url 'generate_questions' %}">Question Paper Generate</a>
+        </li>
+    </ul>
+    
+    <hr>
+    
     <a href="{% url 'logout' %}">Logout</a>
 </body>
 </html>

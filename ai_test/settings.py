@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os  # Yeh line file ke top par add karein agar nahi hai
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -103,6 +104,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+env = environ.Env(
+    # Set casting default for API key (e.g., read as a string)
+    GEMINI_API_KEY=(str, '') 
+)
+environ.Env.read_env(os.path.join(BASE_DIR, '.env')) 
+
+GEMINI_API_KEY = env('GEMINI_API_KEY')
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

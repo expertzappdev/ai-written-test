@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Question Paper Generator</title>
+</head>
+<body>
+    <h1>AI-Powered Assessment Designer</h1>
+
+    <form method="post" action="{% url 'generate_questions' %}">
+        {% csrf_token %}
+        
+        <h2>Global Parameters</h2>
+        <label>Job Title:</label><input type="text" name="job_title" required><br>
+        <label>Min Experience (Yrs):</label><input type="number" name="min_exp" required><br>
+        <label>Max Experience (Yrs):</label><input type="number" name="max_exp" required><br>
+        <label>Core Skills (comma-separated):</label><input type="text" name="skills" placeholder="e.g., Python, Django, SQL, REST API" required><br>
+        <label>Total Questions (MUST match section total):</label><input type="number" name="total_questions" required><br>
+
+        <h2>Section Breakdown (Number of Questions per Section)</h2>
+        <label>Aptitude Questions:</label><input type="number" name="section_Aptitude" value="0"><br>
+        <label>Programming Questions:</label><input type="number" name="section_Programming" value="0"><br>
+        <label>Technical Questions:</label><input type="number" name="section_Technical" value="0"><br>
+        <label>Behavioral Questions:</label><input type="number" name="section_Behavioral" value="0"><br>
+
+        <button type="submit">Generate Paper using Gemini</button>
+    </form>
+
+    <hr>
+    
+    <h2>Generated Paper (UI Display)</h2>
+    {% if paper %}
+        {% if paper.error %}
+            <p style="color: red;">ERROR: {{ paper.error }}</p>
+        {% elif paper.sections %}
+            <h3>{{ paper.title|default:"Generated Assessment Paper" }}</h3>
+            {% for section in paper.sections %}
+                <h4>{{ section.title }} ({{ section.questions|length }} Questions)</h4>
+                <ol>
+                    {% for question in section.questions %}
+                        <li>
+                            <p><strong>Type:</strong> {{ question.type }}</p>
+                            <p><strong>Q:</strong> {{ question.text }}</p>
+                            {% if question.options %}
+                                <ul>
+                                    {% for option in question.options %}
+                                        <li>{{ option }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                            <p style="color: green;">**Answer:** {{ question.answer }}</p>
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% endfor %}
+        {% else %}
+            <p>No paper generated yet. Fill the form and click Generate.</p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>
