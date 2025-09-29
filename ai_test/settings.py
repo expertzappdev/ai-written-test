@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "app"
+    "app",
 ]
 
 MIDDLEWARE = [
@@ -77,11 +77,11 @@ WSGI_APPLICATION = "ai_test.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "aiTest",       
-        "USER": "swapnil",      
-        "PASSWORD": "12345", 
-        "HOST": "localhost",          
-        "PORT": "5432",                
+        "NAME": "aiTest",
+        "USER": "swapnil",
+        "PASSWORD": "12345",
+        "HOST": "10.0.0.42",
+        "PORT": "5432",
     }
 }
 
@@ -135,7 +135,7 @@ STATICFILES_DIRS = [
 # ai_test/settings.py
 
 # Email sent to the console (for development and testing)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Production ke liye, aapko yeh use karna hoga:
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
