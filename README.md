@@ -95,3 +95,5 @@ If you have run out of energy or time for your project, put a note at the top of
 
 Command to activate venv - source .venv/bin/activate
 start the project - python manage.py runserver
+add new requirements to requirement.txt - pip freeze > requirements.txt
+install packaged from requirement.txt- pip install -r requirements.txt
