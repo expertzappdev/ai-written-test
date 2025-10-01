@@ -3,111 +3,117 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.conf import settings # API Key access karne ke liye
-from .forms import LoginForm, UserRegistrationForm, UserProfileRegistrationForm 
-from google import genai # Gemini API ke liye
-import json # JSON response parse karne ke liye
+from django.conf import settings  # API Key access karne ke liye
+from .forms import LoginForm, UserRegistrationForm, UserProfileRegistrationForm
+from google import genai  # Gemini API ke liye
+import json  # JSON response parse karne ke liye
+from django.db import transaction
+
 
 # --- Authentication Views ---
 
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import login
+from .forms import LoginForm
+
+
 def user_login(request):
     if request.user.is_authenticated:
-        return redirect('dashboard')
-        
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
+        if request.user.is_staff:
+            return redirect("dashboard")
+        else:
+            return redirect("home")
+
+    if request.method == "POST":
+        form = LoginForm(request, data=request.POST)
         if form.is_valid():
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            
-            # Note: Default auth.User model mein, authenticate username field ko check karta hai.
-            # Agar settings.py mein AUTHENTICATION_BACKENDS use nahi kiya gaya hai,
-            # toh yeh email ko username ke roop mein assume karega.
-            user = authenticate(request, username=email, password=password) 
-            
-            if user is not None:
-                login(request, user)
-                return redirect('dashboard')
+            user = form.get_user()
+            login(request, user)
+            if user.is_staff:
+                return redirect("dashboard")
             else:
-                form.add_error(None, "Invalid email or password.")
+                return redirect("home")
     else:
         form = LoginForm()
 
-    return render(request, 'login.html', {'form': form, 'title': 'Login'})
+    return render(request, "login.html", {"form": form, "title": "Login"})
 
-@login_required 
+
+def home(request):
+    return render(request, "home.html", {"user": request.user})
+
+
+@login_required
 def dashboard(request):
     context = {
-        'user': request.user,
-        'title': 'User Dashboard',
-        'content': 'Welcome to your secured dashboard!'
+        "user": request.user,
+        "title": "User Dashboard",
+        "content": "Welcome to your secured dashboard!",
     }
-    return render(request, 'dashboard.html', context)
+    return render(request, "dashboard.html", context)
+
 
 def user_logout(request):
     logout(request)
-    return redirect('login')
+    return redirect("login")
 
 
 def user_register(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
-        
-    if request.method == 'POST':
+
+    if request.method == "POST":
         user_form = UserRegistrationForm(request.POST)
+
+        if user_form.is_valid():
+            user = user_form.save()
+
+            profile_form = UserProfileRegistrationForm(
+                request.POST, instance=user.profile
+            )
+
+            if profile_form.is_valid():
+                profile_form.save()
+                return redirect("login")
+
         profile_form = UserProfileRegistrationForm(request.POST)
-        
-        if user_form.is_valid() and profile_form.is_valid():
-            user = user_form.save() 
-            
-            # Profile details update karo (Signal se profile already ban chuka hai)
-            profile = user.profile
-            profile.phone_number = profile_form.cleaned_data['phone_number']
-            profile.address = profile_form.cleaned_data['address']
-            profile.save()
-            
-            login(request, user)
-            return redirect('dashboard')
-        
+
     else:
         user_form = UserRegistrationForm()
         profile_form = UserProfileRegistrationForm()
-        
-    context = {
-        'user_form': user_form,
-        'profile_form': profile_form,
-        'title': 'User Registration'
-    }
-    return render(request, 'registration/register.html', context)
+
+    context = {"user_form": user_form, "profile_form": profile_form}
+    return render(request, "registration/register.html", context)
+
 
 # --- Question Generator View ---
+
 
 @login_required
 def generate_questions(request):
     """Handles the form submission, constructs the prompt, and calls the Gemini API."""
-    
+
     generated_paper = None
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         try:
             # 1. User Inputs Capture
-            job_title = request.POST.get('job_title')
-            min_exp = request.POST.get('min_exp')
-            max_exp = request.POST.get('max_exp')
-            total_questions = request.POST.get('total_questions')
-            skills_raw = request.POST.get('skills')
-            
+            job_title = request.POST.get("job_title")
+            min_exp = request.POST.get("min_exp")
+            max_exp = request.POST.get("max_exp")
+            total_questions = request.POST.get("total_questions")
+            skills_raw = request.POST.get("skills")
+
             # Dynamic Sections Parsing (UI fields ke naam ke anusaar)
             sections_data = {}
-            sections = ['Aptitude', 'Programming', 'Technical', 'Behavioral'] 
+            sections = ["Aptitude", "Programming", "Technical", "Behavioral"]
             for section in sections:
-                count_key = f'section_{section}'
+                count_key = f"section_{section}"
                 count = request.POST.get(count_key)
                 if count and int(count) > 0:
                     sections_data[section] = int(count)
 
             # --- 2. Prompt Construction (Gemini ke liye) ---
-            
+
             # Prompt ko structured JSON output ke liye guide karein
             prompt = f"""
             Generate a technical assessment paper based on the following precise specifications.
@@ -129,29 +135,27 @@ def generate_questions(request):
             """
 
             # --- 3. Gemini API Call ---
-            
+
             # settings.GEMINI_API_KEY se key access karein
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
-            
+
             response = client.models.generate_content(
-                model='gemini-2.5-pro',
-                contents=prompt
+                model="gemini-2.5-pro", contents=prompt
             )
-            
+
             # JSON clean aur parse karein (LLMs kabhi-kabhi response ko markdown mein wrap kar dete hain)
-            json_text = response.text.strip().lstrip('```json').rstrip('```')
+            json_text = response.text.strip().lstrip("```json").rstrip("```")
             generated_paper = json.loads(json_text)
 
         except json.JSONDecodeError:
-            generated_paper = {'error': 'Failed to decode response into valid JSON. Check API output.'}
+            generated_paper = {
+                "error": "Failed to decode response into valid JSON. Check API output."
+            }
         except genai.errors.APIError as e:
-            generated_paper = {'error': f'Gemini API Error: {str(e)}'}
+            generated_paper = {"error": f"Gemini API Error: {str(e)}"}
         except Exception as e:
-            generated_paper = {'error': f'An unexpected error occurred: {str(e)}'}
+            generated_paper = {"error": f"An unexpected error occurred: {str(e)}"}
 
     # 4. Render the Generator UI
-    context = {
-        'paper': generated_paper,
-        'is_post': request.method == 'POST'
-    }
-    return render(request, 'question_generator/generator.html', context)
+    context = {"paper": generated_paper, "is_post": request.method == "POST"}
+    return render(request, "question_generator/generator.html", context)

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "app",
+    "widget_tweaks",
 ]
 
 MIDDLEWARE = [
@@ -70,8 +71,14 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = "ai_test.wsgi.application"
+# --- ADD YOUR EMAIL SETTING HERE ---
 
-
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "shweta.ladne.averybit@gmail.com"
+EMAIL_HOST_PASSWORD = "qwgh jagp euzh qcwi"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
@@ -106,11 +113,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 env = environ.Env(
     # Set casting default for API key (e.g., read as a string)
-    GEMINI_API_KEY=(str, '') 
+    GEMINI_API_KEY=(str, "")
 )
-environ.Env.read_env(os.path.join(BASE_DIR, '.env')) 
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
-GEMINI_API_KEY = env('GEMINI_API_KEY')
+GEMINI_API_KEY = env("GEMINI_API_KEY")
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -139,16 +146,3 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
-
-# ai_test/settings.py
-
-# Email sent to the console (for development and testing)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-# Production ke liye, aapko yeh use karna hoga:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your_email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your_app_password'
