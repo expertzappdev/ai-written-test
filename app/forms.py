@@ -112,3 +112,83 @@ class UserProfileRegistrationForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ("phone_number", "address")
+
+
+# app/forms.py
+
+from django import forms
+from .models import Department, Skill  # Skill model ko import karein
+
+
+# forms.py
+from django import forms
+from .models import Department, Section
+
+
+class DepartmentForm(forms.ModelForm):
+    class Meta:
+        model = Department
+        fields = ["name", "sections"]  # yaha sections include kiya
+
+    # Optional: Tailwind/Bootstrap ke liye widget customize
+    sections = forms.ModelMultipleChoiceField(
+        queryset=Section.objects.all(),  # sare sections dikhayenge
+        widget=forms.CheckboxSelectMultiple,  # Multiple checkbox dikhane ke liye
+        required=False,
+    )
+
+
+class SkillForm(forms.ModelForm):
+    class Meta:
+        model = Skill
+        fields = "__all__"  # Yahan aap specific fields bhi de sakte hain
+
+
+# app/forms.py
+
+from django import forms
+from .models import QuestionPaper
+
+# Define a common CSS class for form inputs to keep them consistent
+text_input_class = "w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
+
+
+class QuestionPaperEditForm(forms.ModelForm):
+    class Meta:
+        model = QuestionPaper
+        # These are the fields from the QuestionPaper model we want to edit
+        fields = [
+            "job_title",
+            "title",
+            "department_name",
+            "duration",
+            "min_exp",
+            "max_exp",
+            "skills_list",
+        ]
+        # Add widgets to apply Tailwind CSS classes to the form fields
+        widgets = {
+            "job_title": forms.TextInput(attrs={"class": text_input_class}),
+            "title": forms.TextInput(attrs={"class": text_input_class}),
+            "department_name": forms.TextInput(attrs={"class": text_input_class}),
+            "duration": forms.NumberInput(attrs={"class": text_input_class}),
+            "min_exp": forms.NumberInput(attrs={"class": text_input_class}),
+            "max_exp": forms.NumberInput(attrs={"class": text_input_class}),
+            "skills_list": forms.TextInput(
+                attrs={
+                    "class": text_input_class,
+                    "placeholder": "e.g., Python, Django, JavaScript",
+                }
+            ),
+        }
+
+
+# your_app/forms.py
+from django import forms
+from .models import Skill
+
+
+class SkillForm(forms.ModelForm):
+    class Meta:
+        model = Skill
+        fields = ["name"]

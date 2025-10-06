@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ page_title|default:"Profile" }} - YourApp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="h-full">
+    <div class="flex h-full">
+      {% include 'partials/sidebar.html' %}
+
+      <div class="flex-1 flex flex-col overflow-hidden">
+        {% include 'partials/header.html' with page_title=page_title %}
+
+        <main
+          class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 p-4 sm:p-6"
+        >
+          <div class="max-w-4xl mx-auto">
+            <div class="bg-white shadow rounded-lg p-6">
+              <div class="flex items-center space-x-5">
+                <img
+                  class="h-24 w-24 rounded-full object-cover"
+                  src="https://ui-avatars.com/api/?name={{ profile_user.first_name }}+{{ profile_user.last_name }}&background=e2e8f0&color=64748b&size=128"
+                  alt="User avatar"
+                />
+                <div>
+                  <h1 class="text-3xl font-bold text-slate-800">
+                    {{ profile_user.first_name }} {{ profile_user.last_name }}
+                  </h1>
+                  <p class="text-slate-500">@{{ profile_user.username }}</p>
+                </div>
+              </div>
+              <div class="mt-8 border-t border-slate-200 pt-5">
+                <h2 class="text-xl font-semibold text-slate-700">
+                  Profile Details
+                </h2>
+                <dl
+                  class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"
+                >
+                  <div class="bg-slate-50 p-4 rounded-lg">
+                    <dt class="text-sm font-medium text-slate-500">
+                      Full Name
+                    </dt>
+                    <dd class="text-lg text-slate-800 mt-1">
+                      {{ profile_user.get_full_name }}
+                    </dd>
+                  </div>
+                  <div class="bg-slate-50 p-4 rounded-lg">
+                    <dt class="text-sm font-medium text-slate-500">
+                      Email Address
+                    </dt>
+                    <dd class="text-lg text-slate-800 mt-1">
+                      {{ profile_user.email }}
+                    </dd>
+                  </div>
+                  <div class="bg-slate-50 p-4 rounded-lg">
+                    <dt class="text-sm font-medium text-slate-500">
+                      Date Joined
+                    </dt>
+                    <dd class="text-lg text-slate-800 mt-1">
+                      {{ profile_user.date_joined|date:"F j, Y" }}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      // Page load hone ke baad hi script chalega
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- User Menu Dropdown Logic ---
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        if (userMenuButton && userMenu) {
+          // Button par click karne par menu ko dikhana/chhipana
+          userMenuButton.addEventListener("click", function (event) {
+            userMenu.classList.toggle("hidden");
+            event.stopPropagation(); // Click ko aage badhne se rokna
+          });
+
+          // Page par kahin aur click karne par menu ko band karna
+          document.addEventListener("click", function (event) {
+            if (
+              !userMenu.classList.contains("hidden") &&
+              !userMenuButton.contains(event.target)
+            ) {
+              userMenu.classList.add("hidden");
+            }
+          });
+        }
+      });
+
+      // Django POST requests ke liye CSRF token get karne ka function
+      // Yeh is page par istemal nahi ho raha, lekin future ke liye faydemand hai
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + "=")) {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+    </script>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -43,7 +43,7 @@
   <body class="bg-slate-50 text-slate-800 flex min-h-screen font-sans">
     {% include 'partials/sidebar.html' %}
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- <header
+      <header
         class="bg-white shadow-sm h-16 flex items-center justify-between px-6"
       >
         <h1 class="text-xl font-semibold text-slate-800"></h1>
@@ -112,8 +112,8 @@
             </div>
           </div>
         </div>
-      </header> -->
-      {% include 'partials/header.html' with page_title="" %}
+      </header>
+
       <main class="flex-1 p-6 md:p-10">
         <div id="form-container" class="max-w-4xl mx-auto relative">
           <div id="step-1" class="step-transition step-active">
@@ -615,51 +615,6 @@
       </main>
     </div>
     <script>
-      const STORAGE_KEY = "assessmentFormData";
-
-      function clearFormState() {
-        sessionStorage.removeItem(STORAGE_KEY);
-      }
-
-      function saveState() {
-        collectStepData(1);
-        collectStepData(2);
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-      }
-
-      function loadState() {
-        const savedData = sessionStorage.getItem(STORAGE_KEY);
-        if (savedData) {
-          Object.assign(formData, JSON.parse(savedData));
-          populateFormFromState();
-        }
-        document
-          .querySelectorAll("#form-container input, #form-container select")
-          .forEach((input) => {
-            input.addEventListener("change", saveState);
-          });
-      }
-
-      function populateFormFromState() {
-        document.getElementById("jobTitle").value = formData.jobTitle || "";
-        document.getElementById("department").value = formData.department || "";
-        document.getElementById("skills").value = formData.skills || "";
-        document.getElementById("minExp").value = formData.minExp || "0";
-        document.getElementById("maxExp").value = formData.maxExp || "1";
-
-        document.querySelectorAll("#step-2 [data-section]").forEach((div) => {
-          const sectionName = div.dataset.section;
-          if (
-            formData.sections &&
-            formData.sections[sectionName] !== undefined
-          ) {
-            div.querySelector("input").value = formData.sections[sectionName];
-          }
-        });
-        document.getElementById("duration").value = formData.duration || "";
-      }
-
-      // --- END: NEW CODE TO ADD ---
       // --- UI HELPER SCRIPTS (SIDEBAR, USER MENU) ---
       document.addEventListener("DOMContentLoaded", function () {
         const sidebar = document.getElementById("sidebar");
@@ -1028,4 +983,4 @@
       }
     </script>
   </body>
-</html>
+</html> -->

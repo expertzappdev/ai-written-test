@@ -79,8 +79,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "shweta.ladne.averybit@gmail.com"
 EMAIL_HOST_PASSWORD = "qwgh jagp euzh qcwi"
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
 
 DATABASES = {
     "default": {
@@ -92,7 +91,7 @@ DATABASES = {
         "PORT": "5432",
     }
 }
-
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "192.168.1.10", "10.0.0.42"]
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 

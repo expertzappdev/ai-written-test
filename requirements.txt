@@ -30,3 +30,4 @@ django-tailwind
 python-dotenv
 whitenoise
 gunicorn
+dotenv

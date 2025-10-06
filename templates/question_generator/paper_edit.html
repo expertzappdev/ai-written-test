@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "theme-primary": "#736b8e",
+              "theme-dark": "#5f5778",
+              "theme-light": "#e5e3e9",
+              "gray-text": "#6B7280",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-gray-800">
+    <div class="flex h-screen">
+      {% include 'partials/sidebar.html' %}
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- <header
+          class="bg-white shadow-sm h-16 flex items-center justify-between px-4 sm:px-6"
+        >
+          <h1 class="text-lg sm:text-xl font-semibold text-gray-800 truncate">
+            <a
+              href="{% url 'paper_detail' paper.id %}"
+              class="text-gray-400 hover:text-theme-primary"
+            >
+              {{ paper.job_title }}
+            </a>
+            <span class="text-gray-400 mx-2">/</span>
+            <span class="text-gray-800">Edit</span>
+          </h1>
+        </header> -->
+        {% include 'partials/header.html' with page_title="" %}
+
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <form method="post">
+            {% csrf_token %}
+            <div
+              class="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200"
+            >
+              <div class="pb-6 border-b">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">
+                  Paper Details
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label
+                      for="{{ form.job_title.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Job Title</label
+                    >
+                    {{ form.job_title }}
+                  </div>
+                  <div>
+                    <label
+                      for="{{ form.title.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Paper Title</label
+                    >
+                    {{ form.title }}
+                  </div>
+                  <div>
+                    <label
+                      for="{{ form.department_name.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Department</label
+                    >
+                    {{ form.department_name }}
+                  </div>
+                  <div>
+                    <label
+                      for="{{ form.duration.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Duration (Minutes)</label
+                    >
+                    {{ form.duration }}
+                  </div>
+                  <div>
+                    <label
+                      for="{{ form.min_exp.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Min Experience (yrs)</label
+                    >
+                    {{ form.min_exp }}
+                  </div>
+                  <div>
+                    <label
+                      for="{{ form.max_exp.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Max Experience (yrs)</label
+                    >
+                    {{ form.max_exp }}
+                  </div>
+                  <div class="md:col-span-2">
+                    <label
+                      for="{{ form.skills_list.id_for_label }}"
+                      class="block text-sm font-medium text-gray-700 mb-1"
+                      >Skills (comma-separated)</label
+                    >
+                    {{ form.skills_list }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                  Questions & Answers
+                </h3>
+                <div class="space-y-6">
+                  {% for section in paper.paper_sections.all %}
+                  <div class="section-container">
+                    <h4 class="text-lg font-semibold text-theme-primary mb-3">
+                      {{ section.title }}
+                    </h4>
+                    <div class="space-y-4">
+                      {% for question in section.questions.all %}
+                      <div
+                        class="question-item pl-4 border-l-2 border-slate-200"
+                      >
+                        <label
+                          for="question-text-{{ question.id }}"
+                          class="font-semibold text-gray-800"
+                        >
+                          Q{{ forloop.parentloop.counter }}.{{ forloop.counter
+                          }}.
+                        </label>
+                        <textarea
+                          id="question-text-{{ question.id }}"
+                          name="question-text-{{ question.id }}"
+                          rows="3"
+                          class="{{ form.fields.job_title.widget.attrs.class }}"
+                        >
+{{ question.text }}</textarea
+                        >
+
+                        <div class="mt-2">
+                          <label
+                            for="question-answer-{{ question.id }}"
+                            class="font-bold text-theme-dark text-sm"
+                            >Answer:</label
+                          >
+                          <textarea
+                            id="question-answer-{{ question.id }}"
+                            name="question-answer-{{ question.id }}"
+                            rows="2"
+                            class="{{ form.fields.job_title.widget.attrs.class }}"
+                          >
+{{ question.answer }}</textarea
+                          >
+                        </div>
+                      </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div
+                class="flex items-center justify-end gap-4 pt-6 mt-6 border-t"
+              >
+                <a
+                  href="{% url 'paper_detail' paper.id %}"
+                  class="text-gray-600 font-semibold py-2 px-4 rounded-lg hover:bg-gray-100"
+                >
+                  Cancel
+                </a>
+                <button
+                  type="submit"
+                  class="bg-theme-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-theme-dark transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
