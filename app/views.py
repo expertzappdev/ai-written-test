@@ -57,30 +57,29 @@ def user_logout(request):
 def user_register(request):
     if request.method == "POST":
         user_form = UserRegistrationForm(request.POST)
-        # We don't know the user instance yet, so we can't pass it to the profile form here.
-        # It's better to validate the user_form first.
 
         if user_form.is_valid():
             user = user_form.save()
-
-            # The signal has already created a blank profile at user.profile.
-            # Now, we populate our form with the POST data AND the existing profile instance.
             profile_form = UserProfileRegistrationForm(
                 request.POST, instance=user.profile
             )
-
             if profile_form.is_valid():
-                profile_form.save()  # This will UPDATE the existing profile.
+                profile_form.save()
                 return redirect("login")
             else:
-                # If the profile form is invalid, you might want to delete the user
-                # to allow them to try registering again.
                 user.delete()
-                # Then fall through to render the forms with errors.
-
+        # Agar form valid nahi hai (ya email duplicate hai), toh code
+        # neeche jaakar page ko error ke saath render kar dega.
     else:
         user_form = UserRegistrationForm()
         profile_form = UserProfileRegistrationForm()
+
+    # Yahan UnboundLocalError se bachne ke liye ek chhota sa fix
+    if request.method != "POST" or not "user_form" in locals():
+        user_form = UserRegistrationForm()
+        profile_form = UserProfileRegistrationForm()
+    elif "profile_form" not in locals():
+        profile_form = UserProfileRegistrationForm(request.POST)
 
     context = {"user_form": user_form, "profile_form": profile_form}
     return render(request, "registration/register.html", context)

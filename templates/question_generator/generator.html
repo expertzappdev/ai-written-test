@@ -12,7 +12,6 @@
       rel="stylesheet"
     />
     <style>
-      /* Custom styles for hiding number input spinner buttons */
       input[type="number"]::-webkit-inner-spin-button,
       input[type="number"]::-webkit-outer-spin-button {
         -webkit-appearance: none;
@@ -21,17 +20,15 @@
       input[type="number"] {
         -moz-appearance: textfield;
       }
-      /* Helper classes for JS-driven step transitions */
+
       .step-transition {
         transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
       }
 
-      /* CORRECTED: Use display: none as the base hidden state */
       .step-hidden {
         display: none;
       }
 
-      /* These classes now only control the transition effect */
       .step-hiding {
         opacity: 0;
         transform: translateY(10px);
@@ -41,34 +38,6 @@
         transform: translateY(0);
       }
     </style>
-    <!-- <style>
-      /* Custom styles for hiding number input spinner buttons */
-      input[type="number"]::-webkit-inner-spin-button,
-      input[type="number"]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      input[type="number"] {
-        -moz-appearance: textfield;
-      }
-      /* Helper classes for JS-driven step transitions */
-      .step-transition {
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-      }
-      .step-hidden {
-        opacity: 0;
-        transform: translateY(10px);
-        position: absolute;
-        pointer-events: none;
-        z-index: -10;
-      }
-      .step-active {
-        opacity: 1;
-        transform: translateY(0);
-        position: static;
-        pointer-events: auto;
-      }
-    </style> -->
   </head>
   <body class="bg-slate-50 text-slate-800 flex min-h-screen font-sans">
     {% include 'partials/sidebar.html' %}
@@ -998,9 +967,6 @@
     </script>
 
     <script>
-      // -----------------------------
-      // GLOBAL UTILITIES & CSRF TOKEN
-      // -----------------------------
       function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== "") {
@@ -1018,9 +984,6 @@
         return cookieValue;
       }
 
-      // -----------------------------
-      // SIDEBAR + HEADER FUNCTIONALITY
-      // -----------------------------
       document.addEventListener("DOMContentLoaded", function () {
         // Sidebar toggle
         const sidebar = document.getElementById("sidebar");
@@ -1061,169 +1024,7 @@
             }
           });
         }
-
-        // -----------------------------
-        // SHARE MODAL LOGIC
-        // -----------------------------
-        const shareModal = document.getElementById("share-modal");
-        const modalContent = document.getElementById("share-modal-content");
-        const shareButtons = document.querySelectorAll(".share-button");
-        const closeShareModalButtons = document.querySelectorAll(
-          "#close-share-modal-top, #close-share-modal-footer"
-        );
-        const shareLinkInput = document.getElementById("share-link-input");
-        const copyLinkButton = document.getElementById("copy-link-button");
-        const copyMessage = document.getElementById("copy-message");
-        const modalPaperTitle = document.getElementById("modal-paper-title");
-        const deactivateButton = document.getElementById(
-          "deactivate-link-button"
-        );
-        const deactivateMessage = document.getElementById("deactivate-message");
-
-        shareButtons.forEach((button) => {
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const shareLink = button.getAttribute("data-share-link");
-            const paperTitle = button.getAttribute("data-paper-title");
-            const paperId = button.getAttribute("data-paper-id");
-            const isPublic = button.getAttribute("data-is-public") === "true";
-
-            const fullShareLink = window.location.origin + shareLink;
-            shareLinkInput.value = fullShareLink;
-            modalPaperTitle.textContent = paperTitle;
-            deactivateButton.setAttribute("data-paper-id", paperId);
-
-            copyMessage.classList.add("hidden");
-            deactivateMessage.classList.add("hidden");
-            copyLinkButton.textContent = "Copy Link";
-
-            if (isPublic) {
-              deactivateButton.textContent = "Deactivate Public Link";
-              deactivateButton.classList.remove(
-                "bg-green-500",
-                "hover:bg-green-600"
-              );
-              deactivateButton.classList.add("bg-red-500", "hover:bg-red-600");
-            } else {
-              deactivateButton.textContent = "Activate Public Link";
-              deactivateButton.classList.remove(
-                "bg-red-500",
-                "hover:bg-red-600"
-              );
-              deactivateButton.classList.add(
-                "bg-green-500",
-                "hover:bg-green-600"
-              );
-            }
-
-            shareModal.classList.remove("hidden");
-            setTimeout(() => {
-              modalContent.classList.remove("scale-95", "opacity-0");
-            }, 10);
-          });
-        });
-
-        const closeModal = () => {
-          modalContent.classList.add("scale-95", "opacity-0");
-          setTimeout(() => {
-            shareModal.classList.add("hidden");
-          }, 300);
-        };
-        closeShareModalButtons.forEach((button) => {
-          button.addEventListener("click", closeModal);
-        });
-        shareModal?.addEventListener("click", (event) => {
-          if (event.target === shareModal) closeModal();
-        });
-
-        copyLinkButton?.addEventListener("click", () => {
-          navigator.clipboard.writeText(shareLinkInput.value).then(() => {
-            copyMessage.classList.remove("hidden");
-            copyLinkButton.textContent = "Copied!";
-            setTimeout(() => {
-              copyMessage.classList.add("hidden");
-              copyLinkButton.textContent = "Copy Link";
-            }, 3000);
-          });
-        });
-
-        deactivateButton?.addEventListener("click", () => {
-          const paperId = deactivateButton.getAttribute("data-paper-id");
-          const toggleUrl = `/api/paper/${paperId}/toggle-public/`;
-          const icon = `<i class="fas fa-spinner fa-spin mr-2"></i>`;
-
-          deactivateButton.disabled = true;
-          deactivateButton.innerHTML = `${icon} Updating...`;
-
-          fetch(toggleUrl, {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": getCookie("csrftoken"),
-              "Content-Type": "application/json",
-            },
-          })
-            .then((response) => {
-              if (!response.ok)
-                throw new Error(`Server error: ${response.status}`);
-              return response.json();
-            })
-            .then((data) => {
-              if (data.status === "success") {
-                const isPublic = data.is_public_active;
-                if (isPublic) {
-                  deactivateMessage.classList.add("hidden");
-                  deactivateButton.textContent = "Deactivate Public Link";
-                  deactivateButton.classList.remove(
-                    "bg-green-500",
-                    "hover:bg-green-600"
-                  );
-                  deactivateButton.classList.add(
-                    "bg-red-500",
-                    "hover:bg-red-600"
-                  );
-                  alert("Link is now active and public! ✅");
-                } else {
-                  deactivateMessage.textContent = "Link is now deactivated! 🔒";
-                  deactivateMessage.classList.remove("hidden");
-                  deactivateButton.textContent = "Activate Public Link";
-                  deactivateButton.classList.remove(
-                    "bg-red-500",
-                    "hover:bg-red-600"
-                  );
-                  deactivateButton.classList.add(
-                    "bg-green-500",
-                    "hover:bg-green-600"
-                  );
-                }
-              } else {
-                throw new Error(data.message || "Failed to update status.");
-              }
-            })
-            .catch((error) => {
-              console.error("Error toggling paper status:", error);
-              deactivateMessage.textContent =
-                "An error occurred. Please try again.";
-              deactivateMessage.classList.remove("hidden");
-              deactivateMessage.classList.add("text-red-600");
-            })
-            .finally(() => {
-              deactivateButton.disabled = false;
-            });
-        });
       });
-
-      // -----------------------------
-      // MULTI-STEP FORM SCRIPT (YOUR MAIN LOGIC)
-      // -----------------------------
-      // [Paste your full step form script here — starting from
-      //   “// --- START: DATA AND CONFIGURATION ---”
-      //   and ending at “savePaper()”]
-      //
-      // You already shared it — so copy it below this line, as-is.
-      //
-      // -----------------------------
     </script>
   </body>
 </html>

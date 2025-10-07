@@ -35,20 +35,6 @@
     <div class="flex h-screen">
       {% include 'partials/sidebar.html' %}
       <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- <header
-          class="bg-white shadow-sm h-16 flex items-center justify-between px-4 sm:px-6"
-        >
-          <h1 class="text-lg sm:text-xl font-semibold text-gray-800 truncate">
-            <a
-              href="{% url 'paper_detail' paper.id %}"
-              class="text-gray-400 hover:text-theme-primary"
-            >
-              {{ paper.job_title }}
-            </a>
-            <span class="text-gray-400 mx-2">/</span>
-            <span class="text-gray-800">Edit</span>
-          </h1>
-        </header> -->
         {% include 'partials/header.html' with page_title="" %}
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
