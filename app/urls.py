@@ -63,5 +63,6 @@ urlpatterns = [
     path("users/<int:user_id>/", views.user_detail, name="user_detail"),
     path("users/delete/<int:user_id>/", views.delete_user, name="delete_user"),
     path("profile/<int:pk>/", views.user_profile_view, name="user_profile"),
-    path("test-result/", views.test_result, name="test_report"),
+    # path("test-result/", views.test_result, name="test_report"),
+    path("test-report/<int:registration_id>/", views.test_result, name="test_report"),
 ]

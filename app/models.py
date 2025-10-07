@@ -106,10 +106,22 @@ class PaperSection(models.Model):
         return f"Section '{self.title}' of paper '{self.question_paper.title}'"
 
 
+# ... baaki models waise hi rahenge
+
+
 class Question(models.Model):
     """
     Represents a single question within a PaperSection.
     """
+
+    # Question Types ke liye choices define karein
+    class QuestionType(models.TextChoices):
+        MCQ = "MCQ", "Multiple Choice"
+        SHORT_ANSWER = "SA", "Short Answer"
+        TRUE_FALSE = "TF", "True/False"
+        CODING = "CODE", "Coding"
+        DESCRIPTIVE = "DESC", "Descriptive"
+        UNCLASSIFIED = "UN", "Unclassified"
 
     section = models.ForeignKey(
         PaperSection, on_delete=models.CASCADE, related_name="questions"
@@ -119,8 +131,54 @@ class Question(models.Model):
     options = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
+    # === YEH NAYI FIELD ADD KAREIN ===
+    question_type = models.CharField(
+        max_length=4,
+        choices=QuestionType.choices,
+        default=QuestionType.UNCLASSIFIED,
+    )
+    # ================================
+
     class Meta:
         ordering = ["order"]
 
     def __str__(self):
         return f"Q: {self.text[:50]}..."
+
+
+class TestRegistration(models.Model):
+    email = models.EmailField(max_length=255)
+    phone_number = models.CharField(max_length=15)
+    address = models.TextField(null=True, blank=True)
+    start_time = models.DateTimeField()
+    is_completed = models.BooleanField(default=False)
+    question_paper = models.ForeignKey(QuestionPaper, on_delete=models.CASCADE)
+
+    class Meta:
+        # Yeh Django ko batata hai ki yeh model kis table ke liye hai
+        db_table = "app_testregistration"
+        managed = False  # Important: Agar table pehle se bani hai to False rakhein
+
+    def __str__(self):
+        return f"{self.email} - Paper ID: {self.question_paper.id}"
+
+
+# app/models.py
+
+# ... (add this class with your other models) ...
+
+
+class UserResponse(models.Model):
+    user_answer = models.TextField()
+    # Establish a relationship with your Question and TestRegistration models
+    question = models.ForeignKey(Question, on_delete=models.DO_NOTHING)
+    registration = models.ForeignKey(TestRegistration, on_delete=models.DO_NOTHING)
+
+    class Meta:
+        # Tell Django to use your existing table
+        db_table = "user_tests_userresponse"
+        # Important: Prevents Django from trying to create or modify this table
+        managed = False
+
+    def __str__(self):
+        return f"Response for Q:{self.question.id} by Reg:{self.registration.id}"
