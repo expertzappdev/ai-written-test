@@ -6,10 +6,9 @@ from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.db import models
 
 User = get_user_model()
-
-# --- User Profile and Related Models ---
 
 
 class UserProfile(models.Model):
@@ -38,12 +37,6 @@ class Section(models.Model):
         return self.name
 
 
-from django.db import models
-
-
-# skills modal
-
-
 class Skill(models.Model):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
@@ -63,9 +56,6 @@ class Department(models.Model):
 
     def __str__(self):
         return self.name
-
-
-# --- Question Paper Models ---
 
 
 class QuestionPaper(models.Model):

@@ -3,7 +3,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm as BaseUserCreationForm
 from django.contrib.auth import get_user_model
-from .models import UserProfile
+from .models import User, UserProfile
+from .models import Department, Skill
+from .models import Section
+from .models import QuestionPaper
 
 User = get_user_model()
 
@@ -30,10 +33,6 @@ class LoginForm(AuthenticationForm):
         )
 
 
-from django import forms
-from django.contrib.auth.forms import BaseUserCreationForm
-from .models import User, UserProfile
-
 INPUT_CLASSES = (
     "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm "
     "placeholder-gray-400 focus:outline-none focus:ring-blue-primary "
@@ -42,9 +41,10 @@ INPUT_CLASSES = (
 TEXTAREA_CLASSES = f"{INPUT_CLASSES} resize-y"
 
 
+# -------------------- USER REGISTRATION FORM --------------------
 class UserRegistrationForm(BaseUserCreationForm):
     """
-    Handles new user creation with a cleaner, more maintainable approach.
+    Handles new user creation with consistent Tailwind styling.
     """
 
     email = forms.EmailField(
@@ -55,6 +55,7 @@ class UserRegistrationForm(BaseUserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         for field_name, field in self.fields.items():
             if field.label:
                 placeholder_text = f"Enter your {field.label.lower()}..."
@@ -65,27 +66,31 @@ class UserRegistrationForm(BaseUserCreationForm):
                 {"class": INPUT_CLASSES, "placeholder": placeholder_text}
             )
 
-    # ✅ YEH HISSA BADLA GAYA HAI
+    def clean_email(self):
+        """
+        Validates that the email is not already registered.
+        """
+        email = self.cleaned_data.get("email")
+        if email and User.objects.filter(username__iexact=email).exists():
+            raise forms.ValidationError("Email already registered. Please login.")
+        return email
+
     def save(self, commit=True):
-        # Pehle user object banao, lekin database mein save mat karo.
         user = super().save(commit=False)
-        # User ke username ko uske email ke barabar set karo.
-        user.username = self.cleaned_data["email"]
+        user.username = self.cleaned_data["email"].lower()
         if commit:
-            # Ab user ko database mein save karo.
             user.save()
         return user
 
     class Meta(BaseUserCreationForm.Meta):
         model = User
-        # Yahan 'username' add karne ki zaroorat nahi hai,
-        # kyunki hum use save() method mein handle kar rahe hain.
         fields = ("email", "first_name", "last_name")
 
 
+# -------------------- USER PROFILE FORM --------------------
 class UserProfileRegistrationForm(forms.ModelForm):
     """
-    Handles the user profile fields with the same consistent styling.
+    Handles the user profile fields (phone, address) with same styling.
     """
 
     def __init__(self, *args, **kwargs):
@@ -114,26 +119,14 @@ class UserProfileRegistrationForm(forms.ModelForm):
         fields = ("phone_number", "address")
 
 
-# app/forms.py
-
-from django import forms
-from .models import Department, Skill  # Skill model ko import karein
-
-
-# forms.py
-from django import forms
-from .models import Department, Section
-
-
 class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department
-        fields = ["name", "sections"]  # yaha sections include kiya
+        fields = ["name", "sections"]
 
-    # Optional: Tailwind/Bootstrap ke liye widget customize
     sections = forms.ModelMultipleChoiceField(
-        queryset=Section.objects.all(),  # sare sections dikhayenge
-        widget=forms.CheckboxSelectMultiple,  # Multiple checkbox dikhane ke liye
+        queryset=Section.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
         required=False,
     )
 
@@ -141,22 +134,15 @@ class DepartmentForm(forms.ModelForm):
 class SkillForm(forms.ModelForm):
     class Meta:
         model = Skill
-        fields = "__all__"  # Yahan aap specific fields bhi de sakte hain
+        fields = "__all__"
 
 
-# app/forms.py
-
-from django import forms
-from .models import QuestionPaper
-
-# Define a common CSS class for form inputs to keep them consistent
 text_input_class = "w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
 
 
 class QuestionPaperEditForm(forms.ModelForm):
     class Meta:
         model = QuestionPaper
-        # These are the fields from the QuestionPaper model we want to edit
         fields = [
             "job_title",
             "title",
@@ -166,7 +152,6 @@ class QuestionPaperEditForm(forms.ModelForm):
             "max_exp",
             "skills_list",
         ]
-        # Add widgets to apply Tailwind CSS classes to the form fields
         widgets = {
             "job_title": forms.TextInput(attrs={"class": text_input_class}),
             "title": forms.TextInput(attrs={"class": text_input_class}),
@@ -181,11 +166,6 @@ class QuestionPaperEditForm(forms.ModelForm):
                 }
             ),
         }
-
-
-# your_app/forms.py
-from django import forms
-from .models import Skill
 
 
 class SkillForm(forms.ModelForm):

@@ -57,30 +57,29 @@ def user_logout(request):
 def user_register(request):
     if request.method == "POST":
         user_form = UserRegistrationForm(request.POST)
-        # We don't know the user instance yet, so we can't pass it to the profile form here.
-        # It's better to validate the user_form first.
 
         if user_form.is_valid():
             user = user_form.save()
-
-            # The signal has already created a blank profile at user.profile.
-            # Now, we populate our form with the POST data AND the existing profile instance.
             profile_form = UserProfileRegistrationForm(
                 request.POST, instance=user.profile
             )
-
             if profile_form.is_valid():
-                profile_form.save()  # This will UPDATE the existing profile.
+                profile_form.save()
                 return redirect("login")
             else:
-                # If the profile form is invalid, you might want to delete the user
-                # to allow them to try registering again.
                 user.delete()
-                # Then fall through to render the forms with errors.
-
+        # Agar form valid nahi hai (ya email duplicate hai), toh code
+        # neeche jaakar page ko error ke saath render kar dega.
     else:
         user_form = UserRegistrationForm()
         profile_form = UserProfileRegistrationForm()
+
+    # Yahan UnboundLocalError se bachne ke liye ek chhota sa fix
+    if request.method != "POST" or not "user_form" in locals():
+        user_form = UserRegistrationForm()
+        profile_form = UserProfileRegistrationForm()
+    elif "profile_form" not in locals():
+        profile_form = UserProfileRegistrationForm(request.POST)
 
     context = {"user_form": user_form, "profile_form": profile_form}
     return render(request, "registration/register.html", context)
@@ -155,11 +154,9 @@ def save_paper(request):
     try:
         data = json.loads(request.body)
 
-        # --- SUGGESTION: Calculate total questions before creating the paper ---
         total_questions_count = 0
         for section_data in data.get("sections", []):
             total_questions_count += len(section_data.get("questions", []))
-        # --------------------------------------------------------------------
 
         paper = QuestionPaper.objects.create(
             created_by=request.user,
@@ -236,10 +233,8 @@ def paper_detail_view(request, paper_id):
     Displays the details of a single question paper, including all its
     sections and questions.
     """
-    # Fetch the specific paper, ensuring it belongs to the logged-in user for security.
     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
 
-    # Split the skills string into a list for better rendering in the template
     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
 
     context = {
@@ -367,8 +362,6 @@ def skill_delete_view(request, pk):
     skill.delete()
     return JsonResponse({"status": "success", "message": "Skill deleted successfully."})
 
-    # views.py
-
 
 User = get_user_model()
 
@@ -420,14 +413,10 @@ def delete_user(request, user_id):
 
 @login_required
 def user_profile_view(request, pk):
-    # URL se mile 'pk' ke आधार par User object ko get karein
-    # get_object_or_404 ka fayda: agar user nahi mila to 404 error page dikhayega
     profile_user = get_object_or_404(User, pk=pk)
 
-    # context dictionary mein user object ko template ke liye bhej dein
     context = {"profile_user": profile_user}
 
-    # 'profile.html' template render karein aur context pass karein
     return render(request, "partials/users/profile.html", context)
 
 

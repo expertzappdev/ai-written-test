@@ -42,7 +42,6 @@ urlpatterns = [
     path("save-paper/", views.save_paper, name="save_paper"),
     path("papers/", views.list_papers, name="list_papers"),
     path("departments/create/", views.department_create_view, name="department_create"),
-    # app/urls.py
     path(
         "departments/<int:department_id>/sections/",
         views.get_sections_by_department,
