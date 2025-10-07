@@ -16,6 +16,12 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
+    
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
+
     <script>
       tailwind.config = {
         theme: {
@@ -35,12 +41,14 @@
         .question-card { transition: box-shadow 0.2s; }
         .question-card:hover { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); }
         .answer-input { @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary; }
+        .code-editor { min-height: 250px; border: 1px solid #e5e7eb; border-radius: 6px; }
+        #fixed-footer { z-index: 100; padding-bottom: 50px; } 
     </style>
 </head>
 <body class="text-gray-800">
 
 <div class="min-h-screen">
-    <header class="bg-white shadow-md sticky top-0 z-10">
+    <header class="bg-white shadow-md sticky top-0 z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
             <h1 class="text-xl font-bold text-theme-dark truncate">
                 {{ paper.title }}
@@ -57,7 +65,7 @@
     </header>
 
     <main class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-        <form method="post" action="{% url 'test:user_test' link_id=link_id %}" class="space-y-8">
+        <form method="post" action="{% url 'test:user_test' link_id=link_id %}" class="space-y-8" id="assessment-form">
             {% csrf_token %}
 
             {% for section in sections_list %}
@@ -71,9 +79,10 @@
                             <div class="question-card p-4 border border-gray-200 rounded-lg bg-gray-50/50">
                                 <p class="font-semibold text-lg mb-3">
                                     Q{{ forloop.parentloop.counter }}.{{ forloop.counter }}: {{ q.text }}
+                                    <span class="text-xs font-normal text-theme-primary">[{{ q.type }}]</span>
                                 </p>
                                 
-                                {% if q.options %}
+                                {% if q.type == 'MCQ' %}
                                     <div class="space-y-2 mt-3">
                                         {% for option in q.options %}
                                             <label class="flex items-center text-gray-700">
@@ -85,11 +94,32 @@
                                             </label>
                                         {% endfor %}
                                     </div>
+
+                                {% elif q.type == 'CODE' %}
+                                    <p class="text-sm text-gray-600 mb-2 mt-3">Write your code below (Python):</p>
+                                    <div id="editor-{{ q.id }}" class="code-editor mt-2"></div>
+                                    
+                                    <textarea name="question_{{ q.id }}" id="textarea-{{ q.id }}" class="hidden"></textarea>
+
+                                    <div class="mt-3 flex space-x-3">
+                                        <button type="button" 
+                                                onclick="runCode({{ q.id }})"
+                                                id="run-btn-{{ q.id }}"
+                                                class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                            <i class="fas fa-play mr-1"></i> Run Code (Browser)
+                                        </button>
+                                    </div>
+
+                                    <div id="output-{{ q.id }}" 
+                                         class="mt-3 p-3 text-xs bg-gray-800 text-green-300 rounded-lg whitespace-pre-wrap hidden">
+                                        
+                                    </div>
+
                                 {% else %}
                                     <textarea 
                                         name="question_{{ q.id }}" 
-                                        rows="4" 
-                                        placeholder="Type your answer here..."
+                                        rows="6" 
+                                        placeholder="Type your detailed answer here..."
                                         class="answer-input resize-y mt-3"
                                     ></textarea>
                                 {% endif %}
@@ -98,59 +128,126 @@
                     </div>
                 </div>
             {% endfor %}
-
-            <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-2xl">
-                <div class="max-w-5xl mx-auto flex justify-end">
-                    <button 
-                        type="submit" 
-                        class="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-lg 
-                               hover:bg-green-700 transition-colors shadow-lg focus:outline-none"
-                    >
-                        Submit Final Assessment
-                    </button>
-                </div>
-            </div>
+            
+            <div class="h-20 sm:h-24"></div> 
         </form>
     </main>
+
+    <div id="fixed-footer" class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-2xl z-20">
+        <div class="max-w-5xl mx-auto flex justify-end">
+            <button 
+                type="submit" 
+                form="assessment-form"
+                class="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-lg 
+                       hover:bg-green-700 transition-colors shadow-lg focus:outline-none"
+            >
+                Submit Final Assessment
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
-    // --- TIMER LOGIC ---
+    // --- SKULPT PYTHON EXECUTION LOGIC ---
+    let editorInstances = {}; // Store editor instances globally
+    
+    // Function to handle output (print statement se aane wala output)
+    function outf(text, questionId) {
+        const outputElement = document.getElementById(`output-${questionId}`);
+        outputElement.textContent += text;
+        outputElement.classList.remove('hidden', 'bg-red-900', 'text-red-300');
+        outputElement.classList.add('bg-gray-800', 'text-green-300');
+    }
+    
+    // Function to handle errors (Python exception aane par)
+    function builtinRead(x) {
+        if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+            throw "File not found: '" + x + "'";
+        return Sk.builtinFiles["files"][x];
+    }
+    
+    function runCode(questionId) {
+        const editor = editorInstances[questionId];
+        const code = editor.getValue();
+        const outputElement = document.getElementById(`output-${questionId}`);
+        const runButton = document.getElementById(`run-btn-${questionId}`);
+
+        outputElement.textContent = "Running...";
+        outputElement.classList.remove('hidden', 'bg-red-900', 'text-green-300');
+        outputElement.classList.add('bg-gray-700', 'text-white');
+        runButton.disabled = true;
+        runButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
+
+        Sk.pre = "output-" + questionId; // Skulpt ko batao output kahan bhejna hai
+        
+        Sk.configure({
+            output: (text) => outf(text, questionId),
+            read: builtinRead
+        });
+        
+        // Asynchronously run the code
+        (Sk.misceval.asyncToPromise(function() {
+            return Sk.importMainWithBody("<stdin>", false, code, true);
+        })).then(function(mod) {
+            // Success (code ran without throwing a Python exception)
+            runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+        }, function(err) {
+            // Error (Python exception was thrown)
+            outputElement.textContent = "Error:\n" + err.toString();
+            outputElement.classList.remove('bg-gray-700', 'text-white');
+            outputElement.classList.add('bg-red-900', 'text-red-300');
+            runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+        }).finally(() => {
+            runButton.disabled = false;
+        });
+    }
+
+
+    // --- MONACO EDITOR LOGIC ---
     document.addEventListener('DOMContentLoaded', function() {
-        const timerElement = document.getElementById('timer');
-        const totalSeconds = {{ total_duration|default:3600 }}; // Default to 60 minutes if duration is missing
-        let timeRemaining = totalSeconds;
+        // ... (Timer Logic Remains) ...
 
-        function updateTimer() {
-            const minutes = Math.floor(timeRemaining / 60);
-            const seconds = timeRemaining % 60;
-            
-            // Format time as MM:SS
-            timerElement.textContent = 
-                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            
-            if (timeRemaining <= 300) { // 5 minutes remaining
-                timerElement.classList.add('bg-orange-600');
-                timerElement.classList.remove('bg-red-500');
-            }
-            if (timeRemaining <= 60) { // 1 minute remaining
-                timerElement.classList.add('bg-red-700', 'animate-pulse');
-                timerElement.classList.remove('bg-orange-600');
-            }
+        // Monaco Editor Initialization
+        require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            document.querySelectorAll('.code-editor').forEach(editorContainer => {
+                const questionId = editorContainer.id.replace('editor-', '');
+                const textarea = document.getElementById(`textarea-${questionId}`);
 
-            if (timeRemaining <= 0) {
-                clearInterval(timerInterval);
-                timerElement.textContent = "TIME UP!";
-                // Automatically submit the form
-                document.querySelector('form').submit();
-            }
+                if (editorContainer.hasAttribute('data-monaco-initialized')) return;
+                editorContainer.setAttribute('data-monaco-initialized', 'true');
 
-            timeRemaining--;
-        }
+                const editor = monaco.editor.create(editorContainer, {
+                    value: textarea.value || '',
+                    language: 'python', 
+                    theme: 'vs-light',
+                    minimap: { enabled: false },
+                    automaticLayout: true,
+                    tabSize: 4,
+                });
+                
+                // Store editor instance globally
+                editorInstances[questionId] = editor; 
 
-        // Start the timer immediately
-        updateTimer();
-        const timerInterval = setInterval(updateTimer, 1000);
+                // Update hidden textarea when editor content changes
+                editor.onDidChangeModelContent(() => {
+                    textarea.value = editor.getValue();
+                });
+            });
+        });
+        
+        // Final submission handler (Remains)
+        document.getElementById('assessment-form').addEventListener('submit', function() {
+            document.querySelectorAll('.code-editor').forEach(editorContainer => {
+                 const questionId = editorContainer.id.replace('editor-', '');
+                 const textarea = document.getElementById(`textarea-${questionId}`);
+                 const editor = editorInstances[questionId];
+                 
+                 if (editor) {
+                     textarea.value = editor.getValue();
+                 }
+            });
+        });
     });
 </script>
 

@@ -2,7 +2,7 @@
 
 from django.db import models
 from django.utils import timezone
-from app.models import QuestionPaper
+from app.models import QuestionPaper ,Question
 
 
 # ----------------------------------------------------------------------
@@ -37,3 +37,32 @@ class TestRegistration(models.Model):
 
     def __str__(self):
         return f"{self.email} registered for {self.question_paper.title}"
+
+class UserResponse(models.Model):
+    """
+    Stores the user's answer for a specific question during a test attempt.
+    """
+    # FK to TestRegistration (Pura test attempt)
+    registration = models.ForeignKey(
+        TestRegistration, 
+        on_delete=models.CASCADE, 
+        related_name="responses"
+    )
+    
+    # FK to Question (Kaunsa question tha) - Yeh Question model 'app' se aayega
+    question = models.ForeignKey(
+        Question, 
+        on_delete=models.CASCADE, 
+        related_name="user_responses"
+    )
+    
+    # User ne kya answer diya (MCQ ho ya subjective)
+    user_answer = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        # Ek user ek test mein ek question ka sirf ek hi answer de sakta hai
+        unique_together = ('registration', 'question')
+        # DB Table ka naam default 'user_tests_userresponse' hoga
+        
+    def __str__(self):
+        return f"Response for Q{self.question.id} by {self.registration.name}"
