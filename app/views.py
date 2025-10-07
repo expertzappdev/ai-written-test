@@ -110,15 +110,23 @@ def generate_questions(request):
             prompt = f"""
             Generate a technical assessment paper based on the following precise specifications.
             The entire response MUST be a single, valid JSON object. Do not wrap it in markdown backticks.
+
             1. Job Role: {job_title}
             2. Experience Level: From {min_exp} to {max_exp} years.
             3. Core Skills to Test: {skills_raw}
             4. Total Questions: {total_questions}
             5. Paper Sections and Question Counts: {json.dumps(sections_data)}
-            6. Output Structure Constraint:
-               - The main JSON object MUST have two keys: 'title' (string) and 'sections' (array).
-               - Each section object in the 'sections' array must have 'title' and 'questions'.
-               - Each question MUST include: 'text' and 'answer'. If it is a multiple-choice question, it MUST also include an 'options' array.
+            6. **Question & Answer Constraint**: This is the most important rule. All questions must have a concise answer. The answer can be a single word, a number, a short phrase, or **a single, short line of code**. Avoid questions requiring multi-line code or long paragraph explanations.
+            - **Good Technical Example:** 'Write a Python list comprehension to generate squares of numbers from 0 to 4.' (Answer: `[x**2 for x in range(5)]`)
+            - **Good Aptitude Example:** 'If A is the brother of B, and C is the sister of A, what is the relation of C to B?' (Answer: 'Sister')
+            - **Bad Example:** 'Explain the principles of Object-Oriented Programming.'
+            7. Output Structure Constraint:
+            - The main JSON object MUST have two keys: 'title' (string) and 'sections' (array).
+            - Each section object in the 'sections' array must have 'title' and 'questions'.
+            - Each question MUST include: 'text', 'answer', and 'type'.
+            - The 'type' must be one of the following short codes: 'MCQ', 'Short Answer', 'Coding'. (Multiple Choice, Short Answer, True/False, Code).
+            - If it is a multiple-choice question (MCQ), it MUST also include an 'options' array.
+
             Generate the paper now.
             """
 
@@ -183,13 +191,17 @@ def save_paper(request):
                 order=section_index,
             )
             for q_index, question_data in enumerate(section_data.get("questions", [])):
+                # === YAHAN QUESTION CREATE KARTE SAMAY TYPE ADD KAREIN ===
                 Question.objects.create(
                     section=section,
                     text=question_data.get("text"),
                     answer=question_data.get("answer"),
                     options=question_data.get("options"),
                     order=q_index,
+                    # .get("type", "UN") yeh default value set karega agar AI type nahi bhejta
+                    question_type=question_data.get("type", "UN"),
                 )
+                # ========================================================
 
         return JsonResponse(
             {
@@ -198,7 +210,6 @@ def save_paper(request):
                 "redirect_url": "/dashboard/",
             }
         )
-
     except Exception as e:
         print(f"Error saving paper: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
@@ -366,24 +377,28 @@ def skill_delete_view(request, pk):
 User = get_user_model()
 
 
-def user_list(request):
-    # Sirf un users ko select karega jinka is_staff=False hai.
-    users = User.objects.filter(is_staff=False)
+from .models import TestRegistration
 
+
+from django.shortcuts import render, get_object_or_404
+from .models import TestRegistration  # User model ki zarurat nahi hai yahan
+
+
+def user_list(request):
+    users = TestRegistration.objects.all().order_by("id")
     return render(request, "partials/users/user_list.html", {"users": users})
 
 
+# === IS FUNCTION KO UPDATE KAREIN ===
 def user_detail(request, user_id):
-    user = get_object_or_404(User, pk=user_id)
+    # User model ke bajaye TestRegistration model se object fetch karein
+    registration = get_object_or_404(TestRegistration, pk=user_id)
 
-    try:
-        test_attempts = user.testattempt_set.all()
-    except:
-        test_attempts = []
+    # test_attempts wali logic abhi relevant nahi hai, to use hata dein
+    # Kyunki humare paas TestAttempt model nahi hai.
 
     context = {
-        "selected_user": user,
-        "test_attempts": test_attempts,
+        "registration": registration,  # Context ka naam bhi aasan kar dete hain
     }
     return render(request, "partials/users/user_details.html", context)
 
@@ -460,5 +475,61 @@ def toggle_paper_public_status(request, paper_id):
         )
 
 
-def test_result(request):
-    return render(request, "partials/users/test_report.html")
+# app/views.py
+
+from django.shortcuts import render, get_object_or_404
+from .models import (
+    TestRegistration,
+    UserResponse,
+    Question,
+)  # Make sure Question is imported
+
+
+def test_result(request, registration_id):
+    # Get the registration object
+    registration = get_object_or_404(TestRegistration, pk=registration_id)
+
+    # Get all user responses for this test
+    user_responses = UserResponse.objects.filter(
+        registration=registration
+    ).select_related("question")
+
+    # Get the total number of questions for the paper using the correct query
+    total_questions = Question.objects.filter(
+        section__question_paper=registration.question_paper
+    ).count()
+
+    score = 0
+    results_data = []
+
+    # Calculate the score
+    for response in user_responses:
+        is_correct = (
+            response.user_answer.strip().lower()
+            == response.question.answer.strip().lower()
+        )
+        if is_correct:
+            score += 1
+
+        results_data.append(
+            {
+                "question_text": response.question.text,
+                "user_answer": response.user_answer,
+                "correct_answer": response.question.answer,
+                "is_correct": is_correct,
+            }
+        )
+
+    # Calculate incorrect answers
+    incorrect_answers = total_questions - score
+
+    context = {
+        "registration": registration,
+        "results": results_data,
+        "score": score,
+        "total_questions": total_questions,
+        "incorrect_answers": incorrect_answers,
+        "title": f"Test Report for {registration.email}",
+    }
+
+    return render(request, "partials/users/test_report.html", context)
