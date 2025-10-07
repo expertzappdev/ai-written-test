@@ -1,60 +1,1030 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <title>Question Paper Generator</title>
-</head>
-<body>
-    <h1>AI-Powered Assessment Designer</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Powered Assessment Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
 
-    <form method="post" action="{% url 'generate_questions' %}">
-        {% csrf_token %}
-        
-        <h2>Global Parameters</h2>
-        <label>Job Title:</label><input type="text" name="job_title" required><br>
-        <label>Min Experience (Yrs):</label><input type="number" name="min_exp" required><br>
-        <label>Max Experience (Yrs):</label><input type="number" name="max_exp" required><br>
-        <label>Core Skills (comma-separated):</label><input type="text" name="skills" placeholder="e.g., Python, Django, SQL, REST API" required><br>
-        <label>Total Questions (MUST match section total):</label><input type="number" name="total_questions" required><br>
+      .step-transition {
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+      }
 
-        <h2>Section Breakdown (Number of Questions per Section)</h2>
-        <label>Aptitude Questions:</label><input type="number" name="section_Aptitude" value="0"><br>
-        <label>Programming Questions:</label><input type="number" name="section_Programming" value="0"><br>
-        <label>Technical Questions:</label><input type="number" name="section_Technical" value="0"><br>
-        <label>Behavioral Questions:</label><input type="number" name="section_Behavioral" value="0"><br>
+      .step-hidden {
+        display: none;
+      }
 
-        <button type="submit">Generate Paper using Gemini</button>
-    </form>
+      .step-hiding {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      .step-active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800 flex min-h-screen font-sans">
+    {% include 'partials/sidebar.html' %}
+    <div class="flex-1 flex flex-col overflow-hidden">
+      {% include 'partials/header.html' with page_title="" %}
+      <main class="flex-1 p-6 md:p-10">
+        <div id="form-container" class="max-w-4xl mx-auto relative">
+          <div
+            id="step-1"
+            class="step-transition step-active bg-white p-8 rounded-xl shadow-lg max-w-4xl w-full"
+          >
+            <h1 class="text-3xl font-bold mb-8 text-slate-800">
+              Create Question Paper
+            </h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <label
+                  for="jobTitle"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                  >Job Title <span class="text-red-500">*</span></label
+                >
+                <input
+                  type="text"
+                  id="jobTitle"
+                  placeholder="Enter Job Title"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                />
+              </div>
+              <div>
+                <label
+                  for="department"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                  >Department <span class="text-red-500">*</span></label
+                >
+                <select
+                  id="department"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                >
+                  <option value="" disabled selected>Select Department</option>
+                  {% for dept in departments %}
+                  <option value="{{ dept.id }}">{{ dept.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label
+                  for="skills"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                  >Required Skills <span class="text-red-500">*</span></label
+                >
+                <input
+                  type="text"
+                  id="skills"
+                  placeholder="e.g., React, Nodejs, SQL"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1"
+                  >Experience (Years) <span class="text-red-500">*</span></label
+                >
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1"
+                      >Min</label
+                    >
+                    <div
+                      class="flex items-center border border-slate-300 rounded-lg bg-white"
+                    >
+                      <button
+                        onclick="updateCount(this, -1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        id="minExp"
+                        value="0"
+                        min="0"
+                        oninput="validateExperience()"
+                        class="w-full text-center border-l border-r py-2 focus:outline-none bg-transparent placeholder-slate-400"
+                      />
+                      <button
+                        onclick="updateCount(this, 1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1"
+                      >Max</label
+                    >
+                    <div
+                      class="flex items-center border border-slate-300 rounded-lg bg-white"
+                    >
+                      <button
+                        onclick="updateCount(this, -1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        id="maxExp"
+                        value="1"
+                        min="0"
+                        oninput="validateExperience()"
+                        class="w-full text-center border-l border-r py-2 focus:outline-none bg-transparent placeholder-slate-400"
+                      />
+                      <button
+                        onclick="updateCount(this, 1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div id="expError" class="text-red-500 text-sm mt-2 h-4"></div>
+              </div>
+            </div>
+            <div class="mt-12 flex justify-start">
+              <button
+                id="nextButton"
+                onclick="nextStep()"
+                class="w-full sm:w-auto bg-[#736b8e] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Next
+              </button>
+            </div>
+          </div>
 
-    <hr>
-    
-    <h2>Generated Paper (UI Display)</h2>
-    {% if paper %}
-        {% if paper.error %}
-            <p style="color: red;">ERROR: {{ paper.error }}</p>
-        {% elif paper.sections %}
-            <h3>{{ paper.title|default:"Generated Assessment Paper" }}</h3>
-            {% for section in paper.sections %}
-                <h4>{{ section.title }} ({{ section.questions|length }} Questions)</h4>
-                <ol>
-                    {% for question in section.questions %}
-                        <li>
-                            <p><strong>Type:</strong> {{ question.type }}</p>
-                            <p><strong>Q:</strong> {{ question.text }}</p>
-                            {% if question.options %}
-                                <ul>
-                                    {% for option in question.options %}
-                                        <li>{{ option }}</li>
-                                    {% endfor %}
-                                </ul>
-                            {% endif %}
-                            <p style="color: green;">**Answer:** {{ question.answer }}</p>
-                        </li>
-                    {% endfor %}
-                </ol>
-            {% endfor %}
-        {% else %}
-            <p>No paper generated yet. Fill the form and click Generate.</p>
-        {% endif %}
-    {% endif %}
-</body>
+          <div id="step-2" class="step-transition step-hidden">
+            <h1 class="text-3xl font-bold mb-8 text-slate-800">
+              Configure Assessment
+            </h1>
+            <div
+              class="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200"
+            >
+              <h3 class="text-lg font-semibold text-slate-800">
+                Number of Questions
+              </h3>
+              <p class="text-sm text-slate-500 mt-1 mb-6">
+                Set the question count for each section of the test.
+              </p>
+              <div
+                id="sectionsError"
+                class="text-red-500 text-sm -mt-4 mb-4 h-4"
+              ></div>
+
+              <div
+                id="sections-container"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+              ></div>
+
+              <div class="mt-8 border-t border-slate-200 pt-6">
+                <label
+                  for="duration"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Test Duration
+                  <span class="text-red-500">*</span>
+                </label>
+                <select
+                  id="duration"
+                  class="w-full md:w-1/2 px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                >
+                  <option value="" disabled selected>Select duration</option>
+                  <option value="30">30 Minutes</option>
+                  <option value="45">45 Minutes</option>
+                  <option value="60">1 Hour</option>
+                  <option value="90">1 Hour 30 Minutes</option>
+                  <option value="120">2 Hours</option>
+                  <option value="150">2 Hours 30 Minutes</option>
+                  <option value="180">3 Hours</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-12 flex flex-col sm:flex-row w-full gap-4">
+              <button
+                onclick="prevStep()"
+                class="w-full sm:w-auto bg-slate-200 text-slate-800 font-semibold px-8 py-3 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onclick="nextStep()"
+                class="w-full sm:w-auto bg-[#736b8e] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          <div id="step-3" class="step-transition step-hidden">
+            <h1 class="text-3xl font-bold mb-8 text-slate-800">
+              Review & Generate
+            </h1>
+            <div
+              class="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200"
+            >
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
+                <div class="space-y-6">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-800">
+                      Role Details
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                      Confirm the details for the position.
+                    </p>
+                  </div>
+                  <div class="space-y-4">
+                    <div
+                      class="flex justify-between items-baseline pb-2 border-b border-slate-100"
+                    >
+                      <p class="text-sm font-medium text-slate-500">
+                        Job Title
+                      </p>
+                      <p
+                        id="review-jobTitle"
+                        class="font-semibold text-slate-800 text-base text-right"
+                      ></p>
+                    </div>
+                    <div
+                      class="flex justify-between items-baseline pb-2 border-b border-slate-100"
+                    >
+                      <p class="text-sm font-medium text-slate-500">
+                        Department
+                      </p>
+                      <p
+                        id="review-department"
+                        class="font-semibold text-slate-800 text-base text-right"
+                      ></p>
+                    </div>
+                    <div
+                      class="flex justify-between items-baseline pb-2 border-b border-slate-100"
+                    >
+                      <p class="text-sm font-medium text-slate-500">
+                        Experience
+                      </p>
+                      <p
+                        id="review-experience"
+                        class="font-semibold text-slate-800 text-base text-right"
+                      ></p>
+                    </div>
+                    <div class="flex items-start">
+                      <p
+                        class="w-32 flex-shrink-0 text-sm font-medium text-slate-500"
+                      >
+                        Required Skills
+                      </p>
+                      <div
+                        id="review-skills"
+                        class="flex flex-1 flex-wrap gap-2 justify-end"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-6 lg:border-l lg:pl-12 border-slate-200">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-800">
+                      Assessment Structure
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                      A summary of the test format.
+                    </p>
+                  </div>
+                  <div
+                    class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center"
+                  >
+                    <p class="text-sm font-medium text-slate-500">
+                      Test Duration
+                    </p>
+                    <p
+                      id="review-duration"
+                      class="font-semibold text-slate-800 text-lg text-right"
+                    ></p>
+                  </div>
+
+                  <div>
+                    <p class="text-sm font-medium text-slate-500 mb-2">
+                      Sections
+                    </p>
+                    <div
+                      id="review-sections"
+                      class="space-y-2 border rounded-lg p-4"
+                    ></div>
+                  </div>
+                  <div
+                    class="bg-[#736b8e] text-white p-4 rounded-lg flex justify-between items-center"
+                  >
+                    <span class="font-semibold">Total Questions</span>
+                    <span
+                      id="review-total"
+                      class="text-xl font-bold bg-white text-[#736b8e] px-3 py-1 rounded-full"
+                    ></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-12 flex flex-col sm:flex-row w-full gap-4">
+              <button
+                onclick="prevStep()"
+                class="w-full sm:w-auto bg-slate-200 text-slate-800 font-semibold px-8 py-3 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onclick="generatePaper()"
+                class="w-full sm:w-auto bg-[#736b8e] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="paper-container" class="max-w-4xl mx-auto hidden">
+          <div
+            class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8"
+          >
+            <h1
+              id="paper-header"
+              class="text-2xl sm:text-3xl font-bold text-slate-800"
+            ></h1>
+            <div class="flex gap-2">
+              <button
+                onclick="savePaper()"
+                class="flex-1 sm:flex-none bg-[#736b8e] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Save
+              </button>
+              <button
+                onclick="editPaper()"
+                class="flex-1 sm:flex-none bg-slate-200 text-slate-800 font-semibold px-6 py-2 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+          <div
+            class="space-y-6 bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200 mb-8"
+          >
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Job Title:</span
+              >
+              <span id="paper-jobTitle" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Department:</span
+              >
+              <span id="paper-department" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Duration:</span
+              >
+              <span id="paper-duration" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Experience:</span
+              >
+              <span id="paper-experience" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mt-1 mb-1 sm:mb-0"
+                >Skills:</span
+              >
+              <div id="paper-skills" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold mb-6 text-slate-800">Questions:</h2>
+            <div class="space-y-8" id="paper-questions"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script>
+      // --- START: DATA AND CONFIGURATION ---
+      const sectionCache = {}; // Caches sections fetched from the DB to avoid re-fetching
+
+      // --- UI HELPER SCRIPTS ---
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add event listener for department change to update sections
+        const departmentDropdown = document.getElementById("department");
+        if (departmentDropdown) {
+          departmentDropdown.addEventListener("change", (event) => {
+            const departmentId = event.target.value;
+            if (departmentId) {
+              renderSections(departmentId);
+            }
+          });
+        }
+      });
+
+      // --- FORM STATE AND NAVIGATION ---
+      let currentStep = 1;
+      let formData = {
+        sections: {},
+      };
+      let fullPaperPayload = {};
+
+      function resetFormData() {
+        formData = {
+          sections: {},
+        };
+      }
+
+      function showStep(step) {
+        document.querySelectorAll("[id^='step-']").forEach((el) => {
+          el.classList.add("step-hidden");
+          el.classList.remove("step-active");
+        });
+        const activeStep = document.getElementById(`step-${step}`);
+        if (activeStep) {
+          setTimeout(() => {
+            activeStep.classList.remove("step-hidden");
+            activeStep.classList.add("step-active");
+          }, 50);
+        }
+      }
+
+      // --- DATA COLLECTION ---
+      function collectStepData(step) {
+        if (step === 1) {
+          formData.jobTitle = document.getElementById("jobTitle").value;
+
+          const deptSelect = document.getElementById("department");
+          formData.departmentId = deptSelect.value;
+          if (deptSelect.selectedIndex > 0) {
+            formData.departmentName =
+              deptSelect.options[deptSelect.selectedIndex].text;
+          } else {
+            formData.departmentName = "";
+          }
+
+          formData.skills = document.getElementById("skills").value;
+          formData.minExp = document.getElementById("minExp").value;
+          formData.maxExp = document.getElementById("maxExp").value;
+        } else if (step === 2) {
+          formData.sections = {};
+          document.querySelectorAll("#step-2 [data-section]").forEach((div) => {
+            const sectionName = div.dataset.section;
+            const count = div.querySelector("input").value;
+            if (parseInt(count, 10) > 0) {
+              formData.sections[sectionName] = parseInt(count, 10);
+            }
+          });
+
+          // MODIFIED: Collect data from the new simple dropdown
+          const durationSelect = document.getElementById("duration");
+          formData.duration = parseInt(durationSelect.value, 10) || 0;
+          if (durationSelect.selectedIndex > 0) {
+            formData.durationText =
+              durationSelect.options[durationSelect.selectedIndex].text;
+          } else {
+            formData.durationText = "";
+          }
+        }
+      }
+
+      async function renderSections(departmentId) {
+        const container = document.getElementById("sections-container");
+        if (!container || !departmentId) {
+          if (container)
+            container.innerHTML =
+              '<p class="text-slate-500 col-span-2">Please select a department to see available sections.</p>';
+          return;
+        }
+
+        container.innerHTML =
+          '<p class="text-slate-500 col-span-2">Loading sections...</p>';
+
+        if (sectionCache[departmentId]) {
+          buildSectionsHTML(sectionCache[departmentId]);
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `/departments/${departmentId}/sections/`
+          );
+          if (!response.ok) {
+            const errorDetail = await response.text();
+            console.error("Server Response Error:", errorDetail);
+            throw new Error(
+              `Failed to load sections. Status: ${response.status}`
+            );
+          }
+          const data = await response.json();
+          sectionCache[departmentId] = data.sections;
+          buildSectionsHTML(data.sections);
+        } catch (error) {
+          console.error("Error fetching sections:", error);
+          container.innerHTML = `<p class="text-red-500 col-span-2">Could not load sections. Please check the browser console (F12) for errors.</p>`;
+        }
+      }
+      function buildSectionsHTML(sections) {
+        const container = document.getElementById("sections-container");
+        container.innerHTML = "";
+
+        if (!sections || sections.length === 0) {
+          container.innerHTML =
+            '<p class="text-slate-500 col-span-2">No sections found for this department.</p>';
+          return;
+        }
+
+        sections.forEach((sectionName) => {
+          const count =
+            formData.sections && formData.sections[sectionName]
+              ? formData.sections[sectionName]
+              : 1;
+          const sectionHTML = `
+              <div data-section="${sectionName}" class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <label class="font-medium text-slate-700">${sectionName} <span class="text-red-500">*</span></label>
+                  <div class="flex items-center border border-slate-300 rounded-lg bg-white w-fit mt-2 sm:mt-0">
+                      <button onclick="updateCount(this, -1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg transition-colors">-</button>
+                      <input type="number" value="${count}" class="w-16 text-center font-semibold text-lg text-[#736b8e] border-l border-r py-1.5 focus:outline-none bg-transparent" />
+                      <button onclick="updateCount(this, 1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg transition-colors">+</button>
+                  </div>
+              </div>
+          `;
+          container.insertAdjacentHTML("beforeend", sectionHTML);
+        });
+      }
+
+      // --- VALIDATION FUNCTIONS ---
+      function validateExperience() {
+        const minExpInput = document.getElementById("minExp");
+        const maxExpInput = document.getElementById("maxExp");
+        const errorDiv = document.getElementById("expError");
+        const nextButton = document.getElementById("nextButton");
+
+        let minExp = parseInt(minExpInput.value, 10) || 0;
+        let maxExp = parseInt(maxExpInput.value, 10) || 0;
+
+        if (minExp > maxExp) {
+          maxExpInput.value = minExp;
+        }
+
+        if (errorDiv) errorDiv.textContent = "";
+        if (nextButton) {
+          nextButton.disabled = false;
+          nextButton.classList.remove("opacity-50", "cursor-not-allowed");
+        }
+      }
+
+      function validateStep1() {
+        let isValid = true;
+        const requiredFields = ["jobTitle", "department", "skills"];
+        requiredFields.forEach((id) => {
+          const element = document.getElementById(id);
+          if (!element.value || element.value.trim() === "") {
+            isValid = false;
+            element.classList.add("border-red-500");
+            element.classList.remove("border-slate-300");
+          } else {
+            element.classList.remove("border-red-500");
+            element.classList.add("border-slate-300");
+          }
+        });
+        validateExperience();
+        return isValid;
+      }
+
+      function validateStep2() {
+        let isValid = true;
+        let totalQuestions = 0;
+        const sectionsErrorDiv = document.getElementById("sectionsError");
+
+        document.querySelectorAll("#step-2 [data-section]").forEach((div) => {
+          totalQuestions += parseInt(div.querySelector("input").value, 10) || 0;
+        });
+
+        if (totalQuestions <= 0) {
+          isValid = false;
+          if (sectionsErrorDiv)
+            sectionsErrorDiv.textContent =
+              "Please add at least one question to any section.";
+        } else {
+          if (sectionsErrorDiv) sectionsErrorDiv.textContent = "";
+        }
+
+        // MODIFIED: Validate the new duration dropdown
+        const durationSelect = document.getElementById("duration");
+        if (!durationSelect.value) {
+          isValid = false;
+          durationSelect.classList.add("border-red-500");
+          durationSelect.classList.remove("border-slate-300");
+        } else {
+          durationSelect.classList.remove("border-red-500");
+          durationSelect.classList.add("border-slate-300");
+        }
+
+        return isValid;
+      }
+
+      // --- NAVIGATION LOGIC ---
+      function nextStep() {
+        if (currentStep === 1 && !validateStep1()) return;
+        if (currentStep === 2 && !validateStep2()) return;
+
+        collectStepData(currentStep);
+        if (currentStep < 3) {
+          currentStep++;
+          if (currentStep === 2) {
+            renderSections(formData.departmentId);
+          }
+          if (currentStep === 3) {
+            populateReview();
+          }
+          showStep(currentStep);
+        }
+      }
+
+      function prevStep() {
+        if (currentStep > 1) {
+          currentStep--;
+          showStep(currentStep);
+        }
+      }
+
+      function updateCount(button, change) {
+        const input = button.parentElement.querySelector("input");
+        let currentValue = parseInt(input.value, 10);
+        let newValue = currentValue + change;
+        if (newValue < 0) {
+          newValue = 0;
+        }
+        input.value = newValue;
+
+        if (input.id === "minExp" || input.id === "maxExp") {
+          validateExperience();
+        }
+      }
+
+      // --- REVIEW, GENERATION, and SAVING LOGIC ---
+      function populateReview() {
+        document.getElementById("review-jobTitle").textContent =
+          formData.jobTitle || "N/A";
+        document.getElementById("review-department").textContent =
+          formData.departmentName || "N/A";
+
+        // MODIFIED: Use durationText for review
+        document.getElementById("review-duration").textContent =
+          formData.durationText || "N/A";
+
+        document.getElementById("review-experience").textContent =
+          formData.minExp && formData.maxExp
+            ? `${formData.minExp} - ${formData.maxExp} years`
+            : "N/A";
+
+        const skillsContainer = document.getElementById("review-skills");
+        skillsContainer.innerHTML = "";
+        if (formData.skills) {
+          formData.skills.split(",").forEach((skill) => {
+            if (skill.trim()) {
+              const skillTag = document.createElement("span");
+              skillTag.className =
+                "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+              skillTag.textContent = skill.trim();
+              skillsContainer.appendChild(skillTag);
+            }
+          });
+        }
+
+        const sectionsContainer = document.getElementById("review-sections");
+        sectionsContainer.innerHTML = "";
+        let totalQuestions = 0;
+        for (const section in formData.sections) {
+          const count = formData.sections[section];
+          totalQuestions += count;
+          const sectionDiv = document.createElement("div");
+          sectionDiv.className =
+            "flex justify-between items-center text-slate-700";
+          sectionDiv.innerHTML = `
+          <span>${section}</span>
+          <span class="font-medium bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">${count} Questions</span>
+        `;
+          sectionsContainer.appendChild(sectionDiv);
+        }
+        document.getElementById(
+          "review-total"
+        ).textContent = `${totalQuestions}`;
+      }
+
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      async function generatePaper() {
+        const generateButton = document.querySelector(
+          '#step-3 button[onclick="generatePaper()"]'
+        );
+        generateButton.disabled = true;
+        generateButton.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Generating...
+      `;
+
+        const aiPostData = {
+          job_title: formData.jobTitle,
+          min_exp: formData.minExp,
+          max_exp: formData.maxExp,
+          skills: formData.skills,
+          sections: formData.sections,
+        };
+
+        try {
+          const response = await fetch("{% url 'generate_questions' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify(aiPostData),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `Server error: ${response.status} ${response.statusText}. Response: ${errorText}`
+            );
+          }
+          const paperData = await response.json();
+          if (paperData.error) {
+            throw new Error(paperData.error);
+          }
+
+          fullPaperPayload = {
+            job_title: formData.jobTitle,
+            department: formData.departmentName,
+            skills: formData.skills,
+            min_exp: formData.minExp,
+            max_exp: formData.maxExp,
+            duration: formData.duration,
+            title: paperData.title,
+            sections: paperData.sections,
+          };
+
+          displayGeneratedPaper(paperData);
+        } catch (error) {
+          console.error("Failed to generate paper:", error);
+          alert(`An error occurred: ${error.message}`);
+        } finally {
+          generateButton.disabled = false;
+          generateButton.innerHTML = "Generate";
+        }
+      }
+
+      function displayGeneratedPaper(paperData) {
+        document.getElementById("form-container").classList.add("hidden");
+        const paperContainer = document.getElementById("paper-container");
+        paperContainer.classList.remove("hidden");
+
+        document.getElementById("paper-header").textContent =
+          fullPaperPayload.title || `${fullPaperPayload.job_title} Assessment`;
+        document.getElementById("paper-jobTitle").textContent =
+          fullPaperPayload.job_title;
+        document.getElementById("paper-department").textContent =
+          fullPaperPayload.department;
+
+        // MODIFIED: Use durationText for final paper display
+        document.getElementById("paper-duration").textContent =
+          formData.durationText || "N/A";
+
+        document.getElementById(
+          "paper-experience"
+        ).textContent = `${fullPaperPayload.min_exp} - ${fullPaperPayload.max_exp} years`;
+
+        const skillsContainer = document.getElementById("paper-skills");
+        skillsContainer.innerHTML = "";
+        if (fullPaperPayload.skills) {
+          fullPaperPayload.skills.split(",").forEach((skill) => {
+            if (skill.trim()) {
+              const skillTag = document.createElement("span");
+              skillTag.className =
+                "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+              skillTag.textContent = skill.trim();
+              skillsContainer.appendChild(skillTag);
+            }
+          });
+        }
+        const questionsContainer = document.getElementById("paper-questions");
+        questionsContainer.innerHTML = "";
+
+        let questionCounter = 1;
+        if (paperData.sections && paperData.sections.length > 0) {
+          paperData.sections.forEach((section) => {
+            const sectionTitle = document.createElement("h3");
+            sectionTitle.className =
+              "text-xl font-bold text-slate-700 mt-8 -mb-4 border-b pb-2";
+            sectionTitle.textContent = section.title;
+            questionsContainer.appendChild(sectionTitle);
+
+            section.questions.forEach((q) => {
+              const questionDiv = document.createElement("div");
+              questionDiv.className =
+                "bg-white p-6 rounded-lg border border-slate-200";
+
+              let optionsHtml = "";
+              if (
+                q.options &&
+                Array.isArray(q.options) &&
+                q.options.length > 0
+              ) {
+                optionsHtml =
+                  '<ul class="list-disc list-inside mt-2 space-y-1 text-slate-600">';
+                q.options.forEach((opt) => {
+                  optionsHtml += `<li>${opt}</li>`;
+                });
+                optionsHtml += "</ul>";
+              }
+
+              questionDiv.innerHTML = `
+            <p class="font-semibold text-slate-800 flex items-start">
+                <span class="mr-2">${questionCounter}.</span>
+                <span>${q.text}</span>
+            </p>
+            ${optionsHtml}
+            <div class="mt-3 pt-3 pl-6 border-l-2 border-[#736b8e] ml-1">
+                <p class="text-slate-600">
+                    <span class="font-medium text-slate-700">Answer:</span>
+                    ${q.answer}
+                </p>
+            </div>
+          `;
+              questionsContainer.appendChild(questionDiv);
+              questionCounter++;
+            });
+          });
+        } else {
+          questionsContainer.innerHTML =
+            '<p class="text-red-500">The AI could not generate questions based on the provided input. Please check your parameters and try again.</p>';
+        }
+      }
+
+      // MODIFICATION 2: Added the editPaper() function
+      function editPaper() {
+        // Hide the paper view and show the form container
+        document.getElementById("form-container").classList.remove("hidden");
+        document.getElementById("paper-container").classList.add("hidden");
+
+        // Reset to the first step of the form
+        currentStep = 1;
+        showStep(currentStep);
+
+        // Repopulate Step 1 fields from the stored formData
+        document.getElementById("jobTitle").value = formData.jobTitle;
+        document.getElementById("department").value = formData.departmentId;
+        document.getElementById("skills").value = formData.skills;
+        document.getElementById("minExp").value = formData.minExp;
+        document.getElementById("maxExp").value = formData.maxExp;
+
+        // Repopulate Step 2 duration dropdown from stored formData
+        // The section counts are already stored in formData.sections and will be
+        // automatically applied when the user proceeds to step 2.
+        document.getElementById("duration").value = formData.duration;
+      }
+
+      async function savePaper() {
+        const saveButton = document.querySelector(
+          '#paper-container button[onclick^="savePaper"]'
+        );
+        saveButton.disabled = true;
+        saveButton.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      Saving...`;
+
+        try {
+          const response = await fetch("{% url 'save_paper' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify(fullPaperPayload),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || "Failed to save the paper.");
+          }
+
+          alert(result.message);
+          resetFormData();
+          window.location.href = result.redirect_url;
+        } catch (error) {
+          console.error("Save error:", error);
+          alert(`Could not save the paper: ${error.message}`);
+        } finally {
+          saveButton.disabled = false;
+          saveButton.textContent = "Save";
+        }
+      }
+    </script>
+
+    <script>
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + "=")) {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // Sidebar toggle
+        const sidebar = document.getElementById("sidebar");
+        const toggleButton = document.getElementById("sidebar-toggle");
+        const sidebarLogo = document.getElementById("sidebar-logo");
+        const sidebarTexts = document.querySelectorAll(".sidebar-text");
+        const sidebarHeader = document.getElementById("sidebar-header");
+
+        if (toggleButton) {
+          toggleButton.addEventListener("click", () => {
+            sidebar.classList.toggle("w-64");
+            sidebar.classList.toggle("w-20");
+            sidebarLogo.classList.toggle("hidden");
+            sidebarHeader.classList.toggle("justify-between");
+            sidebarHeader.classList.toggle("justify-center");
+            sidebarTexts.forEach((text) => {
+              text.classList.toggle("hidden");
+            });
+          });
+        }
+
+        // Profile dropdown
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        if (userMenuButton && userMenu) {
+          userMenuButton.addEventListener("click", (event) => {
+            userMenu.classList.toggle("hidden");
+            event.stopPropagation();
+          });
+
+          document.addEventListener("click", (event) => {
+            if (
+              !userMenu.classList.contains("hidden") &&
+              !userMenuButton.contains(event.target)
+            ) {
+              userMenu.classList.add("hidden");
+            }
+          });
+        }
+      });
+    </script>
+  </body>
 </html>

@@ -11,8 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os  # Yeh line file ke top par add karein agar nahi hai
+import os
 import environ
+# Render database connection ke liye import karein
+import dj_database_url  # <-- ADDED
+# Static files ko efficiently serve karne ke liye yeh use hota hai (whitenoise install karna hoga)
+import sys 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,9 +29,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-rf^i_@h*%*-6bz7n5djy8d2r26z+e!y-s4=h2g83pv=uptw)gk"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False # Production mein False rakhein
 
-ALLOWED_HOSTS = []
+# Render aur custom domain hosts ko allow karein
+ALLOWED_HOSTS = ['.onrender.com', 'ai-test.onrender.com'] # <-- UPDATED
 
 
 # Application definition
@@ -40,10 +45,14 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "app",
+    "user_tests",
+    "widget_tweaks",
 ]
 
 MIDDLEWARE = [
+    # WhiteNoise middleware ko security middleware ke theek neeche add karein (whitenoise install zaroori hai)
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware", # <-- ADDED (After installing 'whitenoise')
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -57,7 +66,7 @@ ROOT_URLCONF = "ai_test.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "templates")],  # Yeh line add karein
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -70,21 +79,44 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = "ai_test.wsgi.application"
+# --- ADD YOUR EMAIL SETTING HERE ---
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "shweta.ladne.averybit@gmail.com"
+EMAIL_HOST_PASSWORD = "qwgh jagp euzh qcwi"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# ----------------------------------------------------------------------
+#                         DATABASE CONFIGURATION
+# ----------------------------------------------------------------------
 
+# Render environment variable 'DATABASE_URL' ka upyog karein
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "aiTest",
-        "USER": "swapnil",
-        "PASSWORD": "12345",
-        "HOST": "10.0.0.42",
-        "PORT": "5432",
-    }
+    'default': dj_database_url.config(
+        # DATABASE_URL environment variable se connect karein
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600, 
+        conn_health_checks=True,
+    )
 }
+
+# Agar environment variable set nahi hai (jaise ki local development mein), to SQLite use karein
+# Agar aap local dev mein bhi PostgreSQL use karna chahte hain, to is section ko comment kar dein
+if not os.environ.get('DATABASE_URL'):
+    print("Using SQLite for local development.")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -106,11 +138,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 env = environ.Env(
     # Set casting default for API key (e.g., read as a string)
-    GEMINI_API_KEY=(str, '') 
+    GEMINI_API_KEY=(str, "")
 )
-environ.Env.read_env(os.path.join(BASE_DIR, '.env')) 
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
-GEMINI_API_KEY = env('GEMINI_API_KEY')
+GEMINI_API_KEY = env("GEMINI_API_KEY")
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -124,31 +156,28 @@ USE_I18N = True
 USE_TZ = True
 
 
+# ----------------------------------------------------------------------
+#                         STATIC FILES CONFIGURATION
+# ----------------------------------------------------------------------
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+# Production mein static files ko collect karne ki jagah
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # <-- ADDED
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-
-# Django ko batayein ki global static folder kahan hai
+# Local static files directories
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
 
-# ai_test/settings.py
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-# Email sent to the console (for development and testing)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Production ke liye, aapko yeh use karna hoga:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your_email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your_app_password'
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

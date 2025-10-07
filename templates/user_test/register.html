@@ -1,0 +1,112 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register for Test | {{ paper_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <script>
+      // Load your custom Tailwind config from dashboard.html
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "theme-primary": "#736b8e",
+              "theme-dark": "#5f5778",
+              "theme-light": "#e5e3e9",
+              "gray-text": "#6B7280",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Enforcing Inter font */
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f7f7f7; /* Light background for contrast */
+      }
+      /* Custom classes from your forms.py */
+      .INPUT_CLASSES {
+          /* Your custom styles applied here */
+          @apply mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-theme-primary focus:border-theme-primary sm:text-sm;
+      }
+      .TEXTAREA_CLASSES {
+          /* Your custom styles applied here */
+          @apply mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-theme-primary focus:border-theme-primary sm:text-sm resize-y;
+      }
+      /* Ensure fields use the defined classes */
+      input, textarea {
+        @apply shadow-sm;
+      }
+    </style>
+</head>
+<body class="text-gray-800">
+
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-100">
+        
+        <h1 class="text-3xl font-extrabold text-theme-dark text-center mb-2">Test Registration</h1>
+        <h2 class="text-xl font-medium text-gray-600 text-center mb-6">
+            {{ paper_title }}
+        </h2>
+
+        {% if messages %}
+            <div class="mb-6 space-y-3">
+            {% for message in messages %}
+                <p class="p-3 rounded-lg text-sm font-medium 
+                    {% if message.tags == 'error' %} bg-red-100 text-red-700 border border-red-200 
+                    {% elif message.tags == 'success' %} bg-green-100 text-green-700 border border-green-200 
+                    {% else %} bg-blue-100 text-blue-700 border border-blue-200 
+                    {% endif %}" 
+                    role="alert">
+                    {{ message }}
+                </p>
+            {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'test:user_register_link' link_id=link_id %}" class="space-y-4">
+            {% csrf_token %}
+
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        {{ field.label }}
+                    </label>
+                    
+                    {{ field }}
+                    
+                    {% if field.errors %}
+                        <div class="errorlist text-xs text-red-600 mt-1">
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <button 
+                type="submit" 
+                class="w-full bg-theme-primary text-white font-semibold py-3 mt-6 rounded-lg 
+                       hover:bg-theme-dark transition-colors text-lg shadow-md focus:outline-none 
+                       focus:ring-4 focus:ring-theme-primary focus:ring-opacity-50"
+            >
+                Start Test Registration
+            </button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
