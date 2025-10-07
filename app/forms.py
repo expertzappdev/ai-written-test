@@ -119,37 +119,6 @@ class UserProfileRegistrationForm(forms.ModelForm):
         fields = ("phone_number", "address")
 
 
-# class UserProfileRegistrationForm(forms.ModelForm):
-#     """
-#     Handles the user profile fields with the same consistent styling.
-#     """
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         for field_name, field in self.fields.items():
-#             if field.label:
-#                 placeholder_text = f"Enter your {field.label.lower()}..."
-#             else:
-#                 placeholder_text = f"Enter {field_name.replace('_', ' ')}..."
-
-#             if isinstance(field.widget, forms.Textarea):
-#                 field.widget.attrs.update(
-#                     {
-#                         "class": TEXTAREA_CLASSES,
-#                         "rows": "1",
-#                         "placeholder": placeholder_text,
-#                     }
-#                 )
-#             else:
-#                 field.widget.attrs.update(
-#                     {"class": INPUT_CLASSES, "placeholder": placeholder_text}
-#                 )
-
-#     class Meta:
-#         model = UserProfile
-#         fields = ("phone_number", "address")
-
-
 class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department
