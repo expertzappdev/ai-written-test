@@ -18,7 +18,7 @@ from .models import TestRegistration # TestRegistration isi app mein hai
 
 # Main man raha hu ki aapne TestRegistrationForm ko bhi is app mein bana liya hai ya uska import theek kar diya hai.
 # Agar form app/forms.py mein hai toh:
-# from app.forms import TestRegistrationForm
+from .forms import TestRegistrationForm
 
 # --- USER TEST FLOW VIEWS (MOVED HERE) ---
 
@@ -28,7 +28,7 @@ def user_instruction_view(request, link_id):
     # 1. Paper check (Error handling ke liye)
     try:
         paper_id = int(link_id)
-        paper = get_object_or_404(QuestionPaper, pk=paper_id, is_public=True)
+        paper = get_object_or_404(QuestionPaper, pk=paper_id, is_public_active=True)
     except (ValueError, QuestionPaper.DoesNotExist):
         return redirect("home")
 
@@ -50,41 +50,91 @@ def user_instruction_view(request, link_id):
 
 def user_test_view(request, link_id):
     """
-    Step 3: Actual test-taking page.
+    Step 3: Actual test-taking page. Fetches paper details and questions.
     """
-    # NOTE: Is view ko bhi TestRegistration aur QuestionPaper ki zarurat hogi.
-
-    # 1. Paper and Registration check (Repeat logic from instruction view for safety)
+    # 1. Paper and Registration check
     try:
         paper_id = int(link_id)
-        paper = get_object_or_404(QuestionPaper, pk=paper_id, is_public=True)
+        # 1.1 Paper existence and public status check
+        paper = get_object_or_404(QuestionPaper, pk=paper_id, is_public_active=True)
         registration_id = request.session.get("current_registration_id")
         
+        # 1.2 Session check: Agar session nahi hai toh register page par bhej de
         if not registration_id:
-            return redirect("user_register_link", link_id=link_id)
+            return redirect("test:user_register_link", link_id=link_id)
             
+        # 1.3 Registration status check: Check karein ki user ne abhi tak submit nahi kiya hai
         registration = get_object_or_404(TestRegistration, pk=registration_id, question_paper=paper, is_completed=False)
 
     except Exception:
-        return redirect("user_register_link", link_id=link_id)
+        # Koi bhi error hone par register page par bhej de
+        return redirect("test:user_register_link", link_id=link_id)
 
+    # ----------------------------------------------------------------------
+    # --- DATA FETCHING AND GROUPING LOGIC ---
+    # ----------------------------------------------------------------------
+    
+    # 2. Questions aur unke sections ko ek hi query mein fetch karein
+    questions = Question.objects.select_related('section').filter(
+        section__question_paper=paper
+    ).order_by('section__order', 'order')
+
+    # 3. Questions ko sections mein group karne ke liye dictionary use karein
+    sections_with_questions = {}
+    
+    for q in questions:
+        # Section title ko group key banaayein
+        section_title = q.section.title
+        
+        if section_title not in sections_with_questions:
+            sections_with_questions[section_title] = {
+                'title': section_title,
+                'questions': []
+            }
+        
+        # Options ko check karein ki woh list/JSON field mein hain ya nahi
+        # isse template mein options display karna aasan ho jaata hai
+        options_list = q.options if isinstance(q.options, list) else None
+        
+        sections_with_questions[section_title]['questions'].append({
+            'id': q.id,
+            'text': q.text,
+            'options': options_list # Options ko template mein bheja
+        })
+    
+    # Dictionary values (sections) ko list mein badle
+    sections_list = list(sections_with_questions.values())
+
+    # ----------------------------------------------------------------------
+    # --- POST SUBMISSION LOGIC ---
+    # ----------------------------------------------------------------------
+    
     if request.method == "POST":
-        # Handle test submission (Yahan aapko answers save karne ka logic likhna hai)
-        # TODO: Save user answers and mark registration as completed
+        # Handle test submission 
+        # TODO: Yahan answers ko save karne ka complex logic aayega
+        
+        # Temp: Registration complete mark karein
         registration.is_completed = True
         registration.save()
         
-        # Session se registration ID hata dein, taki user dobara register na ho sake
+        # Session clean up
         del request.session["current_registration_id"] 
         request.session.modified = True 
 
-        return redirect("user_already_submitted")
+        return redirect("test:user_already_submitted")
 
-    # Fetch questions for this paper
-    questions = Question.objects.filter(section__question_paper=paper).order_by('section__order', 'order')
-
-    return render(request, "user_test/test.html", {"questions": questions, "paper": paper, "link_id": link_id})
-
+    # ----------------------------------------------------------------------
+    # --- GET (RENDER PAGE) LOGIC ---
+    # ----------------------------------------------------------------------
+    
+    # Context mein saara zaroori data bhejein
+    context = {
+        "paper": paper, # Title, Duration (paper.duration), etc. ismein hai
+        "sections_list": sections_list, # Grouped Questions aur options
+        "link_id": link_id,
+        "total_duration": paper.duration * 60, # Timer ke liye minutes ko seconds mein badle
+    }
+    return render(request, "user_test/test.html", context)
 
 def user_already_submitted_view(request):
     """
@@ -92,21 +142,18 @@ def user_already_submitted_view(request):
     """
     return render(request, "user_test/already_submitted.html")
 
+# user_tests/views.py (user_register_view)
 
-# Final aur complete user_register_view
 def user_register_view(request, link_id):
-    """
-    Handles registration for test takers using the unique link_id (QuestionPaper PK).
-    Checks for repetition using the TestRegistration model's unique_together constraint.
-    """
     
     # 1. Question Paper ID ko fetch aur validate karna
     try:
-        # link_id QuestionPaper's primary key (ID) hai.
         paper_id = int(link_id)
         # Check that the paper exists AND is public
-        paper = get_object_or_404(QuestionPaper, pk=paper_id, is_public=True)
+        # Agar yeh line fail hoti hai, toh yeh exception catch ho jaega.
+        paper = get_object_or_404(QuestionPaper, pk=paper_id, is_public_active=True)
     except (ValueError, QuestionPaper.DoesNotExist):
+        # Is block mein koi issue nahi hai, yeh sahi se 404 ya redirect handle karta hai.
         messages.error(request, "The test link is invalid or deactivated.")
         return redirect("home") 
 
@@ -115,19 +162,18 @@ def user_register_view(request, link_id):
     registration_id = request.session.get("current_registration_id")
     if registration_id:
         try:
-            # Agar session ID is paper ke liye hai aur test complete nahi hua hai
             reg = TestRegistration.objects.get(pk=registration_id, question_paper=paper, is_completed=False)
-            return redirect("user_instructions", link_id=link_id)
+            return redirect("test:user_instructions", link_id=link_id)
         except TestRegistration.DoesNotExist:
             pass
 
 
     if request.method == "POST":
         # 3. Form handling aur database mein save
-        # Yahan aapko yeh assume karna hoga ki TestRegistrationForm import ho gaya hai
         form = TestRegistrationForm(request.POST) 
         if form.is_valid():
             try:
+                # ... (Database saving logic) ...
                 registration = form.save(commit=False)
                 registration.question_paper = paper
                 registration.save()
@@ -135,19 +181,21 @@ def user_register_view(request, link_id):
                 request.session["current_registration_id"] = registration.id
                 request.session.modified = True 
                 
-                messages.success(request, "Registration successful. Please read the instructions carefully.")
+                messages.success(request, "Registration successful...")
                 
-                return redirect("user_instructions", link_id=link_id)
+                # Naye, sahi namespace ke saath redirect karein
+                return redirect("test:user_instructions", link_id=link_id)
             
             except IntegrityError:
-                # unique_together constraint fail hua (Email + Paper ID already exists).
-                messages.error(request, "You have already registered for this test with this email address.")
-                return redirect("user_already_submitted") 
+                messages.error(request, "You have already registered...")
+                return redirect("test:user_already_submitted") 
+        # else: Agar form invalid hai, toh woh neeche context ke saath render ho jaega.
 
     else:
         # GET Request: Initial form render
         form = TestRegistrationForm()
     
+    # **Yahan, agar form invalid hua (POST request), toh yeh context use hoga.**
     context = {
         "form": form,
         "link_id": link_id,

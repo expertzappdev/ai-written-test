@@ -1,11 +1,7 @@
-# user_tests/models.py
+# user_tests/models.py (THE FINAL VERSION)
 
 from django.db import models
 from django.utils import timezone
-
-# IMPORTANT: QuestionPaper model purani 'app' mein hai.
-# Humein use yahan import karna hoga.
-# Agar aapne QuestionPaper ko 'app' se 'core' app mein move kiya hai toh path badal dena.
 from app.models import QuestionPaper
 
 
@@ -19,14 +15,10 @@ class TestRegistration(models.Model):
     This model has been MOVED from the 'app' module.
     """
     name = models.CharField(max_length=255)
-
-    # Email is NOT unique across the whole table.
     email = models.EmailField(max_length=255)
-
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
 
-    # Link to the test paper (QuestionPaper model se Foreign Key)
     question_paper = models.ForeignKey(
         QuestionPaper,
         on_delete=models.CASCADE,
@@ -37,10 +29,11 @@ class TestRegistration(models.Model):
     is_completed = models.BooleanField(default=False)
 
     class Meta:
+        # **THE FIX:** Use the old table name to match the existing data
+        db_table = 'app_testregistration'
+        
         # **CORE CONSTRAINT:** Ensures same email cannot be used for the same paper twice.
         unique_together = ('email', 'question_paper')
 
     def __str__(self):
         return f"{self.email} registered for {self.question_paper.title}"
-
-# Note: Aage aapko ismein TestAttempt aur UserAnswer jaise models bhi banane chahiye.

@@ -2,6 +2,7 @@
 
 from django.urls import path
 from . import views # user_tests/views.py se views import honge
+app_name = 'test' 
 
 urlpatterns = [
     # --- USER TEST FLOW ROUTES (MOVED HERE) ---
