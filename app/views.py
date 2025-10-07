@@ -5,33 +5,21 @@ import google.generativeai as genai
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.db.models import Count
 from django.conf import settings
-from django.shortcuts import get_object_or_404, render
 from .forms import QuestionPaperEditForm
 from .models import Skill
-from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse, HttpResponseForbidden
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
-from .models import QuestionPaper  # Apne model ka naam check kar lein
 from django.contrib.auth import get_user_model
-from django.shortcuts import render
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from .models import QuestionPaper
+
 from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from .models import QuestionPaper, Question
 from django.contrib import messages
-
-# Forms and Models
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.models import User
 from .forms import (
     LoginForm,
     UserRegistrationForm,
@@ -40,17 +28,6 @@ from .forms import (
     SkillForm,
 )
 from .models import QuestionPaper, PaperSection, Question, Department, Skill
-
-
-import json
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
-from .models import Skill
-from .forms import SkillForm
-from django.shortcuts import render, redirect
-from .forms import DepartmentForm
 
 
 def user_login(request):
@@ -75,25 +52,6 @@ def home(request):
 def user_logout(request):
     logout(request)
     return redirect("login")
-
-
-# def user_register(request):
-#     if request.method == "POST":
-#         user_form = UserRegistrationForm(request.POST)
-#         if user_form.is_valid():
-#             user = user_form.save()
-#             profile_form = UserProfileRegistrationForm(
-#                 request.POST, instance=user.profile
-#             )
-#             if profile_form.is_valid():
-#                 profile_form.save()
-#                 return redirect("login")
-#     else:
-#         user_form = UserRegistrationForm()
-#         profile_form = UserProfileRegistrationForm()
-#     context = {"user_form": user_form, "profile_form": profile_form}
-#     return render(request, "registration/register.html", context)
-# Corrected logic
 
 
 def user_register(request):
@@ -211,6 +169,7 @@ def save_paper(request):
             min_exp=data.get("min_exp"),
             max_exp=data.get("max_exp"),
             duration=data.get("duration"),
+            is_public_active=False,
             skills_list=(
                 ", ".join(data.get("skills", []))
                 if isinstance(data.get("skills"), list)
@@ -262,7 +221,7 @@ def take_paper(request, paper_id):
     """
     paper = get_object_or_404(QuestionPaper, pk=paper_id)
 
-    if not paper.is_public:
+    if not paper.is_public_active:
         return render(request, "link_deactivated.html", status=403)
 
     context = {
@@ -292,7 +251,7 @@ def paper_detail_view(request, paper_id):
 
 
 @login_required
-@transaction.atomic  # Ensures that all database operations in this view are a single transaction
+@transaction.atomic
 def paper_edit_view(request, paper_id):
     """
     Handles editing of a question paper's metadata and its questions.
@@ -459,35 +418,46 @@ def delete_user(request, user_id):
     return render(request, "partials/users/confirm_user_delete.html", context)
 
 
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
-from .models import QuestionPaper  # Make sure to import your model
+@login_required
+def user_profile_view(request, pk):
+    # URL se mile 'pk' ke आधार par User object ko get karein
+    # get_object_or_404 ka fayda: agar user nahi mila to 404 error page dikhayega
+    profile_user = get_object_or_404(User, pk=pk)
+
+    # context dictionary mein user object ko template ke liye bhej dein
+    context = {"profile_user": profile_user}
+
+    # 'profile.html' template render karein aur context pass karein
+    return render(request, "partials/users/profile.html", context)
+
+
+def get_sections_by_department(request, department_id):
+    try:
+        department = Department.objects.get(pk=department_id)
+        sections = department.sections.all().values_list("name", flat=True)
+        return JsonResponse({"sections": list(sections)})
+    except Department.DoesNotExist:
+        return JsonResponse({"sections": []}, status=404)
 
 
 @login_required
 @require_POST
 def toggle_paper_public_status(request, paper_id):
     """
-    Toggles the public accessibility (is_public field) of a QuestionPaper.
+    Toggles the public accessibility (is_public_active field) of a QuestionPaper.
     This is called by the JavaScript fetch() from the share modal.
     """
     try:
-        # Security: Fetch the paper only if it exists AND belongs to the user.
-        # This uses the 'created_by' field from your model.
         paper = QuestionPaper.objects.get(pk=paper_id, created_by=request.user)
 
-        # The logic: Flip the boolean value (True -> False, False -> True)
-        paper.is_public = not paper.is_public
+        paper.is_public_active = not paper.is_public_active
         paper.save()
 
-        # Send a success response back to the JavaScript with the new status
         return JsonResponse(
             {
                 "status": "success",
                 "message": "Paper status updated successfully.",
-                "is_public": paper.is_public,  # This is crucial for the frontend
+                "is_public_active": paper.is_public_active,
             }
         )
 
@@ -501,21 +471,5 @@ def toggle_paper_public_status(request, paper_id):
         )
 
 
-# your_app/views.py
-
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.models import User  # Ya aapka custom user model
-from django.contrib.auth.decorators import login_required
-
-
-@login_required
-def user_profile_view(request, pk):
-    # URL se mile 'pk' ke आधार par User object ko get karein
-    # get_object_or_404 ka fayda: agar user nahi mila to 404 error page dikhayega
-    profile_user = get_object_or_404(User, pk=pk)
-
-    # context dictionary mein user object ko template ke liye bhej dein
-    context = {"profile_user": profile_user}
-
-    # 'profile.html' template render karein aur context pass karein
-    return render(request, "partials/users/profile.html", context)
+def test_result(request):
+    return render(request, "partials/users/test_report.html")

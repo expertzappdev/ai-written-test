@@ -6,13 +6,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0005_questionpaper_is_public_active'),
+        ("app", "0005_questionpaper_is_public_active"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='questionpaper',
-            name='is_active',
-            field=models.BooleanField(default=True, help_text='Overall status of the paper. If inactive, it cannot be taken.'),
+            model_name="questionpaper",
+            name="is_active",
+            field=models.BooleanField(
+                default=True,
+                help_text="Overall status of the paper. If inactive, it cannot be taken.",
+            ),
         ),
     ]

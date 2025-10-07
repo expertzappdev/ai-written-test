@@ -18,29 +18,7 @@
       <!-- Main Content -->
       <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Header -->
-        <header
-          class="bg-white shadow-sm h-16 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200"
-        >
-          <h1 class="text-xl font-semibold text-[rgb(115_107_142)]">
-            Test Report
-          </h1>
-          <div class="relative">
-            <button
-              id="user-menu-button"
-              class="flex items-center space-x-2 focus:outline-none"
-            >
-              <img
-                class="h-9 w-9 rounded-full object-cover border-2 border-[rgb(115_107_142)]"
-                src="https://ui-avatars.com/api/?name={{ request.user.first_name }}+{{ request.user.last_name }}&background=e2e8f0&color=64748b"
-                alt="User avatar"
-              />
-              <span class="hidden md:block font-medium text-[rgb(115_107_142)]"
-                >{{ request.user.first_name }} {{ request.user.last_name
-                }}</span
-              >
-            </button>
-          </div>
-        </header>
+        {% include 'partials/header.html' with page_title="" %}
 
         <!-- Test Report Content -->
         <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 space-y-6">
@@ -57,12 +35,9 @@
                 </li>
                 <li class="flex items-center">
                   <span class="text-gray-400 mx-2">/</span>
-                  <a
-                    href="{% url 'user_detail' selected_user.id %}"
-                    class="text-gray-500 hover:text-gray-700"
-                    >{{ selected_user.first_name }} {{ selected_user.last_name
-                    }}</a
-                  >
+                  <a href="#" class="text-gray-500 hover:text-gray-700"
+                    >full name
+                  </a>
                 </li>
                 <li class="flex items-center">
                   <span class="text-gray-400 mx-2">/</span>
@@ -74,8 +49,7 @@
             </nav>
             <h2 class="text-2xl font-bold text-gray-800">Math Test Report</h2>
             <p class="text-sm text-gray-500 mt-1">
-              Detailed report for {{ selected_user.first_name }}'s attempt on
-              September 20, 2025.
+              Detailed report for first user 's attempt on September 20, 2025.
             </p>
           </div>
 
@@ -195,7 +169,61 @@
       </div>
     </div>
     <script>
-      // Script for user menu dropdown if needed
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + "=")) {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- Existing Sidebar and User Menu Logic (No change) ---
+        const sidebar = document.getElementById("sidebar");
+        const toggleButton = document.getElementById("sidebar-toggle");
+        const sidebarLogo = document.getElementById("sidebar-logo");
+        const sidebarTexts = document.querySelectorAll(".sidebar-text");
+        const sidebarHeader = document.getElementById("sidebar-header");
+
+        if (toggleButton) {
+          toggleButton.addEventListener("click", () => {
+            sidebar.classList.toggle("w-64");
+            sidebar.classList.toggle("w-20");
+            sidebarLogo.classList.toggle("hidden");
+            sidebarHeader.classList.toggle("justify-between");
+            sidebarHeader.classList.toggle("justify-center");
+            sidebarTexts.forEach((text) => {
+              text.classList.toggle("hidden");
+            });
+          });
+        }
+
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        userMenuButton.addEventListener("click", (event) => {
+          userMenu.classList.toggle("hidden");
+          event.stopPropagation();
+        });
+
+        document.addEventListener("click", (event) => {
+          if (
+            !userMenu.classList.contains("hidden") &&
+            !userMenuButton.contains(event.target)
+          ) {
+            userMenu.classList.add("hidden");
+          }
+        });
+      });
     </script>
   </body>
 </html>
