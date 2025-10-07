@@ -6,205 +6,154 @@
     <title>User Details</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="h-screen bg-gray-100">
+  <body class="h-screen bg-gray-50">
     <div class="flex h-screen">
-      <!-- Sidebar -->
       {% include 'partials/sidebar.html' %}
 
-      <!-- Main Content -->
       <div class="flex-1 flex flex-col overflow-hidden">
-              {% include 'partials/header.html' with page_title="" %}
+        {% include 'partials/header.html' with page_title="" %}
 
+        <main class="flex-1 overflow-y-auto p-6 md:p-8">
+          <div class="max-w-5xl mx-auto">
+            <div class="mb-6 px-6">
+              <h1 class="text-2xl font-bold text-gray-900">User Details</h1>
+              <p class="text-sm text-gray-500 mt-1">
+                View and manage user information and test attempts.
+              </p>
+            </div>
 
-        <!-- User Details Content -->
-        <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 space-y-6">
-          <!-- Page Header -->
-          <div>
-            <h2 class="text-2xl font-bold text-gray-800">User Information</h2>
-            <p class="text-sm text-gray-500 mt-1">
-              View and manage user information and test attempts.
-            </p>
-          </div>
-
-          <!-- Personal Information Card -->
-          <div class="bg-white shadow-lg rounded-lg p-6">
-            <h3 class="text-lg font-bold text-[rgb(115_107_142)] mb-4">
-              Personal Information
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="text-sm font-medium text-gray-500">Name</label>
-                <p class="mt-1 text-md text-gray-900">
-                  {{ selected_user.first_name }} {{ selected_user.last_name }}
-                </p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-500">Email</label>
-                <p class="mt-1 text-md text-gray-900">
-                  {{ selected_user.email }}
-                </p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-500"
-                  >Registration Date</label
-                >
-                <p class="mt-1 text-md text-gray-900">
-                  {{ selected_user.date_joined|date:"Y-m-d" }}
-                </p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-500">Status</label>
-                <div class="mt-1">
-                  {% if selected_user.is_active %}
-                  <span
-                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+            <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                Personal Information
+              </h2>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-500"
+                    >Email</label
                   >
-                    Active
-                  </span>
-                  {% else %}
-                  <span
-                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800"
+                  <p class="mt-1 text-sm font-semibold text-gray-900">
+                    {{ registration.email }}
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500"
+                    >Phone Number</label
                   >
-                    Inactive
-                  </span>
-                  {% endif %}
+                  <p class="mt-1 text-sm font-semibold text-gray-900">
+                    {{ registration.phone_number }}
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500"
+                    >Registered On</label
+                  >
+                  <p class="mt-1 text-sm font-semibold text-gray-900">
+                    {{ registration.start_time|date:"Y-m-d" }}
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500"
+                    >Status</label
+                  >
+                  <div class="mt-1">
+                    {% if registration.is_completed %}
+                    <span
+                      class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+                    >
+                      Active
+                    </span>
+                    {% else %}
+                    <span
+                      class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800"
+                    >
+                      Pending
+                    </span>
+                    {% endif %}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-   <!-- Test Attempts Card -->
-          <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-bold text-[rgb(115_107_142)]">
-                Test Attempts
-              </h3>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Test Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Result</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  
-                  <!-- ========= STATIC DATA FOR TESTING ========= -->
-                 
-                  
-                  <tr class="hover:bg-gray-50">
-  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Python Data Scientist - July 2025</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-07-10</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">92%</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm">
-    <a href="{% url 'test_report' %}" class="font-semibold text-[rgb(115_107_142)] hover:underline">
-      View Details
-    </a>
-  </td>
-</tr>
 
-                  <!-- ========= END OF STATIC DATA ========= -->
-          <!-- Test Attempts Card -->
-          <!-- <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-bold text-[rgb(115_107_142)]">
-                Test Attempts
-              </h3>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                    >
-                      Test Name
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                    >
-                      Date
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                    >
-                      Result
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  {% for attempt in test_attempts %}
-                  <tr class="hover:bg-gray-50">
-                    <td
-                      class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
-                    >
-                      {{ attempt.test_name }}
-                    </td>
-                    <td
-                      class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                    >
-                      {{ attempt.date|date:"Y-m-d" }}
-                    </td>
-                    <td
-                      class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800"
-                    >
-                      {{ attempt.result }}%
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                      <a
-                        href="#"
-                        class="font-semibold text-[rgb(115_107_142)] hover:underline"
-                        >View Details</a
+            <div class="bg-white shadow-sm rounded-lg">
+              <div
+                class="px-6 py-4 border-b border-gray-200 flex justify-between items-center"
+              >
+                <h2 class="text-lg font-semibold text-gray-800">
+                  Test Attempts
+                </h2>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
                       >
-                    </td>
-                  </tr>
-                  {% empty %}
-                  <tr>
-                    <td
-                      colspan="4"
-                      class="px-6 py-12 text-center text-gray-500 italic"
-                    >
-                      No test attempts found for this user.
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+                        Test Name
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Date
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Result
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">
+                          {{ registration.question_paper.title }}
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-600">
+                          {{ registration.start_time|date:"Y-m-d" }}
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        {% if registration.is_completed %}
+                        <div class="text-sm font-semibold text-gray-800">
+                          Completed
+                        </div>
+                        {% else %}
+                        <div class="text-sm font-semibold text-yellow-800">
+                          Pending
+                        </div>
+                        {% endif %}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <a
+                          href="{% url 'test_report' registration.id %}"
+                          class="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                          >View Details</a
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div> -->
-       
+          </div>
         </main>
       </div>
     </div>
-
     <script>
-      // Utility function to get CSRF token (needed for Django POST requests)
-      function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-          const cookies = document.cookie.split(";");
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + "=")) {
-              cookieValue = decodeURIComponent(
-                cookie.substring(name.length + 1)
-              );
-              break;
-            }
-          }
-        }
-        return cookieValue;
-      }
-
       document.addEventListener("DOMContentLoaded", function () {
-        // --- Existing Sidebar and User Menu Logic (No change) ---
         const sidebar = document.getElementById("sidebar");
         const toggleButton = document.getElementById("sidebar-toggle");
         const sidebarLogo = document.getElementById("sidebar-logo");
@@ -224,6 +173,7 @@
           });
         }
 
+        // User menu toggle
         const userMenuButton = document.getElementById("user-menu-button");
         const userMenu = document.getElementById("user-menu");
 
@@ -239,151 +189,6 @@
           ) {
             userMenu.classList.add("hidden");
           }
-        });
-
-        // --- Share Modal Logic (No change) ---
-        const shareModal = document.getElementById("share-modal");
-        const modalContent = document.getElementById("share-modal-content");
-        const shareButtons = document.querySelectorAll(".share-button");
-        const closeShareModalButtons = document.querySelectorAll(
-          "#close-share-modal-top, #close-share-modal-footer"
-        );
-        const shareLinkInput = document.getElementById("share-link-input");
-        const copyLinkButton = document.getElementById("copy-link-button");
-        const copyMessage = document.getElementById("copy-message");
-        const modalPaperTitle = document.getElementById("modal-paper-title");
-        const deactivateButton = document.getElementById(
-          "deactivate-link-button"
-        );
-        const deactivateMessage = document.getElementById("deactivate-message");
-
-        shareButtons.forEach((button) => {
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const shareLink = button.getAttribute("data-share-link");
-            const paperTitle = button.getAttribute("data-paper-title");
-            const paperId = button.getAttribute("data-paper-id");
-            const fullShareLink = window.location.origin + shareLink;
-            shareLinkInput.value = fullShareLink;
-            modalPaperTitle.textContent = paperTitle;
-            deactivateButton.setAttribute("data-paper-id", paperId);
-            copyMessage.classList.add("hidden");
-            deactivateMessage.classList.add("hidden");
-            copyLinkButton.textContent = "Copy Link";
-            deactivateButton.disabled = false;
-            deactivateButton.textContent = "Deactivate Public Link";
-            deactivateButton.classList.remove(
-              "bg-gray-400",
-              "cursor-not-allowed"
-            );
-            deactivateButton.classList.add("bg-red-500", "hover:bg-red-600");
-            shareModal.classList.remove("hidden");
-            setTimeout(() => {
-              modalContent.classList.remove("scale-95", "opacity-0");
-            }, 10);
-          });
-        });
-
-        const closeModal = () => {
-          modalContent.classList.add("scale-95", "opacity-0");
-          setTimeout(() => {
-            shareModal.classList.add("hidden");
-          }, 300);
-        };
-        closeShareModalButtons.forEach((button) => {
-          button.addEventListener("click", closeModal);
-        });
-        shareModal.addEventListener("click", (event) => {
-          if (event.target === shareModal) closeModal();
-        });
-        copyLinkButton.addEventListener("click", () => {
-          navigator.clipboard.writeText(shareLinkInput.value).then(() => {
-            copyMessage.classList.remove("hidden");
-            copyLinkButton.textContent = "Copied!";
-            setTimeout(() => {
-              copyMessage.classList.add("hidden");
-              copyLinkButton.textContent = "Copy Link";
-            }, 3000);
-          });
-        });
-        deactivateButton.addEventListener("click", () => {
-          // This logic remains for the modal's deactivate button
-        });
-
-        // --- NEW: Direct Deactivation Logic ---
-        const deactivatePaperButtons = document.querySelectorAll(
-          ".deactivate-paper-button"
-        );
-
-        deactivatePaperButtons.forEach((button) => {
-          button.addEventListener("click", (event) => {
-            event.preventDefault(); // Stop the parent link from navigating
-            event.stopPropagation(); // Stop the event from bubbling to other listeners
-
-            const paperId = button.getAttribute("data-paper-id");
-            const paperTitle = button.getAttribute("data-paper-title");
-            const card = button.closest("a"); // Get the parent <a> card element
-
-            if (
-              confirm(
-                `Are you sure you want to deactivate the paper "${paperTitle}"?\nThis will make the paper and its share link inaccessible.`
-              )
-            ) {
-              const deactivateUrl = `/api/paper/${paperId}/deactivate/`; // Assumes this API endpoint exists
-              const icon = button.querySelector("i");
-
-              // Visually indicate that something is happening
-              button.disabled = true;
-              icon.classList.add("fa-spin");
-
-              fetch(deactivateUrl, {
-                method: "POST",
-                headers: {
-                  "X-CSRFToken": getCookie("csrftoken"),
-                  "Content-Type": "application/json",
-                },
-              })
-                .then((response) => {
-                  if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                  }
-                  return response.json();
-                })
-                .then((data) => {
-                  if (data.status === "success") {
-                    // On success, visually disable the card
-                    card.classList.add("opacity-50", "pointer-events-none");
-
-                    // Add a visual indicator to the title
-                    const titleElement = card.querySelector("h3");
-                    if (titleElement) {
-                      titleElement.innerHTML +=
-                        ' <span class="text-xs font-normal text-red-600">(Deactivated)</span>';
-                    }
-
-                    // Clean up the button state
-                    icon.classList.remove("fa-spin");
-                    button.classList.remove(
-                      "hover:bg-red-100",
-                      "hover:text-red-600"
-                    );
-                    button.classList.add("text-red-400");
-                    // The button remains disabled to prevent further clicks
-                  } else {
-                    // Handle cases where API returns success:false
-                    throw new Error(data.message || "Failed to deactivate.");
-                  }
-                })
-                .catch((error) => {
-                  console.error("Deactivation Error:", error);
-                  alert("An error occurred. Could not deactivate the paper.");
-                  // Re-enable the button if the process fails
-                  button.disabled = false;
-                  icon.classList.remove("fa-spin");
-                });
-            }
-          });
         });
       });
     </script>
