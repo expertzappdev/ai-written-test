@@ -224,7 +224,7 @@ def take_paper(request, paper_id):
     context = {
         "paper": paper,
     }
-    return render(request, "about.html", context)
+    return redirect("test:user_register_link", link_id=str(paper.id))
 
 
 @login_required

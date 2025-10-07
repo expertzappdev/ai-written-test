@@ -1,0 +1,158 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment: {{ paper.title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "theme-primary": "#736b8e",
+              "theme-dark": "#5f5778",
+              "theme-light": "#e5e3e9",
+              "gray-text": "#6B7280",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+        body { font-family: "Inter", sans-serif; background-color: #f4f7f9; }
+        .question-card { transition: box-shadow 0.2s; }
+        .question-card:hover { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); }
+        .answer-input { @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+<div class="min-h-screen">
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-theme-dark truncate">
+                {{ paper.title }}
+            </h1>
+            
+            <div class="flex items-center space-x-4">
+                <span class="text-sm font-medium text-gray-600">
+                    Duration: {{ paper.duration }} min
+                </span>
+                <div class="bg-red-500 text-white font-extrabold py-2 px-4 rounded-full shadow-lg" id="timer">
+                    </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <form method="post" action="{% url 'test:user_test' link_id=link_id %}" class="space-y-8">
+            {% csrf_token %}
+
+            {% for section in sections_list %}
+                <div class="section-block p-6 bg-white rounded-xl shadow-lg border-t-4 border-theme-primary/70">
+                    <h2 class="text-2xl font-bold text-theme-dark mb-6 border-b pb-2">
+                        {{ section.title }}
+                    </h2>
+
+                    <div class="space-y-6">
+                        {% for q in section.questions %}
+                            <div class="question-card p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                                <p class="font-semibold text-lg mb-3">
+                                    Q{{ forloop.parentloop.counter }}.{{ forloop.counter }}: {{ q.text }}
+                                </p>
+                                
+                                {% if q.options %}
+                                    <div class="space-y-2 mt-3">
+                                        {% for option in q.options %}
+                                            <label class="flex items-center text-gray-700">
+                                                <input type="radio" 
+                                                       name="question_{{ q.id }}" 
+                                                       value="{{ option }}" 
+                                                       class="h-4 w-4 text-theme-dark border-gray-300 focus:ring-theme-dark">
+                                                <span class="ml-3 text-sm">{{ option }}</span>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <textarea 
+                                        name="question_{{ q.id }}" 
+                                        rows="4" 
+                                        placeholder="Type your answer here..."
+                                        class="answer-input resize-y mt-3"
+                                    ></textarea>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-2xl">
+                <div class="max-w-5xl mx-auto flex justify-end">
+                    <button 
+                        type="submit" 
+                        class="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-lg 
+                               hover:bg-green-700 transition-colors shadow-lg focus:outline-none"
+                    >
+                        Submit Final Assessment
+                    </button>
+                </div>
+            </div>
+        </form>
+    </main>
+</div>
+
+<script>
+    // --- TIMER LOGIC ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const timerElement = document.getElementById('timer');
+        const totalSeconds = {{ total_duration|default:3600 }}; // Default to 60 minutes if duration is missing
+        let timeRemaining = totalSeconds;
+
+        function updateTimer() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            
+            // Format time as MM:SS
+            timerElement.textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (timeRemaining <= 300) { // 5 minutes remaining
+                timerElement.classList.add('bg-orange-600');
+                timerElement.classList.remove('bg-red-500');
+            }
+            if (timeRemaining <= 60) { // 1 minute remaining
+                timerElement.classList.add('bg-red-700', 'animate-pulse');
+                timerElement.classList.remove('bg-orange-600');
+            }
+
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                timerElement.textContent = "TIME UP!";
+                // Automatically submit the form
+                document.querySelector('form').submit();
+            }
+
+            timeRemaining--;
+        }
+
+        // Start the timer immediately
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 1000);
+    });
+</script>
+
+</body>
+</html>
