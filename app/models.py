@@ -133,7 +133,7 @@ class Question(models.Model):
 
     # === YEH NAYI FIELD ADD KAREIN ===
     question_type = models.CharField(
-        max_length=4,
+        max_length=15,
         choices=QuestionType.choices,
         default=QuestionType.UNCLASSIFIED,
     )
