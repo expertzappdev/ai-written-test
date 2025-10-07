@@ -6,13 +6,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0004_questionpaper_total_questions'),
+        ("app", "0004_questionpaper_total_questions"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='questionpaper',
-            name='is_public_active',
-            field=models.BooleanField(default=True, help_text='Controls if the public sharing link is currently active.'),
+            model_name="questionpaper",
+            name="is_public_active",
+            field=models.BooleanField(
+                default=True,
+                help_text="Controls if the public sharing link is currently active.",
+            ),
         ),
     ]

@@ -9,56 +9,67 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0006_questionpaper_is_active'),
+        ("app", "0006_questionpaper_is_active"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='questionpaper',
-            name='is_active',
+            model_name="questionpaper",
+            name="is_active",
         ),
         migrations.RemoveField(
-            model_name='questionpaper',
-            name='is_public_active',
+            model_name="questionpaper",
+            name="is_public_active",
         ),
         migrations.RemoveField(
-            model_name='questionpaper',
-            name='total_questions',
+            model_name="questionpaper",
+            name="total_questions",
         ),
         migrations.AddField(
-            model_name='skill',
-            name='created_at',
-            field=models.DateTimeField(default=django.utils.timezone.now, editable=False),
+            model_name="skill",
+            name="created_at",
+            field=models.DateTimeField(
+                default=django.utils.timezone.now, editable=False
+            ),
         ),
         migrations.AlterField(
-            model_name='department',
-            name='name',
-            field=models.CharField(default='Unassigned', max_length=100),
+            model_name="department",
+            name="name",
+            field=models.CharField(default="Unassigned", max_length=100),
         ),
         migrations.AlterField(
-            model_name='questionpaper',
-            name='created_at',
-            field=models.DateTimeField(default=django.utils.timezone.now, editable=False),
+            model_name="questionpaper",
+            name="created_at",
+            field=models.DateTimeField(
+                default=django.utils.timezone.now, editable=False
+            ),
         ),
         migrations.AlterField(
-            model_name='questionpaper',
-            name='created_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='question_papers', to=settings.AUTH_USER_MODEL),
+            model_name="questionpaper",
+            name="created_by",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="question_papers",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='questionpaper',
-            name='department_name',
-            field=models.CharField(default='Unassigned', max_length=100),
+            model_name="questionpaper",
+            name="department_name",
+            field=models.CharField(default="Unassigned", max_length=100),
         ),
         migrations.AlterField(
-            model_name='questionpaper',
-            name='skills_list',
-            field=models.TextField(default='', help_text='Comma-separated list of skills'),
+            model_name="questionpaper",
+            name="skills_list",
+            field=models.TextField(
+                default="", help_text="Comma-separated list of skills"
+            ),
         ),
         migrations.AlterField(
-            model_name='skill',
-            name='name',
+            model_name="skill",
+            name="name",
             field=models.CharField(max_length=100, unique=True),
         ),
     ]

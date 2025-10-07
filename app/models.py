@@ -89,8 +89,10 @@ class QuestionPaper(models.Model):
         related_name="question_papers",
         null=True,
     )
+    total_questions = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
-    is_public = models.BooleanField(default=False)
+    # is_public = models.BooleanField(default=False)
+    is_public_active = models.BooleanField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.title} for {self.job_title}"

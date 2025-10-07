@@ -42,6 +42,12 @@ urlpatterns = [
     path("save-paper/", views.save_paper, name="save_paper"),
     path("papers/", views.list_papers, name="list_papers"),
     path("departments/create/", views.department_create_view, name="department_create"),
+    # app/urls.py
+    path(
+        "departments/<int:department_id>/sections/",
+        views.get_sections_by_department,
+        name="get_sections_by_department",
+    ),
     path("skills/", views.skill_list_view, name="skill_list"),
     path("skills/create/", views.skill_create_view, name="skill_create"),
     path("skills/update/<int:pk>/", views.skill_update_view, name="skill_update"),
@@ -58,4 +64,5 @@ urlpatterns = [
     path("users/<int:user_id>/", views.user_detail, name="user_detail"),
     path("users/delete/<int:user_id>/", views.delete_user, name="delete_user"),
     path("profile/<int:pk>/", views.user_profile_view, name="user_profile"),
+    path("test-result/", views.test_result, name="test_report"),
 ]
