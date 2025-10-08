@@ -518,7 +518,7 @@ from .models import (
     TestRegistration,
     UserResponse,
     Question,
-)  # Make sure Question is imported
+)
 
 
 def test_result(request, registration_id):
@@ -530,7 +530,7 @@ def test_result(request, registration_id):
         registration=registration
     ).select_related("question")
 
-    # Get the total number of questions for the paper using the correct query
+    # Get the total number of questions for the paper
     total_questions = Question.objects.filter(
         section__question_paper=registration.question_paper
     ).count()
@@ -559,13 +559,72 @@ def test_result(request, registration_id):
     # Calculate incorrect answers
     incorrect_answers = total_questions - score
 
+    # --- FIX: CALCULATE THE PERCENTAGE ---
+    # Avoid division by zero if there are no questions
+    if total_questions > 0:
+        percentage = round((score / total_questions) * 100)
+    else:
+        percentage = 0
+    # ------------------------------------
+
     context = {
         "registration": registration,
         "results": results_data,
         "score": score,
         "total_questions": total_questions,
         "incorrect_answers": incorrect_answers,
+        "percentage": percentage,  # <-- Add percentage to context
         "title": f"Test Report for {registration.email}",
     }
 
     return render(request, "partials/users/test_report.html", context)
+
+
+# def test_result(request, registration_id):
+#     # Get the registration object
+#     registration = get_object_or_404(TestRegistration, pk=registration_id)
+
+#     # Get all user responses for this test
+#     user_responses = UserResponse.objects.filter(
+#         registration=registration
+#     ).select_related("question")
+
+#     # Get the total number of questions for the paper using the correct query
+#     total_questions = Question.objects.filter(
+#         section__question_paper=registration.question_paper
+#     ).count()
+
+#     score = 0
+#     results_data = []
+
+#     # Calculate the score
+#     for response in user_responses:
+#         is_correct = (
+#             response.user_answer.strip().lower()
+#             == response.question.answer.strip().lower()
+#         )
+#         if is_correct:
+#             score += 1
+
+#         results_data.append(
+#             {
+#                 "question_text": response.question.text,
+#                 "user_answer": response.user_answer,
+#                 "correct_answer": response.question.answer,
+#                 "is_correct": is_correct,
+#             }
+#         )
+
+#     # Calculate incorrect answers
+#     incorrect_answers = total_questions - score
+
+#     context = {
+#         "registration": registration,
+#         "results": results_data,
+#         "score": score,
+#         "total_questions": total_questions,
+#         "incorrect_answers": incorrect_answers,
+#         "title": f"Test Report for {registration.email}",
+#     }
+
+#     return render(request, "partials/users/test_report.html", context)
