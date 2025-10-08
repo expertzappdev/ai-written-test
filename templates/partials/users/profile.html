@@ -71,33 +71,6 @@
     </div>
 
     <script>
-      // Page load hone ke baad hi script chalega
-      document.addEventListener("DOMContentLoaded", function () {
-        // --- User Menu Dropdown Logic ---
-        const userMenuButton = document.getElementById("user-menu-button");
-        const userMenu = document.getElementById("user-menu");
-
-        if (userMenuButton && userMenu) {
-          // Button par click karne par menu ko dikhana/chhipana
-          userMenuButton.addEventListener("click", function (event) {
-            userMenu.classList.toggle("hidden");
-            event.stopPropagation(); // Click ko aage badhne se rokna
-          });
-
-          // Page par kahin aur click karne par menu ko band karna
-          document.addEventListener("click", function (event) {
-            if (
-              !userMenu.classList.contains("hidden") &&
-              !userMenuButton.contains(event.target)
-            ) {
-              userMenu.classList.add("hidden");
-            }
-          });
-        }
-      });
-
-      // Django POST requests ke liye CSRF token get karne ka function
-      // Yeh is page par istemal nahi ho raha, lekin future ke liye faydemand hai
       function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== "") {
@@ -114,6 +87,45 @@
         }
         return cookieValue;
       }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- Existing Sidebar and User Menu Logic (No change) ---
+        const sidebar = document.getElementById("sidebar");
+        const toggleButton = document.getElementById("sidebar-toggle");
+        const sidebarLogo = document.getElementById("sidebar-logo");
+        const sidebarTexts = document.querySelectorAll(".sidebar-text");
+        const sidebarHeader = document.getElementById("sidebar-header");
+
+        if (toggleButton) {
+          toggleButton.addEventListener("click", () => {
+            sidebar.classList.toggle("w-64");
+            sidebar.classList.toggle("w-20");
+            sidebarLogo.classList.toggle("hidden");
+            sidebarHeader.classList.toggle("justify-between");
+            sidebarHeader.classList.toggle("justify-center");
+            sidebarTexts.forEach((text) => {
+              text.classList.toggle("hidden");
+            });
+          });
+        }
+
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        userMenuButton.addEventListener("click", (event) => {
+          userMenu.classList.toggle("hidden");
+          event.stopPropagation();
+        });
+
+        document.addEventListener("click", (event) => {
+          if (
+            !userMenu.classList.contains("hidden") &&
+            !userMenuButton.contains(event.target)
+          ) {
+            userMenu.classList.add("hidden");
+          }
+        });
+      });
     </script>
   </body>
 </html>

@@ -13,10 +13,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import environ
+
 # Render database connection ke liye import karein
 import dj_database_url  # <-- ADDED
+
 # Static files ko efficiently serve karne ke liye yeh use hota hai (whitenoise install karna hoga)
-import sys 
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,10 +31,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-rf^i_@h*%*-6bz7n5djy8d2r26z+e!y-s4=h2g83pv=uptw)gk"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # Production mein False rakhein
+DEBUG = True  # Production mein False rakhein
 
 # Render aur custom domain hosts ko allow karein
-ALLOWED_HOSTS = ['.onrender.com', 'ai-test.onrender.com'] # <-- UPDATED
+ALLOWED_HOSTS = [
+    ".onrender.com",
+    "ai-test.onrender.com",
+    "127.0.0.1",
+    "127.0.0.1:8000",
+]  # <-- UPDATED
 
 
 # Application definition
@@ -52,7 +59,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # WhiteNoise middleware ko security middleware ke theek neeche add karein (whitenoise install zaroori hai)
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware", # <-- ADDED (After installing 'whitenoise')
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # <-- ADDED (After installing 'whitenoise')
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -95,25 +102,25 @@ EMAIL_HOST_PASSWORD = "qwgh jagp euzh qcwi"
 
 # Render environment variable 'DATABASE_URL' ka upyog karein
 DATABASES = {
-    'default': dj_database_url.config(
+    "default": dj_database_url.config(
         # DATABASE_URL environment variable se connect karein
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600, 
+        default=os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
         conn_health_checks=True,
     )
 }
 
 # Agar environment variable set nahi hai (jaise ki local development mein), to SQLite use karein
 # Agar aap local dev mein bhi PostgreSQL use karna chahte hain, to is section ko comment kar dein
-if not os.environ.get('DATABASE_URL'):
+if not os.environ.get("DATABASE_URL"):
     print("Using SQLite for local development.")
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-    
+
 # ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
 
@@ -142,7 +149,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # WARNING: Yeh key production code mein nahi honi chahiye.
 # TESTING ke liye, aap apni key ko single quotes mein yahan daal sakte hain.
 
-GEMINI_API_KEY = 'AIzaSyDB23HkzpmpWCy-9pv4zmowqg-gKd1DShw' # <-- YAHAN APNI KEY DAALEN
+GEMINI_API_KEY = "AIzaSyDB23HkzpmpWCy-9pv4zmowqg-gKd1DShw"  # <-- YAHAN APNI KEY DAALEN
 
 
 # Old environ configuration remove kar di gayi hai.
@@ -173,7 +180,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 # Production mein static files ko collect karne ki jagah
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # <-- ADDED
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # <-- ADDED
 
 # Local static files directories
 STATICFILES_DIRS = [

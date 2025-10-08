@@ -124,7 +124,7 @@ def generate_questions(request):
             - The main JSON object MUST have two keys: 'title' (string) and 'sections' (array).
             - Each section object in the 'sections' array must have 'title' and 'questions'.
             - Each question MUST include: 'text', 'answer', and 'type'.
-            - The 'type' must be one of the following short codes: 'MCQ', 'Short Answer', 'Coding'. (Multiple Choice, Short Answer, True/False, Code).
+            - The 'type' must be one of the following short codes: 'MCQ', 'SA', 'Code'.
             - If it is a multiple-choice question (MCQ), it MUST also include an 'options' array.
 
             Generate the paper now.
@@ -299,12 +299,48 @@ def paper_edit_view(request, paper_id):
     return render(request, "question_generator/paper_edit.html", context)
 
 
+# def department_create_view(request):
+#     if request.method == "POST":
+#         form = DepartmentForm(request.POST)
+#         if form.is_valid():
+#             form.save()
+#             return redirect("dashboard")
+#     else:
+#         form = DepartmentForm()
+
+#     context = {"form": form}
+#     return render(request, "partials/department/department_create.html", context)
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def department_create_view(request):
     if request.method == "POST":
         form = DepartmentForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("dashboard")
+            try:
+                form.save()
+                # Success message dikhayein
+                messages.success(request, "Department created successfully!")
+                return redirect("dashboard")
+            except Exception as e:
+                # Agar koi error aaye to usey log karein
+                logger.error(f"Error creating department: {e}", exc_info=True)
+
+                # User ko ek helpful error message dikhayein
+                messages.error(
+                    request,
+                    "Could not create the department. Please try again or contact support.",
+                )
+
+                # Wapas form par bhej dein
+                return redirect("department_create")
+        else:
+            # Agar form valid nahi hai, to user ko batayein
+            messages.warning(request, "Please correct the errors below.")
     else:
         form = DepartmentForm()
 

@@ -117,11 +117,8 @@ class Question(models.Model):
     # Question Types ke liye choices define karein
     class QuestionType(models.TextChoices):
         MCQ = "MCQ", "Multiple Choice"
-        SHORT_ANSWER = "SA", "Short Answer"
-        TRUE_FALSE = "TF", "True/False"
-        CODING = "CODE", "Coding"
-        DESCRIPTIVE = "DESC", "Descriptive"
-        UNCLASSIFIED = "UN", "Unclassified"
+        SA = "SA", "Short Answer"
+        CODE = "CODE", "Coding"
 
     section = models.ForeignKey(
         PaperSection, on_delete=models.CASCADE, related_name="questions"
@@ -135,7 +132,7 @@ class Question(models.Model):
     question_type = models.CharField(
         max_length=15,
         choices=QuestionType.choices,
-        default=QuestionType.UNCLASSIFIED,
+        # default=QuestionType.UNCLASSIFIED,
     )
     # ================================
 
@@ -161,11 +158,6 @@ class TestRegistration(models.Model):
 
     def __str__(self):
         return f"{self.email} - Paper ID: {self.question_paper.id}"
-
-
-# app/models.py
-
-# ... (add this class with your other models) ...
 
 
 class UserResponse(models.Model):
