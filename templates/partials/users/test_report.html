@@ -19,7 +19,7 @@
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; /* slate-500 */
+        background: #64748b;
       }
     </style>
   </head>
@@ -34,12 +34,12 @@
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50">
           <div class="container mx-auto px-6 py-8">
             <header class="mb-6">
-              <h2 class="text-2xl font-bold text-slate-800">
+              <h4 class="text-2xl font-bold text-slate-800">
                 {{ registration.question_paper.title }} Report
-              </h2>
+              </h4>
               <p class="text-sm text-slate-500 mt-1">
                 Detailed report for {{ registration.email }}'s attempt on {{
-                registration.created_at|date:"F j, Y" }}.
+                registration.start_time|localtime|date:"F j, Y, P" }}.
               </p>
             </header>
 
@@ -85,7 +85,6 @@
                 </div>
               </div>
             </section>
-
             <section class="mt-8">
               <h2 class="text-lg font-semibold text-slate-800 mb-4">
                 Questions & Answers
