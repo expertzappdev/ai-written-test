@@ -38,10 +38,7 @@
                 {{ registration.question_paper.title }} Report
               </h4>
               <p class="text-sm text-slate-500 mt-1">
-                Detailed report for {{ registration.email }}'s attempt on {%
-                comment %} Use the `localtime` filter before the `date` filter.
-                I also added `P` to show the time and timezone (e.g., 10:30 a.m.
-                IST) {% endcomment %} {{
+                Detailed report for {{ registration.email }}'s attempt on {{
                 registration.start_time|localtime|date:"F j, Y, P" }}.
               </p>
             </header>
