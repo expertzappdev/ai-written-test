@@ -2,154 +2,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instructions | {{ paper.title }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-    />
-    <script>
-      // Load your custom Tailwind config
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              "theme-primary": "#736b8e",
-              "theme-dark": "#5f5778",
-              "theme-light": "#e5e3e9",
-              "gray-text": "#6B7280",
-            },
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Instructions | {{ paper.title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "theme-primary": "#736b8e",
+            "theme-dark": "#5f5778",
+            "theme-light": "#e5e3e9",
+            "gray-text": "#6B7280",
           },
         },
-      };
-    </script>
-    <style>
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: #f4f7f9;
-      }
-      .custom-focus:focus {
-        border-color: #736b8e;
-        box-shadow: 0 0 0 3px rgba(115, 107, 142, 0.3);
-      }
-    </style>
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background-color: #f7f8fa;
+    }
+    .custom-focus:focus {
+      border-color: #736b8e;
+      box-shadow: 0 0 0 2px rgba(115, 107, 142, 0.3);
+    }
+  </style>
 </head>
 <body class="text-gray-800">
 
-<div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-3xl bg-white p-6 sm:p-10 rounded-xl shadow-2xl border-t-8 border-theme-primary">
-        
-        <h1 class="text-3xl font-extrabold text-theme-dark mb-2">Test Instructions</h1>
-        
-        <div class="bg-gray-50 p-4 rounded-lg mb-8 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-1">
-                {{ paper.title }} 
-            </h2>
-            <p class="text-sm text-gray-600">
-                Job Title: <strong>{{ paper.job_title }}</strong>
-            </p>
-            <p class="text-sm text-red-600 font-semibold mt-2">
-                <i class="fas fa-clock mr-1"></i> Total Duration: 
-                <span class="text-2xl font-extrabold">{{ paper.duration }}</span> Minutes
-            </p>
-        </div>
-        <div class="bg-theme-light/30 p-4 sm:p-6 rounded-lg border border-theme-light mb-6 space-y-4">
-            <h3 class="text-xl font-bold text-theme-dark border-b pb-2 mb-4">Exam Guidelines</h3>
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl bg-white p-6 sm:p-8 rounded-lg shadow-md border border-gray-100">
+      
+      <h1 class="text-2xl font-bold text-theme-dark mb-1 text-center">Test Instructions</h1>
 
-            <ul class="space-y-3 text-gray-700 list-inside">
-                <li class="flex items-start">
-                    <i class="fas fa-check-circle text-green-600 mt-1 mr-2 flex-shrink-0"></i>
-                    <p>
-                        Duration: This test has a strict time limit of <strong>{{ paper.duration }} minutes</strong>.
-                    </p>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-check-circle text-green-600 mt-1 mr-2 flex-shrink-0"></i>
-                    <p>
-                        Questions: The paper contains approximately <strong>{{ paper.total_questions }} questions</strong> across different sections.
-                    </p>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-exclamation-triangle text-red-600 mt-1 mr-2 flex-shrink-0"></i>
-                    <p>
-                        Navigation: You might not be able to navigate back to previous questions once answered (Please confirm this rule later).
-                    </p>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-exclamation-circle text-blue-600 mt-1 mr-2 flex-shrink-0"></i>
-                    <p>
-                        Submission: Ensure you click the **"Submit Test"** button at the end. Your test will be auto-submitted when the time runs out.
-                    </p>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-globe text-yellow-600 mt-1 mr-2 flex-shrink-0"></i>
-                    <p>
-                        Browser: Do not switch tabs or windows during the test; this may lead to automatic submission.
-                    </p>
-                </li>
-            </ul>
+      <div class="bg-gray-50 p-3 rounded-md mb-6 border border-gray-200 text-sm">
+        <h2 class="text-lg font-semibold text-gray-800 mb-1">{{ paper.title }}</h2>
+        <p class="text-gray-600">Job Title: <strong>{{ paper.job_title }}</strong></p>
+        <p class="text-gray-700 mt-1">
+          Duration: <strong>{{ paper.duration }} minutes</strong> | Total Questions: <strong>{{ paper.total_questions }}</strong>
+        </p>
+      </div>
+
+      <div class="bg-theme-light/40 p-4 rounded-md border border-theme-light mb-5">
+        <h3 class="text-lg font-semibold text-theme-dark border-b pb-2 mb-3">Exam Guidelines</h3>
+        <ul class="list-disc pl-5 text-sm text-gray-700 space-y-2">
+          <li>The test duration is strictly <strong>{{ paper.duration }} minutes</strong>.</li>
+          <li>There are approximately <strong>{{ paper.total_questions }}</strong> questions in total.</li>
+          <li>Once a question is submitted, you may not be able to return to it.</li>
+          <li>Ensure you click “Submit Test” at the end. The system will auto-submit when time runs out.</li>
+          <li>Avoid switching tabs or windows during the test to prevent disqualification.</li>
+        </ul>
+      </div>
+
+      <form id="start-test-form" method="get" action="{% url 'test:user_test' link_id=paper.id %}">
+        {% csrf_token %}
+        <div class="flex items-start mb-5 pt-3 border-t border-gray-200">
+          <input 
+            type="checkbox" 
+            id="accept_terms" 
+            name="accept_terms" 
+            required 
+            class="h-4 w-4 text-theme-dark border-gray-300 rounded custom-focus mt-1"
+          >
+          <label for="accept_terms" class="ml-2 text-sm text-gray-700">
+            I have read and understood the <strong class="text-theme-dark">Terms and Conditions</strong>.
+          </label>
         </div>
 
-        <form id="start-test-form" method="get" action="{% url 'test:user_test' link_id=paper.id %}">
-            {% csrf_token %}
-            
-            <div class="flex items-start mb-6 pt-4 border-t border-gray-200">
-                <input 
-                    type="checkbox" 
-                    id="accept_terms" 
-                    name="accept_terms" 
-                    required 
-                    class="h-5 w-5 text-theme-dark border-gray-300 rounded custom-focus mt-1"
-                >
-                <label for="accept_terms" class="ml-3 text-sm font-medium text-gray-700 select-none">
-                    I have read and understood all the <strong class="text-theme-dark hover:underline cursor-pointer">Terms and Conditions</strong> listed above.
-                </label>
-            </div>
-
-            <button 
-                type="submit" 
-                id="start-button"
-                disabled
-                class="w-full bg-gray-400 text-white font-semibold py-3 rounded-lg text-lg 
-                       transition-all shadow-md cursor-not-allowed"
-            >
-                Start Assessment Now
-            </button>
-        </form>
+        <button 
+          type="submit" 
+          id="start-button"
+          disabled
+          class="w-full bg-gray-400 text-white font-semibold py-2.5 rounded-md text-base 
+                 transition-all cursor-not-allowed"
+        >
+          Start Assessment
+        </button>
+      </form>
     </div>
-</div>
+  </div>
 
-<script>
+  <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const checkbox = document.getElementById('accept_terms');
-        const startButton = document.getElementById('start-button');
-        
-        // Function to update button state and styling
-        const updateButtonState = () => {
-            if (checkbox.checked) {
-                startButton.disabled = false;
-                startButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                startButton.classList.add('bg-theme-primary', 'hover:bg-theme-dark', 'focus:ring-theme-primary', 'focus:ring-opacity-50');
-            } else {
-                startButton.disabled = true;
-                startButton.classList.add('bg-gray-400', 'cursor-not-allowed');
-                startButton.classList.remove('bg-theme-primary', 'hover:bg-theme-dark', 'focus:ring-theme-primary', 'focus:ring-opacity-50');
-            }
-        };
+      const checkbox = document.getElementById('accept_terms');
+      const startButton = document.getElementById('start-button');
 
-        // Initial state and change listener
-        updateButtonState(); 
-        checkbox.addEventListener('change', updateButtonState);
+      const updateButtonState = () => {
+        if (checkbox.checked) {
+          startButton.disabled = false;
+          startButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+          startButton.classList.add('bg-theme-primary', 'hover:bg-theme-dark', 'focus:ring-2', 'focus:ring-theme-primary', 'focus:ring-opacity-50');
+        } else {
+          startButton.disabled = true;
+          startButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+          startButton.classList.remove('bg-theme-primary', 'hover:bg-theme-dark', 'focus:ring-2', 'focus:ring-theme-primary', 'focus:ring-opacity-50');
+        }
+      };
+
+      updateButtonState();
+      checkbox.addEventListener('change', updateButtonState);
     });
-</script>
+  </script>
 
 </body>
 </html>
