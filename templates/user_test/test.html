@@ -18,7 +18,6 @@
     />
     
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
 
@@ -42,7 +41,8 @@
         .question-card:hover { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); }
         .answer-input { @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary; }
         .code-editor { min-height: 250px; border: 1px solid #e5e7eb; border-radius: 6px; }
-        #fixed-footer { z-index: 100; padding-bottom: 50px; } 
+        /* Reduced padding from 50px to 30px for compaction */
+        #fixed-footer { z-index: 100; padding-bottom: 30px; } 
     </style>
 </head>
 <body class="text-gray-800">
@@ -55,10 +55,10 @@
             </h1>
             
             <div class="flex items-center space-x-4">
-                <span class="text-sm font-medium text-gray-600">
+                <span class="text-sm font-medium text-gray-600 hidden sm:inline">
                     Duration: {{ paper.duration }} min
                 </span>
-                <div class="bg-red-500 text-white font-extrabold py-2 px-4 rounded-full shadow-lg" id="timer">
+                <div class="bg-red-600 text-white font-extrabold py-2 px-4 rounded-full shadow-lg text-lg sm:text-xl" id="timer">
                     </div>
             </div>
         </div>
@@ -69,14 +69,14 @@
             {% csrf_token %}
 
             {% for section in sections_list %}
-                <div class="section-block p-6 bg-white rounded-xl shadow-lg border-t-4 border-theme-primary/70">
-                    <h2 class="text-2xl font-bold text-theme-dark mb-6 border-b pb-2">
+                <div class="section-block p-5 bg-white rounded-xl shadow-lg border-t-4 border-theme-primary/70">
+                    <h2 class="text-2xl font-bold text-theme-dark mb-5 border-b pb-2">
                         {{ section.title }}
                     </h2>
 
-                    <div class="space-y-6">
+                    <div class="space-y-5">
                         {% for q in section.questions %}
-                            <div class="question-card p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                            <div class="question-card p-3 border border-gray-200 rounded-lg bg-gray-50/50">
                                 <p class="font-semibold text-lg mb-3">
                                     Q{{ forloop.parentloop.counter }}.{{ forloop.counter }}: {{ q.text }}
                                     <span class="text-xs font-normal text-theme-primary">[{{ q.type }}]</span>
@@ -129,7 +129,7 @@
                 </div>
             {% endfor %}
             
-            <div class="h-20 sm:h-24"></div> 
+            <div class="h-16 sm:h-20"></div> 
         </form>
     </main>
 
@@ -148,10 +148,58 @@
 </div>
 
 <script>
-    // --- SKULPT PYTHON EXECUTION LOGIC ---
     let editorInstances = {}; // Store editor instances globally
     
-    // Function to handle output (print statement se aane wala output)
+    // --- TIMER AND AUTO-SUBMIT LOGIC ---
+    function startTimer(durationInMinutes, formId) {
+        let timerElement = document.getElementById('timer');
+        let form = document.getElementById(formId);
+        
+        if (!timerElement || !form) return;
+
+        let totalSeconds = durationInMinutes * 60;
+
+        const interval = setInterval(() => {
+            let minutes = parseInt(totalSeconds / 60, 10);
+            let seconds = parseInt(totalSeconds % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            timerElement.textContent = minutes + ":" + seconds;
+
+            // Optional: Change color when less than 5 minutes remain
+            if (totalSeconds <= 300) {
+                 timerElement.classList.add('bg-yellow-500', 'text-gray-800');
+            }
+            // Optional: Change color when less than 1 minute remains
+            if (totalSeconds <= 60) {
+                 timerElement.classList.remove('bg-yellow-500', 'text-gray-800');
+                 timerElement.classList.add('bg-red-700', 'text-white');
+            }
+
+
+            if (--totalSeconds < 0) {
+                clearInterval(interval);
+                timerElement.textContent = "TIME UP";
+                
+                // 1. Final Save: Update all hidden textareas before submission
+                document.querySelectorAll('.code-editor').forEach(editorContainer => {
+                    const questionId = editorContainer.id.replace('editor-', '');
+                    const textarea = document.getElementById(`textarea-${questionId}`);
+                    const editor = editorInstances[questionId];
+                    if (editor) {
+                        textarea.value = editor.getValue();
+                    }
+                });
+
+                // 2. AUTO-SUBMIT THE FORM
+                form.submit();
+            }
+        }, 1000);
+    }
+    
+    // --- SKULPT PYTHON EXECUTION LOGIC ---
     function outf(text, questionId) {
         const outputElement = document.getElementById(`output-${questionId}`);
         outputElement.textContent += text;
@@ -159,7 +207,6 @@
         outputElement.classList.add('bg-gray-800', 'text-green-300');
     }
     
-    // Function to handle errors (Python exception aane par)
     function builtinRead(x) {
         if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
             throw "File not found: '" + x + "'";
@@ -178,21 +225,23 @@
         runButton.disabled = true;
         runButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
 
-        Sk.pre = "output-" + questionId; // Skulpt ko batao output kahan bhejna hai
+        Sk.pre = "output-" + questionId;
         
         Sk.configure({
             output: (text) => outf(text, questionId),
-            read: builtinRead
+            read: builtinRead,
+            // Configure max execution time (e.g., 5 seconds) to prevent infinite loops from freezing the browser
+            execLimit: 5000 
         });
         
         // Asynchronously run the code
         (Sk.misceval.asyncToPromise(function() {
             return Sk.importMainWithBody("<stdin>", false, code, true);
         })).then(function(mod) {
-            // Success (code ran without throwing a Python exception)
+            // Success
             runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
         }, function(err) {
-            // Error (Python exception was thrown)
+            // Error
             outputElement.textContent = "Error:\n" + err.toString();
             outputElement.classList.remove('bg-gray-700', 'text-white');
             outputElement.classList.add('bg-red-900', 'text-red-300');
@@ -203,9 +252,21 @@
     }
 
 
-    // --- MONACO EDITOR LOGIC ---
+    // --- MONACO EDITOR & INIT LOGIC ---
     document.addEventListener('DOMContentLoaded', function() {
-        // ... (Timer Logic Remains) ...
+        
+        // --- START TIMER INIT ---
+        // **ACTION REQUIRED: Ensure 'paper.duration' is a numeric value (minutes) in your Django context.**
+        // Assuming paper.duration is available and passed as an integer/float from Django:
+        const durationFromDjango = {{ paper.duration|default:"60" }}; 
+        
+        if (durationFromDjango > 0) {
+            startTimer(durationFromDjango, 'assessment-form');
+        } else {
+            // Hide timer if duration is invalid/zero
+            document.getElementById('timer').style.display = 'none';
+        }
+
 
         // Monaco Editor Initialization
         require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
@@ -226,7 +287,6 @@
                     tabSize: 4,
                 });
                 
-                // Store editor instance globally
                 editorInstances[questionId] = editor; 
 
                 // Update hidden textarea when editor content changes
@@ -236,7 +296,7 @@
             });
         });
         
-        // Final submission handler (Remains)
+        // Final submission handler (Saves all code before submission)
         document.getElementById('assessment-form').addEventListener('submit', function() {
             document.querySelectorAll('.code-editor').forEach(editorContainer => {
                  const questionId = editorContainer.id.replace('editor-', '');
