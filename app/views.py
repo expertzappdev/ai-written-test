@@ -494,7 +494,7 @@ def test_result(request, registration_id):
         registration=registration
     ).select_related("question")
 
-    # Get the total number of questions for the paper using the correct query
+    # Get the total number of questions for the paper
     total_questions = Question.objects.filter(
         section__question_paper=registration.question_paper
     ).count()
@@ -523,12 +523,21 @@ def test_result(request, registration_id):
     # Calculate incorrect answers
     incorrect_answers = total_questions - score
 
+    # --- FIX: CALCULATE THE PERCENTAGE ---
+    # Avoid division by zero if there are no questions
+    if total_questions > 0:
+        percentage = round((score / total_questions) * 100)
+    else:
+        percentage = 0
+    # ------------------------------------
+
     context = {
         "registration": registration,
         "results": results_data,
         "score": score,
         "total_questions": total_questions,
         "incorrect_answers": incorrect_answers,
+        "percentage": percentage,  # <-- Add percentage to context
         "title": f"Test Report for {registration.email}",
     }
 
