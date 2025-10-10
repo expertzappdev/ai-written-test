@@ -43,6 +43,20 @@ class Skill(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def pretty_name(self):
+        """
+        Returns a nicely formatted name for the UI.
+        """
+        # Handle special cases here
+        if self.name == "nodejs":
+            return "Node.js"
+        if self.name == "javascript":
+            return "JavaScript"
+
+        # For all other skills, just use the title case version
+        return self.name.title()
+
     def __str__(self):
         return self.name
 
@@ -51,7 +65,7 @@ class Skill(models.Model):
 
 
 class Department(models.Model):
-    name = models.CharField(max_length=100, default="Unassigned")
+    name = models.CharField(max_length=100, default="")
     sections = models.ManyToManyField(Section)
 
     def __str__(self):
@@ -81,7 +95,7 @@ class QuestionPaper(models.Model):
     )
     total_questions = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
-    # is_public = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
     is_public_active = models.BooleanField(null=True, blank=True)
 
     def __str__(self):
@@ -104,9 +118,6 @@ class PaperSection(models.Model):
 
     def __str__(self):
         return f"Section '{self.title}' of paper '{self.question_paper.title}'"
-
-
-# ... baaki models waise hi rahenge
 
 
 class Question(models.Model):

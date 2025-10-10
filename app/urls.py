@@ -47,6 +47,9 @@ urlpatterns = [
         views.get_sections_by_department,
         name="get_sections_by_department",
     ),
+    path(
+        "api/skills/", views.get_skills_json, name="get_skills_json"
+    ),  # Add this new path for the API
     path("skills/", views.skill_list_view, name="skill_list"),
     path("skills/create/", views.skill_create_view, name="skill_create"),
     path("skills/update/<int:pk>/", views.skill_update_view, name="skill_update"),
@@ -59,10 +62,16 @@ urlpatterns = [
         views.toggle_paper_public_status,
         name="toggle_paper_public_status",
     ),
+    path(
+        "paper/<int:paper_id>/partial-update/",
+        views.partial_update_view,
+        name="partial_update_paper",
+    ),
     path("users/", views.user_list, name="user_list"),
     path("users/<int:user_id>/", views.user_detail, name="user_detail"),
     path("users/delete/<int:user_id>/", views.delete_user, name="delete_user"),
     path("profile/<int:pk>/", views.user_profile_view, name="user_profile"),
     # path("test-result/", views.test_result, name="test_report"),
     path("test-report/<int:registration_id>/", views.test_result, name="test_report"),
+    path("regenerate-question/", views.regenerate_question, name="regenerate_question"),
 ]

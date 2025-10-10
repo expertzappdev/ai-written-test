@@ -37,6 +37,13 @@
         opacity: 1;
         transform: translateY(0);
       }
+      .question-toolbar {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      .question-active .question-toolbar {
+        opacity: 1;
+      }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-800 flex min-h-screen font-sans">
@@ -52,7 +59,7 @@
             <h1 class="text-3xl font-bold mb-8 text-slate-800">
               Create Question Paper
             </h1>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div>
                 <label
                   for="jobTitle"
@@ -64,7 +71,9 @@
                   id="jobTitle"
                   placeholder="Enter Job Title"
                   class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                  minlength="3"
                 />
+                <div id="jobTitleError" class="text-red-500 text-sm mt-2"></div>
               </div>
               <div>
                 <label
@@ -81,19 +90,38 @@
                   <option value="{{ dept.id }}">{{ dept.name }}</option>
                   {% endfor %}
                 </select>
+                <div
+                  id="departmentError"
+                  class="text-red-500 text-sm mt-2"
+                ></div>
               </div>
               <div>
                 <label
-                  for="skills"
+                  for="skills-input"
                   class="block text-sm font-medium text-slate-700 mb-1"
-                  >Required Skills <span class="text-red-500">*</span></label
                 >
-                <input
-                  type="text"
-                  id="skills"
-                  placeholder="e.g., React, Nodejs, SQL"
-                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
-                />
+                  Required Skills <span class="text-red-500">*</span>
+                </label>
+                <div class="relative" id="skills-wrapper">
+                  <div
+                    id="skills-container"
+                    class="w-full flex flex-wrap items-center gap-2 p-2 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#736b8e] focus-within:border-transparent transition min-h-[46px]"
+                  >
+                    <input
+                      type="text"
+                      id="skills-input"
+                      placeholder="Select skills..."
+                      class="flex-1 border-none focus:ring-0 outline-none p-1 placeholder-slate-400"
+                    />
+                  </div>
+                  <input type="hidden" id="skills-hidden-input" name="skills" />
+
+                  <div
+                    id="skills-dropdown"
+                    class="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"
+                  ></div>
+                </div>
+                <div id="skillsError" class="text-red-500 text-sm mt-2"></div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1"
@@ -118,8 +146,8 @@
                         id="minExp"
                         value="0"
                         min="0"
-                        oninput="validateExperience()"
-                        class="w-full text-center border-l border-r py-2 focus:outline-none bg-transparent placeholder-slate-400"
+                        readonly
+                        class="w-full text-center border-l border-r py-2 focus:outline-none placeholder-slate-400 cursor-default bg-slate-50"
                       />
                       <button
                         onclick="updateCount(this, 1)"
@@ -147,8 +175,8 @@
                         id="maxExp"
                         value="1"
                         min="0"
-                        oninput="validateExperience()"
-                        class="w-full text-center border-l border-r py-2 focus:outline-none bg-transparent placeholder-slate-400"
+                        readonly
+                        class="w-full text-center border-l border-r py-2 focus:outline-none placeholder-slate-400 cursor-default bg-slate-50"
                       />
                       <button
                         onclick="updateCount(this, 1)"
@@ -159,9 +187,10 @@
                     </div>
                   </div>
                 </div>
-                <div id="expError" class="text-red-500 text-sm mt-2 h-4"></div>
+                <div id="expError" class="text-red-500 text-sm mt-2"></div>
               </div>
             </div>
+
             <div class="mt-12 flex justify-start">
               <button
                 id="nextButton"
@@ -172,7 +201,6 @@
               </button>
             </div>
           </div>
-
           <div id="step-2" class="step-transition step-hidden">
             <h1 class="text-3xl font-bold mb-8 text-slate-800">
               Configure Assessment
@@ -190,12 +218,10 @@
                 id="sectionsError"
                 class="text-red-500 text-sm -mt-4 mb-4 h-4"
               ></div>
-
               <div
                 id="sections-container"
                 class="grid grid-cols-1 md:grid-cols-2 gap-4"
               ></div>
-
               <div class="mt-8 border-t border-slate-200 pt-6">
                 <label
                   for="duration"
@@ -217,9 +243,9 @@
                   <option value="150">2 Hours 30 Minutes</option>
                   <option value="180">3 Hours</option>
                 </select>
+                <div id="durationError" class="text-red-500 text-sm mt-2"></div>
               </div>
             </div>
-
             <div class="mt-12 flex flex-col sm:flex-row w-full gap-4">
               <button
                 onclick="prevStep()"
@@ -299,7 +325,6 @@
                     </div>
                   </div>
                 </div>
-
                 <div class="space-y-6 lg:border-l lg:pl-12 border-slate-200">
                   <div>
                     <h3 class="text-lg font-semibold text-slate-800">
@@ -320,7 +345,6 @@
                       class="font-semibold text-slate-800 text-lg text-right"
                     ></p>
                   </div>
-
                   <div>
                     <p class="text-sm font-medium text-slate-500 mb-2">
                       Sections
@@ -342,7 +366,6 @@
                 </div>
               </div>
             </div>
-
             <div class="mt-12 flex flex-col sm:flex-row w-full gap-4">
               <button
                 onclick="prevStep()"
@@ -360,7 +383,11 @@
           </div>
         </div>
 
-        <div id="paper-container" class="max-w-4xl mx-auto hidden">
+        <div
+          id="paper-container"
+          data-paper-id="{{ paper.id }}"
+          class="max-w-4xl mx-auto hidden"
+        >
           <div
             class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8"
           >
@@ -376,7 +403,7 @@
                 Save
               </button>
               <button
-                onclick="editPaper()"
+                onclick="openEditModal()"
                 class="flex-1 sm:flex-none bg-slate-200 text-slate-800 font-semibold px-6 py-2 rounded-lg hover:bg-slate-300 transition-colors"
               >
                 Edit
@@ -425,17 +452,160 @@
           <div>
             <h2 class="text-2xl font-bold mb-6 text-slate-800">Questions:</h2>
             <div class="space-y-8" id="paper-questions"></div>
+
+            <div
+              class="mt-10 pt-6 border-t border-slate-200 flex justify-end gap-2"
+            >
+              <button
+                onclick="openEditModal()"
+                class="flex-1 sm:flex-none bg-slate-200 text-slate-800 font-semibold px-6 py-2 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Edit
+              </button>
+              <button
+                onclick="savePaper()"
+                class="flex-1 sm:flex-none bg-[#736b8e] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       </main>
     </div>
+
+    <div
+      id="edit-modal"
+      class="fixed inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div
+        id="edit-modal-content"
+        class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all"
+      >
+        <div
+          class="flex justify-between items-center p-5 border-b border-slate-200"
+        >
+          <h3 class="text-xl font-bold text-slate-800">Edit Paper Details</h3>
+          <button
+            onclick="closeEditModal()"
+            class="text-slate-400 hover:text-slate-600"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <div>
+            <label
+              for="edit-jobTitle"
+              class="block text-sm font-medium text-slate-700 mb-1"
+              >Job Title <span class="text-red-500">*</span></label
+            >
+            <input
+              type="text"
+              id="edit-jobTitle"
+              class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] transition"
+            />
+            <div
+              id="edit-jobTitleError"
+              class="text-red-500 text-sm mt-1"
+            ></div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1"
+              >Required Skills <span class="text-red-500">*</span></label
+            >
+            <div class="relative" id="edit-skills-wrapper">
+              <div
+                id="edit-skills-container"
+                class="w-full flex flex-wrap items-center gap-2 p-2 bg-white border border-slate-300 rounded-lg min-h-[46px] focus-within:ring-2 focus-within:ring-[#736b8e]"
+              >
+                <input
+                  type="text"
+                  id="edit-skills-input"
+                  placeholder="Select skills..."
+                  class="flex-1 border-none focus:ring-0 outline-none p-1"
+                />
+              </div>
+              <div
+                id="edit-skills-dropdown"
+                class="absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"
+              ></div>
+            </div>
+            <div id="edit-skillsError" class="text-red-500 text-sm mt-1"></div>
+          </div>
+
+          <div>
+            <label
+              for="edit-duration"
+              class="block text-sm font-medium text-slate-700 mb-1"
+              >Test Duration <span class="text-red-500">*</span></label
+            >
+            <select
+              id="edit-duration"
+              class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] transition"
+            >
+              <option value="" disabled>Select duration</option>
+              <option value="30">30 Minutes</option>
+              <option value="45">45 Minutes</option>
+              <option value="60">1 Hour</option>
+              <option value="90">1 Hour 30 Minutes</option>
+              <option value="120">2 Hours</option>
+              <option value="150">2 Hours 30 Minutes</option>
+              <option value="180">3 Hours</option>
+            </select>
+            <div
+              id="edit-durationError"
+              class="text-red-500 text-sm mt-1"
+            ></div>
+          </div>
+        </div>
+
+        <div
+          class="flex justify-end items-center gap-4 p-5 bg-slate-50 rounded-b-xl"
+        >
+          <button
+            onclick="closeEditModal()"
+            class="bg-slate-200 text-slate-800 font-semibold px-6 py-2.5 rounded-lg hover:bg-slate-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            id="save-changes-button"
+            class="bg-[#736b8e] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-[#5f5778] transition-colors flex items-center"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
       // --- START: DATA AND CONFIGURATION ---
-      const sectionCache = {}; // Caches sections fetched from the DB to avoid re-fetching
+      const sectionCache = {};
+      let currentStep = 1;
+      let formData = { sections: {} };
+      let fullPaperPayload = {};
+      let allSkills = [];
+      let selectedSkills = [];
 
-      // --- UI HELPER SCRIPTS ---
+      // --- DOM CONTENT LOADED ---
       document.addEventListener("DOMContentLoaded", function () {
-        // Add event listener for department change to update sections
+        fetchSkills();
         const departmentDropdown = document.getElementById("department");
         if (departmentDropdown) {
           departmentDropdown.addEventListener("change", (event) => {
@@ -445,19 +615,133 @@
             }
           });
         }
+        const skillsContainer = document.getElementById("skills-container");
+        const skillsWrapper = document.getElementById("skills-wrapper");
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        if (skillsContainer) {
+          skillsContainer.addEventListener("click", () => {
+            if (skillsDropdown) skillsDropdown.classList.remove("hidden");
+            document.getElementById("skills-input")?.focus();
+          });
+        }
+        document.addEventListener("click", (e) => {
+          if (skillsWrapper && !skillsWrapper.contains(e.target)) {
+            if (skillsDropdown) skillsDropdown.classList.add("hidden");
+          }
+        });
+
+        // Connect the save changes button in the modal
+        document.getElementById("save-changes-button").onclick = saveChanges;
       });
 
-      // --- FORM STATE AND NAVIGATION ---
-      let currentStep = 1;
-      let formData = {
-        sections: {},
-      };
-      let fullPaperPayload = {};
+      // --- SKILLS COMPONENT FUNCTIONS ---
+      async function fetchSkills() {
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        try {
+          const response = await fetch("{% url 'get_skills_json' %}");
+          if (!response.ok) throw new Error("Failed to fetch skills.");
+          const data = await response.json();
+          allSkills = data.skills.map((skill) => skill.name);
+          renderDropdown();
+        } catch (error) {
+          console.error("Error fetching skills:", error);
+          if (skillsDropdown) {
+            skillsDropdown.innerHTML =
+              '<div class="p-2 text-red-500">Could not load skills.</div>';
+          }
+        }
+      }
+      // ADD this new function to your script
+      function copyQuestion(sectionIndex, questionIndex) {
+        const questionToCopy =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
 
+        // Create a new, independent copy of the question object
+        const newQuestion = JSON.parse(JSON.stringify(questionToCopy));
+
+        // Insert the copy right after the original question
+        fullPaperPayload.sections[sectionIndex].questions.splice(
+          questionIndex + 1,
+          0,
+          newQuestion
+        );
+
+        // Re-render the paper to show the new question
+        displayGeneratedPaper(fullPaperPayload);
+      }
+      function renderDropdown() {
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        if (!skillsDropdown) return;
+        skillsDropdown.innerHTML = "";
+        const availableSkills = allSkills.filter(
+          (skill) => !selectedSkills.includes(skill)
+        );
+        if (availableSkills.length === 0) {
+          skillsDropdown.innerHTML =
+            '<div class="p-3 text-sm text-slate-500">No more skills available.</div>';
+        } else {
+          availableSkills.forEach((skill) => {
+            const option = document.createElement("div");
+            option.textContent = skill;
+            option.className = "px-4 py-2 cursor-pointer hover:bg-slate-100";
+            option.addEventListener("click", () => selectSkill(skill));
+            skillsDropdown.appendChild(option);
+          });
+        }
+      }
+      function renderTags() {
+        const skillsContainer = document.getElementById("skills-container");
+        const skillsInput = document.getElementById("skills-input");
+        const skillsHiddenInput = document.getElementById(
+          "skills-hidden-input"
+        );
+        if (!skillsContainer || !skillsInput || !skillsHiddenInput) return;
+        document.querySelectorAll(".skill-tag").forEach((tag) => tag.remove());
+        selectedSkills.forEach((skill) => {
+          const tag = document.createElement("span");
+          tag.className =
+            "skill-tag flex items-center bg-[#736b8e] text-white text-sm font-medium pl-3 pr-2 py-1 rounded-full";
+          tag.innerHTML = `
+          ${skill}
+          <button type="button" class="ml-2 text-indigo-100 hover:text-white focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+          </button>
+      `;
+          tag.querySelector("button").addEventListener("click", (e) => {
+            e.stopPropagation();
+            deselectSkill(skill);
+          });
+          skillsContainer.insertBefore(tag, skillsInput);
+        });
+        skillsHiddenInput.value = selectedSkills.join(",");
+        skillsInput.placeholder =
+          selectedSkills.length > 0 ? "" : "Select skills...";
+      }
+
+      function selectSkill(skill) {
+        const skillsInput = document.getElementById("skills-input");
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        if (!selectedSkills.includes(skill)) {
+          selectedSkills.push(skill);
+          renderTags();
+          renderDropdown();
+        }
+        if (skillsInput) skillsInput.value = "";
+        if (skillsDropdown) skillsDropdown.classList.add("hidden");
+      }
+
+      function deselectSkill(skill) {
+        selectedSkills = selectedSkills.filter((s) => s !== skill);
+        renderTags();
+        renderDropdown();
+      }
+
+      // --- FORM STATE AND NAVIGATION ---
       function resetFormData() {
-        formData = {
-          sections: {},
-        };
+        formData = { sections: {} };
+        selectedSkills = [];
+        renderTags();
+        renderDropdown();
       }
 
       function showStep(step) {
@@ -474,21 +758,18 @@
         }
       }
 
-      // --- DATA COLLECTION ---
       function collectStepData(step) {
         if (step === 1) {
           formData.jobTitle = document.getElementById("jobTitle").value;
-
           const deptSelect = document.getElementById("department");
           formData.departmentId = deptSelect.value;
-          if (deptSelect.selectedIndex > 0) {
-            formData.departmentName =
-              deptSelect.options[deptSelect.selectedIndex].text;
-          } else {
-            formData.departmentName = "";
-          }
-
-          formData.skills = document.getElementById("skills").value;
+          formData.departmentName =
+            deptSelect.selectedIndex > 0
+              ? deptSelect.options[deptSelect.selectedIndex].text
+              : "";
+          formData.skills = document.getElementById(
+            "skills-hidden-input"
+          ).value;
           formData.minExp = document.getElementById("minExp").value;
           formData.maxExp = document.getElementById("maxExp").value;
         } else if (step === 2) {
@@ -500,16 +781,12 @@
               formData.sections[sectionName] = parseInt(count, 10);
             }
           });
-
-          // MODIFIED: Collect data from the new simple dropdown
           const durationSelect = document.getElementById("duration");
           formData.duration = parseInt(durationSelect.value, 10) || 0;
-          if (durationSelect.selectedIndex > 0) {
-            formData.durationText =
-              durationSelect.options[durationSelect.selectedIndex].text;
-          } else {
-            formData.durationText = "";
-          }
+          formData.durationText =
+            durationSelect.selectedIndex > 0
+              ? durationSelect.options[durationSelect.selectedIndex].text
+              : "";
         }
       }
 
@@ -518,151 +795,149 @@
         if (!container || !departmentId) {
           if (container)
             container.innerHTML =
-              '<p class="text-slate-500 col-span-2">Please select a department to see available sections.</p>';
+              '<p class="text-slate-500 col-span-2">Please select a department.</p>';
           return;
         }
-
         container.innerHTML =
           '<p class="text-slate-500 col-span-2">Loading sections...</p>';
-
         if (sectionCache[departmentId]) {
           buildSectionsHTML(sectionCache[departmentId]);
           return;
         }
-
         try {
           const response = await fetch(
             `/departments/${departmentId}/sections/`
           );
-          if (!response.ok) {
-            const errorDetail = await response.text();
-            console.error("Server Response Error:", errorDetail);
-            throw new Error(
-              `Failed to load sections. Status: ${response.status}`
-            );
-          }
+          if (!response.ok) throw new Error(`Failed to load sections.`);
           const data = await response.json();
           sectionCache[departmentId] = data.sections;
           buildSectionsHTML(data.sections);
         } catch (error) {
           console.error("Error fetching sections:", error);
-          container.innerHTML = `<p class="text-red-500 col-span-2">Could not load sections. Please check the browser console (F12) for errors.</p>`;
+          container.innerHTML = `<p class="text-red-500 col-span-2">Could not load sections.</p>`;
         }
       }
+
       function buildSectionsHTML(sections) {
         const container = document.getElementById("sections-container");
         container.innerHTML = "";
-
         if (!sections || sections.length === 0) {
           container.innerHTML =
             '<p class="text-slate-500 col-span-2">No sections found for this department.</p>';
           return;
         }
-
         sections.forEach((sectionName) => {
-          const count =
-            formData.sections && formData.sections[sectionName]
-              ? formData.sections[sectionName]
-              : 1;
+          const count = formData.sections?.[sectionName] || 1;
           const sectionHTML = `
-              <div data-section="${sectionName}" class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                  <label class="font-medium text-slate-700">${sectionName} <span class="text-red-500">*</span></label>
-                  <div class="flex items-center border border-slate-300 rounded-lg bg-white w-fit mt-2 sm:mt-0">
-                      <button onclick="updateCount(this, -1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg transition-colors">-</button>
-                      <input type="number" value="${count}" class="w-16 text-center font-semibold text-lg text-[#736b8e] border-l border-r py-1.5 focus:outline-none bg-transparent" />
-                      <button onclick="updateCount(this, 1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg transition-colors">+</button>
-                  </div>
-              </div>
-          `;
+            <div data-section="${sectionName}" class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <label class="font-medium text-slate-700">${sectionName} <span class="text-red-500">*</span></label>
+                <div class="flex items-center border border-slate-300 rounded-lg bg-white w-fit mt-2 sm:mt-0">
+                    <button onclick="updateCount(this, -1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg transition-colors">-</button>
+                    <input type="number" value="${count}" class="w-16 text-center font-semibold text-lg text-[#736b8e] border-l border-r py-1.5 focus:outline-none bg-transparent" />
+                    <button onclick="updateCount(this, 1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg transition-colors">+</button>
+                </div>
+            </div>`;
           container.insertAdjacentHTML("beforeend", sectionHTML);
         });
       }
 
-      // --- VALIDATION FUNCTIONS ---
       function validateExperience() {
         const minExpInput = document.getElementById("minExp");
         const maxExpInput = document.getElementById("maxExp");
-        const errorDiv = document.getElementById("expError");
-        const nextButton = document.getElementById("nextButton");
-
         let minExp = parseInt(minExpInput.value, 10) || 0;
         let maxExp = parseInt(maxExpInput.value, 10) || 0;
-
         if (minExp > maxExp) {
           maxExpInput.value = minExp;
         }
-
-        if (errorDiv) errorDiv.textContent = "";
-        if (nextButton) {
-          nextButton.disabled = false;
-          nextButton.classList.remove("opacity-50", "cursor-not-allowed");
-        }
       }
-
       function validateStep1() {
         let isValid = true;
-        const requiredFields = ["jobTitle", "department", "skills"];
-        requiredFields.forEach((id) => {
-          const element = document.getElementById(id);
-          if (!element.value || element.value.trim() === "") {
-            isValid = false;
-            element.classList.add("border-red-500");
-            element.classList.remove("border-slate-300");
-          } else {
-            element.classList.remove("border-red-500");
-            element.classList.add("border-slate-300");
-          }
-        });
+        const jobTitleInput = document.getElementById("jobTitle");
+        const jobTitleError = document.getElementById("jobTitleError");
+        const departmentInput = document.getElementById("department");
+        const departmentError = document.getElementById("departmentError");
+        const skillsHiddenInput = document.getElementById(
+          "skills-hidden-input"
+        );
+        const skillsContainer = document.getElementById("skills-container");
+        const skillsError = document.getElementById("skillsError");
+        const minExpInput = document.getElementById("minExp");
+        const maxExpInput = document.getElementById("maxExp");
+        const expError = document.getElementById("expError");
+        jobTitleError.textContent = "";
+        jobTitleInput.classList.remove("border-red-500");
+        const jobTitleValue = jobTitleInput.value.trim();
+        if (!jobTitleValue) {
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "This field is required.";
+        } else if (jobTitleValue.length < 3) {
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "Must be at least 3 characters long.";
+        } else if (jobTitleValue.length > 30) {
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "Cannot be more than 30 characters.";
+        }
+        departmentError.textContent = "";
+        departmentInput.classList.remove("border-red-500");
+        if (!departmentInput.value) {
+          isValid = false;
+          departmentInput.classList.add("border-red-500");
+          departmentError.textContent = "This field is required.";
+        }
+        skillsError.textContent = "";
+        if (skillsContainer) skillsContainer.classList.remove("border-red-500");
+        if (!skillsHiddenInput.value.trim()) {
+          isValid = false;
+          if (skillsContainer) skillsContainer.classList.add("border-red-500");
+          skillsError.textContent = "This field is required.";
+        }
+        expError.textContent = "";
+        const minExp = parseInt(minExpInput.value, 10);
+        const maxExp = parseInt(maxExpInput.value, 10);
+        if (minExp === 0 && maxExp === 0) {
+          isValid = false;
+          expError.textContent = "Please provide a valid experience range.";
+        }
         validateExperience();
         return isValid;
       }
-
       function validateStep2() {
         let isValid = true;
         let totalQuestions = 0;
         const sectionsErrorDiv = document.getElementById("sectionsError");
-
         document.querySelectorAll("#step-2 [data-section]").forEach((div) => {
           totalQuestions += parseInt(div.querySelector("input").value, 10) || 0;
         });
-
+        if (sectionsErrorDiv) sectionsErrorDiv.textContent = "";
         if (totalQuestions <= 0) {
           isValid = false;
           if (sectionsErrorDiv)
-            sectionsErrorDiv.textContent =
-              "Please add at least one question to any section.";
-        } else {
-          if (sectionsErrorDiv) sectionsErrorDiv.textContent = "";
+            sectionsErrorDiv.textContent = "Please add at least one question.";
         }
-
-        // MODIFIED: Validate the new duration dropdown
         const durationSelect = document.getElementById("duration");
+        const durationError = document.getElementById("durationError");
+        durationSelect.classList.remove("border-red-500");
+        if (durationError) durationError.textContent = "";
         if (!durationSelect.value) {
           isValid = false;
           durationSelect.classList.add("border-red-500");
-          durationSelect.classList.remove("border-slate-300");
-        } else {
-          durationSelect.classList.remove("border-red-500");
-          durationSelect.classList.add("border-slate-300");
+          if (durationError)
+            durationError.textContent = "Please select a duration.";
         }
-
         return isValid;
       }
 
-      // --- NAVIGATION LOGIC ---
       function nextStep() {
         if (currentStep === 1 && !validateStep1()) return;
         if (currentStep === 2 && !validateStep2()) return;
-
         collectStepData(currentStep);
         if (currentStep < 3) {
           currentStep++;
-          if (currentStep === 2) {
-            renderSections(formData.departmentId);
-          }
-          if (currentStep === 3) {
-            populateReview();
-          }
+          if (currentStep === 2) renderSections(formData.departmentId);
+          if (currentStep === 3) populateReview();
           showStep(currentStep);
         }
       }
@@ -676,33 +951,23 @@
 
       function updateCount(button, change) {
         const input = button.parentElement.querySelector("input");
-        let currentValue = parseInt(input.value, 10);
-        let newValue = currentValue + change;
-        if (newValue < 0) {
-          newValue = 0;
-        }
-        input.value = newValue;
-
+        let newValue = (parseInt(input.value, 10) || 0) + change;
+        input.value = Math.max(0, newValue);
         if (input.id === "minExp" || input.id === "maxExp") {
           validateExperience();
         }
       }
 
-      // --- REVIEW, GENERATION, and SAVING LOGIC ---
       function populateReview() {
         document.getElementById("review-jobTitle").textContent =
           formData.jobTitle || "N/A";
         document.getElementById("review-department").textContent =
           formData.departmentName || "N/A";
-
-        // MODIFIED: Use durationText for review
         document.getElementById("review-duration").textContent =
           formData.durationText || "N/A";
-
-        document.getElementById("review-experience").textContent =
-          formData.minExp && formData.maxExp
-            ? `${formData.minExp} - ${formData.maxExp} years`
-            : "N/A";
+        document.getElementById(
+          "review-experience"
+        ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
 
         const skillsContainer = document.getElementById("review-skills");
         skillsContainer.innerHTML = "";
@@ -717,25 +982,19 @@
             }
           });
         }
-
         const sectionsContainer = document.getElementById("review-sections");
         sectionsContainer.innerHTML = "";
         let totalQuestions = 0;
         for (const section in formData.sections) {
           const count = formData.sections[section];
           totalQuestions += count;
-          const sectionDiv = document.createElement("div");
-          sectionDiv.className =
-            "flex justify-between items-center text-slate-700";
-          sectionDiv.innerHTML = `
-          <span>${section}</span>
-          <span class="font-medium bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">${count} Questions</span>
-        `;
-          sectionsContainer.appendChild(sectionDiv);
+          sectionsContainer.innerHTML += `
+              <div class="flex justify-between items-center text-slate-700">
+                  <span>${section}</span>
+                  <span class="font-medium bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">${count} Questions</span>
+              </div>`;
         }
-        document.getElementById(
-          "review-total"
-        ).textContent = `${totalQuestions}`;
+        document.getElementById("review-total").textContent = totalQuestions;
       }
 
       function getCookie(name) {
@@ -755,18 +1014,619 @@
         return cookieValue;
       }
 
+      async function savePaper() {
+        const saveButtons = document.querySelectorAll(
+          'button[onclick^="savePaper"]'
+        );
+        saveButtons.forEach((button) => {
+          button.disabled = true;
+          button.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            Saving...`;
+        });
+
+        try {
+          const response = await fetch("{% url 'save_paper' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify(fullPaperPayload),
+          });
+
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || "Failed to save the paper.");
+          }
+          alert(result.message);
+          resetFormData();
+          window.location.href = result.redirect_url;
+        } catch (error) {
+          console.error("Save error:", error);
+          alert(`Could not save the paper: ${error.message}`);
+        } finally {
+          saveButtons.forEach((button) => {
+            button.disabled = false;
+            button.textContent = "Save";
+          });
+        }
+      }
+
+      // ======================================================
+      // ============= CORRECTED: EDIT MODAL SCRIPT ===========
+      // ======================================================
+
+      // Global variables for the edit modal's skills component
+      let editSelectedSkills = [];
+      let allEditSkills = []; // This will be a copy of the main `allSkills` array
+
+      function openEditModal() {
+        // 1. Populate modal fields from the current data
+        document.getElementById("edit-jobTitle").value =
+          fullPaperPayload.job_title;
+        document.getElementById("edit-duration").value =
+          fullPaperPayload.duration;
+
+        // 2. Set up skills for the modal
+        allEditSkills = [...allSkills];
+
+        editSelectedSkills = fullPaperPayload.skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        renderEditModalTags();
+        renderEditModalDropdown();
+
+        // 3. Show the modal
+        document.getElementById("edit-modal").classList.remove("hidden");
+      }
+
+      function closeEditModal() {
+        document.getElementById("edit-modal").classList.add("hidden");
+        // Clear previous error messages
+        document.getElementById("edit-jobTitleError").textContent = "";
+        document.getElementById("edit-skillsError").textContent = "";
+        document.getElementById("edit-durationError").textContent = "";
+        document
+          .getElementById("edit-jobTitle")
+          .classList.remove("border-red-500");
+        document
+          .getElementById("edit-skills-container")
+          .classList.remove("border-red-500");
+        document
+          .getElementById("edit-duration")
+          .classList.remove("border-red-500");
+      }
+
+      function saveChanges() {
+        // 1. Frontend Validation
+        let isValid = true;
+        const newJobTitle = document
+          .getElementById("edit-jobTitle")
+          .value.trim();
+        const newDurationSelect = document.getElementById("edit-duration");
+        const newDurationValue = newDurationSelect.value;
+        const newDurationText =
+          newDurationSelect.options[newDurationSelect.selectedIndex].text;
+
+        // Reset errors
+        document.getElementById("edit-jobTitleError").textContent = "";
+        document.getElementById("edit-skillsError").textContent = "";
+        document.getElementById("edit-durationError").textContent = "";
+        document
+          .getElementById("edit-jobTitle")
+          .classList.remove("border-red-500");
+        document
+          .getElementById("edit-skills-container")
+          .classList.remove("border-red-500");
+        newDurationSelect.classList.remove("border-red-500");
+
+        if (!newJobTitle) {
+          document.getElementById("edit-jobTitleError").textContent =
+            "This field is required.";
+          document
+            .getElementById("edit-jobTitle")
+            .classList.add("border-red-500");
+          isValid = false;
+        }
+        if (editSelectedSkills.length === 0) {
+          document.getElementById("edit-skillsError").textContent =
+            "Please select at least one skill.";
+          document
+            .getElementById("edit-skills-container")
+            .classList.add("border-red-500");
+          isValid = false;
+        }
+        if (!newDurationValue) {
+          document.getElementById("edit-durationError").textContent =
+            "This field is required.";
+          newDurationSelect.classList.add("border-red-500");
+          isValid = false;
+        }
+
+        if (!isValid) return;
+
+        // 2. Update the main data objects (fullPaperPayload and formData)
+        fullPaperPayload.job_title = newJobTitle;
+        fullPaperPayload.duration = parseInt(newDurationValue, 10);
+        fullPaperPayload.skills = editSelectedSkills.join(",");
+
+        formData.jobTitle = newJobTitle;
+        formData.duration = parseInt(newDurationValue, 10);
+        formData.skills = editSelectedSkills.join(",");
+        formData.durationText = newDurationText;
+
+        // 3. Re-render the paper display with the new data
+        displayGeneratedPaper(fullPaperPayload);
+
+        // 4. Close the modal
+        closeEditModal();
+        alert(
+          "Changes have been updated. Click the main 'Save' button when you're ready to finalize."
+        );
+      }
+
+      // --- EDIT MODAL SKILLS HELPER FUNCTIONS ---
+      function renderEditModalDropdown() {
+        const dropdown = document.getElementById("edit-skills-dropdown");
+        dropdown.innerHTML = "";
+        const available = allEditSkills.filter(
+          (s) => !editSelectedSkills.includes(s)
+        );
+        if (available.length === 0) {
+          dropdown.innerHTML = `<div class="p-3 text-sm text-slate-500">No more skills.</div>`;
+        } else {
+          available.forEach((skill) => {
+            const option = document.createElement("div");
+            option.textContent = skill;
+            option.className = "px-4 py-2 cursor-pointer hover:bg-slate-100";
+            option.addEventListener("click", () => selectEditModalSkill(skill));
+            dropdown.appendChild(option);
+          });
+        }
+      }
+
+      function renderEditModalTags() {
+        const container = document.getElementById("edit-skills-container");
+        const input = document.getElementById("edit-skills-input");
+        container.querySelectorAll(".skill-tag").forEach((tag) => tag.remove());
+        editSelectedSkills.forEach((skill) => {
+          const tag = document.createElement("span");
+          tag.className =
+            "skill-tag flex items-center bg-[#736b8e] text-white text-sm font-medium pl-3 pr-2 py-1 rounded-full";
+          tag.innerHTML = `${skill} <button type="button" class="ml-2 text-indigo-100 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>`;
+          tag.querySelector("button").addEventListener("click", (e) => {
+            e.stopPropagation();
+            deselectEditModalSkill(skill);
+          });
+          container.insertBefore(tag, input);
+        });
+        input.placeholder =
+          editSelectedSkills.length > 0 ? "" : "Select skills...";
+      }
+
+      function selectEditModalSkill(skill) {
+        if (!editSelectedSkills.includes(skill)) {
+          editSelectedSkills.push(skill);
+          renderEditModalTags();
+          renderEditModalDropdown();
+        }
+        document.getElementById("edit-skills-input").value = "";
+        document.getElementById("edit-skills-dropdown").classList.add("hidden");
+      }
+
+      function deselectEditModalSkill(skill) {
+        editSelectedSkills = editSelectedSkills.filter((s) => s !== skill);
+        renderEditModalTags();
+        renderEditModalDropdown();
+      }
+
+      document
+        .getElementById("edit-skills-container")
+        .addEventListener("click", () => {
+          document
+            .getElementById("edit-skills-dropdown")
+            .classList.remove("hidden");
+          document.getElementById("edit-skills-input").focus();
+        });
+      document.addEventListener("click", (e) => {
+        if (
+          !document.getElementById("edit-skills-wrapper").contains(e.target)
+        ) {
+          document
+            .getElementById("edit-skills-dropdown")
+            .classList.add("hidden");
+        }
+      });
+    </script>
+    <script>
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + "=")) {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      // function displayGeneratedPaper(paperData) {
+      //   document.getElementById("form-container").classList.add("hidden");
+      //   const paperContainer = document.getElementById("paper-container");
+      //   paperContainer.classList.remove("hidden");
+
+      //   document.getElementById("paper-header").textContent =
+      //     paperData.title || "Generated Question Paper";
+      //   document.getElementById("paper-jobTitle").textContent =
+      //     formData.jobTitle || "N/A";
+      //   document.getElementById("paper-department").textContent =
+      //     formData.departmentName || "N/A";
+      //   document.getElementById("paper-duration").textContent =
+      //     formData.durationText || "N/A";
+      //   document.getElementById(
+      //     "paper-experience"
+      //   ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+
+      //   const skillsContainer = document.getElementById("paper-skills");
+      //   skillsContainer.innerHTML = "";
+      //   if (formData.skills) {
+      //     formData.skills.split(",").forEach((skill) => {
+      //       if (skill.trim()) {
+      //         const skillTag = document.createElement("span");
+      //         skillTag.className =
+      //           "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+      //         skillTag.textContent = skill.trim();
+      //         skillsContainer.appendChild(skillTag);
+      //       }
+      //     });
+      //   }
+
+      //   const questionsContainer = document.getElementById("paper-questions");
+      //   questionsContainer.innerHTML = "";
+      //   let questionCounter = 1;
+
+      //   if (Array.isArray(paperData.sections)) {
+      //     paperData.sections.forEach((section, sectionIndex) => {
+      //       if (!section) return;
+      //       const sectionTitle = document.createElement("h3");
+      //       sectionTitle.className =
+      //         "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
+      //       sectionTitle.textContent = section.title || "Unnamed Section";
+      //       questionsContainer.appendChild(sectionTitle);
+
+      //       if (Array.isArray(section.questions)) {
+      //         section.questions.forEach((q, questionIndex) => {
+      //           if (!q) return;
+      //           const questionBlock = document.createElement("div");
+      //           questionBlock.className =
+      //             "p-4 border border-slate-200 rounded-lg bg-white";
+
+      //           let contentHTML = ""; // To hold options or short answer
+
+      //           // --- LOGIC FOR DISPLAYING ANSWERS ---
+      //           if (q.type === "MCQ" && Array.isArray(q.options)) {
+      //             let optionsHTML = '<div class="mt-4 space-y-3">';
+      //             q.options.forEach((option) => {
+      //               const isCorrect = option === q.answer;
+      //               if (isCorrect) {
+      //                 optionsHTML += `<div class="flex items-center text-green-700 font-semibold bg-green-50 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
+      //               } else {
+      //                 optionsHTML += `<div class="flex items-center text-slate-600 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
+      //               }
+      //             });
+      //             optionsHTML += "</div>";
+      //             contentHTML = optionsHTML;
+      //           } else {
+      //             // **NEW**: This shows the answer for Short Answer questions
+      //             contentHTML = `
+      //                       <div class="mt-4 pt-3 border-t border-slate-100">
+      //                           <p class="text-sm">
+      //                               <strong class="font-medium text-slate-500">Answer:</strong>
+      //                               <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
+      //                                 q.answer || "N/A"
+      //                               }</span>
+      //                           </p>
+      //                       </div>
+      //                   `;
+      //           }
+
+      //           // --- NEW TOOLBAR (like the image) ---
+      //           questionBlock.innerHTML = `
+      //                   <p class="font-semibold text-slate-800">${questionCounter}. ${
+      //             q.text || "Question text not available."
+      //           }</p>
+      //                   ${contentHTML}
+      //                   <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-2 text-sm">
+      //                       <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors">
+      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+      //                       </button>
+      //                       <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
+      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+      //                       </button>
+      //                   </div>
+      //               `;
+      //           questionsContainer.appendChild(questionBlock);
+      //           questionCounter++;
+      //         });
+      //       }
+      //     });
+      //   }
+      // }
+      // REPLACE your old displayGeneratedPaper function with this new one.
+
+      // function displayGeneratedPaper(paperData) {
+      //   document.getElementById("form-container").classList.add("hidden");
+      //   const paperContainer = document.getElementById("paper-container");
+      //   paperContainer.classList.remove("hidden");
+
+      //   document.getElementById("paper-header").textContent =
+      //     paperData.title || "Generated Question Paper";
+      //   document.getElementById("paper-jobTitle").textContent =
+      //     formData.jobTitle || "N/A";
+      //   document.getElementById("paper-department").textContent =
+      //     formData.departmentName || "N/A";
+      //   document.getElementById("paper-duration").textContent =
+      //     formData.durationText || "N/A";
+      //   document.getElementById(
+      //     "paper-experience"
+      //   ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+
+      //   const skillsContainer = document.getElementById("paper-skills");
+      //   skillsContainer.innerHTML = "";
+      //   if (formData.skills) {
+      //     formData.skills.split(",").forEach((skill) => {
+      //       if (skill.trim()) {
+      //         const skillTag = document.createElement("span");
+      //         skillTag.className =
+      //           "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+      //         skillTag.textContent = skill.trim();
+      //         skillsContainer.appendChild(skillTag);
+      //       }
+      //     });
+      //   }
+
+      //   const questionsContainer = document.getElementById("paper-questions");
+      //   questionsContainer.innerHTML = "";
+      //   let questionCounter = 1;
+
+      //   if (Array.isArray(paperData.sections)) {
+      //     paperData.sections.forEach((section, sectionIndex) => {
+      //       if (!section) return;
+      //       const sectionTitle = document.createElement("h3");
+      //       sectionTitle.className =
+      //         "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
+      //       sectionTitle.textContent = section.title || "Unnamed Section";
+      //       questionsContainer.appendChild(sectionTitle);
+
+      //       if (Array.isArray(section.questions)) {
+      //         section.questions.forEach((q, questionIndex) => {
+      //           if (!q) return;
+      //           const questionBlock = document.createElement("div");
+      //           questionBlock.className =
+      //             "p-4 border border-slate-200 rounded-lg bg-white";
+
+      //           let contentHTML = "";
+
+      //           if (q.type === "MCQ" && Array.isArray(q.options)) {
+      //             let optionsHTML = '<div class="mt-4 space-y-3">';
+      //             q.options.forEach((option) => {
+      //               const isCorrect = option === q.answer;
+      //               if (isCorrect) {
+      //                 optionsHTML += `<div class="flex items-center text-green-700 font-semibold bg-green-50 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
+      //               } else {
+      //                 optionsHTML += `<div class="flex items-center text-slate-600 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
+      //               }
+      //             });
+      //             optionsHTML += "</div>";
+      //             contentHTML = optionsHTML;
+      //           } else {
+      //             contentHTML = `
+      //                       <div class="mt-4 pt-3 border-t border-slate-100">
+      //                           <p class="text-sm">
+      //                               <strong class="font-medium text-slate-500">Answer:</strong>
+      //                               <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
+      //                                 q.answer || "N/A"
+      //                               }</span>
+      //                           </p>
+      //                       </div>
+      //                   `;
+      //           }
+
+      //           // --- UPDATED TOOLBAR ---
+      //           const isRequired = q.required || false; // Default to false if not set
+      //           questionBlock.innerHTML = `
+      //                   <p class="font-semibold text-slate-800">${questionCounter}. ${
+      //             q.text || "Question text not available."
+      //           }</p>
+      //                   ${contentHTML}
+      //                   <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-4 text-sm">
+      //                       <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors">
+      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+      //                       </button>
+      //                       <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
+      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+      //                       </button>
+
+      //                       <div class="border-l h-6 border-slate-200 mx-2"></div>
+
+      //                       <div class="flex items-center gap-2">
+      //                           <span class="font-medium text-slate-600">Required</span>
+      //                           <label class="relative inline-flex items-center cursor-pointer">
+      //                               <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
+      //             isRequired ? "checked" : ""
+      //           }>
+      //                               <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
+      //                           </label>
+      //                       </div>
+      //                   </div>
+      //               `;
+      //           questionsContainer.appendChild(questionBlock);
+      //           questionCounter++;
+      //         });
+      //       }
+      //     });
+      //   }
+      // }
+      // REPLACE your old displayGeneratedPaper function with this new one.
+      // REPLACE your current displayGeneratedPaper function with this one.
+      function displayGeneratedPaper(paperData) {
+        document.getElementById("form-container").classList.add("hidden");
+        const paperContainer = document.getElementById("paper-container");
+        paperContainer.classList.remove("hidden");
+
+        document.getElementById("paper-header").textContent =
+          paperData.title || "Generated Question Paper";
+        document.getElementById("paper-jobTitle").textContent =
+          formData.jobTitle || "N/A";
+        document.getElementById("paper-department").textContent =
+          formData.departmentName || "N/A";
+        document.getElementById("paper-duration").textContent =
+          formData.durationText || "N/A";
+        document.getElementById(
+          "paper-experience"
+        ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+
+        const skillsContainer = document.getElementById("paper-skills");
+        skillsContainer.innerHTML = "";
+        if (formData.skills) {
+          formData.skills.split(",").forEach((skill) => {
+            if (skill.trim()) {
+              const skillTag = document.createElement("span");
+              skillTag.className =
+                "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+              skillTag.textContent = skill.trim();
+              skillsContainer.appendChild(skillTag);
+            }
+          });
+        }
+
+        const questionsContainer = document.getElementById("paper-questions");
+        questionsContainer.innerHTML = "";
+        let questionCounter = 1;
+
+        if (Array.isArray(paperData.sections)) {
+          paperData.sections.forEach((section, sectionIndex) => {
+            if (!section) return;
+            const sectionTitle = document.createElement("h3");
+            sectionTitle.className =
+              "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
+            sectionTitle.textContent = section.title || "Unnamed Section";
+            questionsContainer.appendChild(sectionTitle);
+
+            if (Array.isArray(section.questions)) {
+              section.questions.forEach((q, questionIndex) => {
+                if (!q) return;
+
+                const questionBlock = document.createElement("div");
+                questionBlock.className =
+                  "question-block p-4 border border-slate-200 rounded-lg bg-white cursor-pointer transition-all duration-200";
+
+                let contentHTML = "";
+                if (q.type === "MCQ" && Array.isArray(q.options)) {
+                  let optionsHTML = '<div class="mt-4 space-y-3">';
+                  q.options.forEach((option) => {
+                    const isCorrect = option === q.answer;
+                    if (isCorrect) {
+                      optionsHTML += `<div class="flex items-center text-green-700 font-semibold bg-green-50 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
+                    } else {
+                      optionsHTML += `<div class="flex items-center text-slate-600 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
+                    }
+                  });
+                  optionsHTML += "</div>";
+                  contentHTML = optionsHTML;
+                } else {
+                  contentHTML = `<div class="mt-4 pt-3 border-t border-slate-100"><p class="text-sm"><strong class="font-medium text-slate-500">Answer:</strong> <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
+                    q.answer || "N/A"
+                  }</span></p></div>`;
+                }
+
+                const isRequired = q.required || false;
+
+                questionBlock.innerHTML = `
+                        <p class="font-semibold text-slate-800">${questionCounter}. ${
+                  q.text || "Question text not available."
+                }</p>
+                        ${contentHTML}
+                        <div class="question-toolbar mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-4 text-sm">
+                            <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                            </button>
+                            <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                            <div class="border-l h-6 border-slate-200 mx-2"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium text-slate-600">Required</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
+                  isRequired ? "checked" : ""
+                }>
+                                    <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+
+                // *** THIS IS THE IMPROVED CLICK LOGIC ***
+                questionBlock.addEventListener("click", (event) => {
+                  // If the click is on a button inside the toolbar, do nothing.
+                  if (event.target.closest("button")) {
+                    event.stopPropagation(); // Stop click from bubbling up
+                    return;
+                  }
+
+                  // Check if this block is already active
+                  const wasActive =
+                    questionBlock.classList.contains("question-active");
+
+                  // Remove active class and ring from ALL question blocks
+                  document.querySelectorAll(".question-block").forEach((el) => {
+                    el.classList.remove(
+                      "question-active",
+                      "ring-2",
+                      "ring-[#736b8e]",
+                      "border-transparent"
+                    );
+                  });
+
+                  // If it wasn't already active, make it active now
+                  if (!wasActive) {
+                    questionBlock.classList.add(
+                      "question-active",
+                      "ring-2",
+                      "ring-[#736b8e]",
+                      "border-transparent"
+                    );
+                  }
+                });
+
+                questionsContainer.appendChild(questionBlock);
+                questionCounter++;
+              });
+            }
+          });
+        }
+      }
+
       async function generatePaper() {
         const generateButton = document.querySelector(
           '#step-3 button[onclick="generatePaper()"]'
         );
         generateButton.disabled = true;
         generateButton.innerHTML = `
-      <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      Generating...
-      `;
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Generating...
+        `;
 
         const aiPostData = {
           job_title: formData.jobTitle,
@@ -816,172 +1676,6 @@
           generateButton.disabled = false;
           generateButton.innerHTML = "Generate";
         }
-      }
-
-      function displayGeneratedPaper(paperData) {
-        document.getElementById("form-container").classList.add("hidden");
-        const paperContainer = document.getElementById("paper-container");
-        paperContainer.classList.remove("hidden");
-
-        document.getElementById("paper-header").textContent =
-          fullPaperPayload.title || `${fullPaperPayload.job_title} Assessment`;
-        document.getElementById("paper-jobTitle").textContent =
-          fullPaperPayload.job_title;
-        document.getElementById("paper-department").textContent =
-          fullPaperPayload.department;
-
-        // MODIFIED: Use durationText for final paper display
-        document.getElementById("paper-duration").textContent =
-          formData.durationText || "N/A";
-
-        document.getElementById(
-          "paper-experience"
-        ).textContent = `${fullPaperPayload.min_exp} - ${fullPaperPayload.max_exp} years`;
-
-        const skillsContainer = document.getElementById("paper-skills");
-        skillsContainer.innerHTML = "";
-        if (fullPaperPayload.skills) {
-          fullPaperPayload.skills.split(",").forEach((skill) => {
-            if (skill.trim()) {
-              const skillTag = document.createElement("span");
-              skillTag.className =
-                "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
-              skillTag.textContent = skill.trim();
-              skillsContainer.appendChild(skillTag);
-            }
-          });
-        }
-        const questionsContainer = document.getElementById("paper-questions");
-        questionsContainer.innerHTML = "";
-
-        let questionCounter = 1;
-        if (paperData.sections && paperData.sections.length > 0) {
-          paperData.sections.forEach((section) => {
-            const sectionTitle = document.createElement("h3");
-            sectionTitle.className =
-              "text-xl font-bold text-slate-700 mt-8 -mb-4 border-b pb-2";
-            sectionTitle.textContent = section.title;
-            questionsContainer.appendChild(sectionTitle);
-
-            section.questions.forEach((q) => {
-              const questionDiv = document.createElement("div");
-              questionDiv.className =
-                "bg-white p-6 rounded-lg border border-slate-200";
-
-              let optionsHtml = "";
-              if (
-                q.options &&
-                Array.isArray(q.options) &&
-                q.options.length > 0
-              ) {
-                optionsHtml =
-                  '<ul class="list-disc list-inside mt-2 space-y-1 text-slate-600">';
-                q.options.forEach((opt) => {
-                  optionsHtml += `<li>${opt}</li>`;
-                });
-                optionsHtml += "</ul>";
-              }
-
-              questionDiv.innerHTML = `
-            <p class="font-semibold text-slate-800 flex items-start">
-                <span class="mr-2">${questionCounter}.</span>
-                <span>${q.text}</span>
-            </p>
-            ${optionsHtml}
-            <div class="mt-3 pt-3 pl-6 border-l-2 border-[#736b8e] ml-1">
-                <p class="text-slate-600">
-                    <span class="font-medium text-slate-700">Answer:</span>
-                    ${q.answer}
-                </p>
-            </div>
-          `;
-              questionsContainer.appendChild(questionDiv);
-              questionCounter++;
-            });
-          });
-        } else {
-          questionsContainer.innerHTML =
-            '<p class="text-red-500">The AI could not generate questions based on the provided input. Please check your parameters and try again.</p>';
-        }
-      }
-
-      // MODIFICATION 2: Added the editPaper() function
-      function editPaper() {
-        // Hide the paper view and show the form container
-        document.getElementById("form-container").classList.remove("hidden");
-        document.getElementById("paper-container").classList.add("hidden");
-
-        // Reset to the first step of the form
-        currentStep = 1;
-        showStep(currentStep);
-
-        // Repopulate Step 1 fields from the stored formData
-        document.getElementById("jobTitle").value = formData.jobTitle;
-        document.getElementById("department").value = formData.departmentId;
-        document.getElementById("skills").value = formData.skills;
-        document.getElementById("minExp").value = formData.minExp;
-        document.getElementById("maxExp").value = formData.maxExp;
-
-        // Repopulate Step 2 duration dropdown from stored formData
-        // The section counts are already stored in formData.sections and will be
-        // automatically applied when the user proceeds to step 2.
-        document.getElementById("duration").value = formData.duration;
-      }
-
-      async function savePaper() {
-        const saveButton = document.querySelector(
-          '#paper-container button[onclick^="savePaper"]'
-        );
-        saveButton.disabled = true;
-        saveButton.innerHTML = `
-      <svg class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-      Saving...`;
-
-        try {
-          const response = await fetch("{% url 'save_paper' %}", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": getCookie("csrftoken"),
-            },
-            body: JSON.stringify(fullPaperPayload),
-          });
-
-          const result = await response.json();
-
-          if (!response.ok || !result.success) {
-            throw new Error(result.error || "Failed to save the paper.");
-          }
-
-          alert(result.message);
-          resetFormData();
-          window.location.href = result.redirect_url;
-        } catch (error) {
-          console.error("Save error:", error);
-          alert(`Could not save the paper: ${error.message}`);
-        } finally {
-          saveButton.disabled = false;
-          saveButton.textContent = "Save";
-        }
-      }
-    </script>
-
-    <script>
-      function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-          const cookies = document.cookie.split(";");
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + "=")) {
-              cookieValue = decodeURIComponent(
-                cookie.substring(name.length + 1)
-              );
-              break;
-            }
-          }
-        }
-        return cookieValue;
       }
 
       document.addEventListener("DOMContentLoaded", function () {

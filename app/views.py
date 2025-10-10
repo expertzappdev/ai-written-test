@@ -34,19 +34,34 @@ from .models import (
     UserResponse,
 )
 
+from django.shortcuts import render, redirect
+from django.contrib.auth import login
+from django.contrib import messages
+from .forms import LoginForm
+
 
 def user_login(request):
     if request.user.is_authenticated:
         return redirect("dashboard") if request.user.is_staff else redirect("home")
 
     if request.method == "POST":
+        # Use your custom LoginForm
         form = LoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+
+            # ✨ Add a success message to be displayed on the next page
+            messages.success(
+                request,
+                f"Welcome back, {user.username}! You've successfully logged in. 🎉",
+            )
+
             return redirect("dashboard") if user.is_staff else redirect("home")
     else:
+        # On a GET request, create an empty instance of your form
         form = LoginForm()
+
     return render(request, "login.html", {"form": form, "title": "Login"})
 
 
@@ -178,6 +193,7 @@ def save_paper(request):
             department_name=data.get("department"),
             min_exp=data.get("min_exp"),
             max_exp=data.get("max_exp"),
+            is_active=True,
             duration=data.get("duration"),
             is_public_active=False,
             skills_list=(
@@ -304,19 +320,6 @@ def paper_edit_view(request, paper_id):
     return render(request, "question_generator/paper_edit.html", context)
 
 
-# def department_create_view(request):
-#     if request.method == "POST":
-#         form = DepartmentForm(request.POST)
-#         if form.is_valid():
-#             form.save()
-#             return redirect("dashboard")
-#     else:
-#         form = DepartmentForm()
-
-#     context = {"form": form}
-#     return render(request, "partials/department/department_create.html", context)
-
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -354,6 +357,13 @@ def department_create_view(request):
 
 
 @login_required
+def get_skills_json(request):
+    """Returns a JSON list of all active skills."""
+    skills = Skill.objects.filter(is_active=True).values("id", "name")
+    return JsonResponse({"skills": list(skills)})
+
+
+@login_required
 def skill_list_view(request):
     """Page load karne aur saare active skills dikhane ke liye."""
     skills = Skill.objects.filter(is_active=True)
@@ -373,7 +383,14 @@ def skill_create_view(request):
         if form.is_valid():
             skill = form.save()
             return JsonResponse(
-                {"status": "success", "skill": {"id": skill.id, "name": skill.name}},
+                {
+                    "status": "success",
+                    "skill": {
+                        "id": skill.id,
+                        "name": skill.name,
+                        "is_active": skill.is_active,
+                    },
+                },
                 status=201,
             )
         else:
@@ -573,3 +590,121 @@ def test_result(request, registration_id):
     }
 
     return render(request, "partials/users/test_report.html", context)
+
+
+# your_app/views.py
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from .models import QuestionPaper
+
+
+@csrf_exempt
+def partial_update_view(request, paper_id):
+    if request.method == "POST":
+        try:
+            paper = QuestionPaper.objects.get(pk=paper_id)
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse(
+                    {"status": "error", "message": "Invalid JSON payload."}, status=400
+                )
+
+            if "job_title" in data:
+                paper.job_title = data["job_title"] or paper.job_title
+            if "duration" in data:
+                paper.duration = data["duration"] or paper.duration
+            if "skills_list" in data:
+                skills_list = data["skills_list"]
+                if isinstance(skills_list, list):
+                    paper.skills = ",".join(skills_list)
+                else:
+                    return JsonResponse(
+                        {"status": "error", "message": "skills_list must be a list."},
+                        status=400,
+                    )
+
+            paper.save()
+
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": "Paper updated successfully!",
+                    "updated_data": {
+                        "job_title": paper.job_title,
+                        "duration": paper.duration,
+                        "skills_list": paper.skills.split(",") if paper.skills else [],
+                    },
+                }
+            )
+
+        except QuestionPaper.DoesNotExist:
+            return JsonResponse(
+                {"status": "error", "message": "Paper not found."}, status=404
+            )
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse(
+        {"status": "error", "message": "Invalid request method."}, status=405
+    )
+
+
+# your_app/views.py
+import json
+import google.generativeai as genai
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.conf import settings
+
+# ... (your other imports and views)
+
+
+@require_POST  # Ensures this view only accepts POST requests
+def regenerate_question(request):
+    try:
+        data = json.loads(request.body)
+        job_title = data.get("job_title")
+        skills = data.get("skills")
+        section_title = data.get("section_title")
+        question_type = data.get("question_type")
+        question_text = data.get("question_text")  # Old question text for context
+
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-pro")
+
+        prompt = f"""
+        As an expert technical recruiter, generate ONE new and different interview question based on the following context.
+        The previous question was: "{question_text}". Do not repeat this question.
+
+        CONTEXT:
+        - Job Title: {job_title}
+        - Required Skills: {skills}
+        - Test Section: {section_title}
+        - Question Type: {question_type}
+
+        Generate a completely new question that assesses a similar concept but is not identical.
+        
+        Provide the output in a strict JSON format with no extra text or markdown formatting.
+        The JSON object must have these keys: "text" (string), "type" (string, e.g., "MCQ"), "options" (an array of 4 strings for MCQ, or null for other types), and "answer" (string).
+        
+        Example for MCQ:
+        {{
+            "text": "What is the primary purpose of a virtual environment in Python?",
+            "type": "MCQ",
+            "options": ["To run Python code faster", "To isolate project dependencies", "To share code easily", "To write Python code"],
+            "answer": "To isolate project dependencies"
+        }}
+        """
+
+        response = model.generate_content(prompt)
+        cleaned_response = (
+            response.text.strip().replace("```json", "").replace("```", "")
+        )
+        new_question = json.loads(cleaned_response)
+
+        return JsonResponse(new_question)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

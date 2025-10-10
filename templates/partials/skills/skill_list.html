@@ -48,7 +48,7 @@
             >
               <span
                 class="skill-name-text text-lg text-slate-700 font-medium mb-3 sm:mb-0"
-                >{{ skill.name }}</span
+                >{{ skill.pretty_name }}</span
               >
               <div class="flex space-x-3">
                 <button
@@ -115,10 +115,25 @@
                 checked
               />
               <span class="ml-3 text-sm text-slate-700 select-none"
-                >is Active</span
+                >Is Active</span
               >
             </label>
+            <p id="is-active-error" class="text-red-500 text-sm mt-1"></p>
           </div>
+          <!-- <div class="mb-8">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="isActive"
+                name="is_active"
+                class="h-4 w-4 rounded border-slate-300 text-[#736B8E] focus:ring-[#625a7a]"
+                checked
+              />
+              <span class="ml-3 text-sm text-slate-700 select-none"
+                >Is Active</span
+              >
+            </label>
+          </div> -->
           <div class="flex justify-end space-x-4">
             <button
               type="button"
@@ -194,7 +209,8 @@
         const skillNameInput = document.getElementById("skillName");
         const isActiveInput = document.getElementById("isActive");
         const nameError = document.getElementById("skill-name-error");
-
+        // ... baaki variables ke saath
+        const isActiveError = document.getElementById("is-active-error"); // ✅ ADD THIS LINE
         const openModal = (mode = "add", skill = null) => {
           skillForm.reset();
           skillIdInput.value = "";
@@ -230,12 +246,41 @@
         document.addEventListener("keydown", (e) => {
           if (e.key === "Escape") closeModal();
         });
-
+        // ...
         skillForm.addEventListener("submit", (e) => {
           e.preventDefault();
+
+          // ✅ CHANGE START: Validation Logic
+          // Purane errors ko saaf karein
+          nameError.textContent = "";
+          skillNameInput.classList.remove("border-red-500");
+          isActiveError.textContent = ""; // Naya error bhi saaf karein
+
           const id = skillIdInput.value;
           const name = skillNameInput.value.trim();
           const is_active = isActiveInput.checked;
+
+          let isValid = true; // Form valid hai ya nahi, iska track rakhein
+
+          // Naam ka validation
+          if (!name) {
+            nameError.textContent = "Skill name is required.";
+            skillNameInput.classList.add("border-red-500");
+            isValid = false;
+          }
+
+          // "Is Active" checkbox ka validation
+          if (!is_active) {
+            isActiveError.textContent =
+              "The skill must be set to active to save.";
+            isValid = false;
+          }
+
+          // Agar form valid nahi hai, to aage na badhein
+          if (!isValid) {
+            return;
+          }
+          // ✅ CHANGE END
 
           const url = id ? `/skills/update/${id}/` : "{% url 'skill_create' %}";
 
@@ -245,15 +290,17 @@
               "Content-Type": "application/json",
               "X-CSRFToken": csrftoken,
             },
-            body: JSON.stringify({ name, is_active }),
+            body: JSON.stringify({ name, is_active }), // is_active yahan se ja raha hai
           })
             .then((response) => response.json())
             .then((data) => {
               if (data.status === "success") {
                 location.reload();
               } else {
-                nameError.textContent = data.errors.name[0];
-                skillNameInput.classList.add("border-red-500");
+                if (data.errors && data.errors.name) {
+                  nameError.textContent = data.errors.name[0];
+                  skillNameInput.classList.add("border-red-500");
+                }
               }
             })
             .catch((error) => console.error("Error:", error));
