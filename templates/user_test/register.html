@@ -43,7 +43,7 @@
         display: block;
         width: 100%;
         padding: 0.375rem 0.75rem;
-        border: 1px solid #d1d5db;
+        border: 1px solid #d1f5db;
         border-radius: 0.375rem;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         color: #374151;
@@ -82,7 +82,8 @@
         margin-top: 0.25rem;
       }
     </style>
-</head>
+    
+    </head>
 <body class="text-gray-800">
 
 <div class="min-h-screen flex items-center justify-center p-4">
@@ -128,7 +129,6 @@
                             {% if field.field.required %}required{% endif %}
                             pattern="[0-9]{10}" 
                             title="Please enter a 10-digit phone number."
-                            onkeypress="return isNumberKey(event)"
                             maxlength="10"
                             placeholder="Enter phone number"
                         >
@@ -157,49 +157,115 @@
 </div>
 
 <script>
+    // --- Utility Functions for Keypress Validation ---
+
     // Restrict phone number to digits only
     function isNumberKey(evt) {
         const charCode = (evt.which) ? evt.which : evt.keyCode;
+        // Allow digits (48-57) and control keys (like backspace, delete, arrows)
         if (charCode > 31 && (charCode < 48 || charCode > 57)) {
             return false;
         }
         return true;
     }
 
+    // Restrict name to letters and spaces only
+    function isNameKey(evt) {
+        const charCode = (evt.which) ? evt.which : evt.keyCode;
+        // Allow letters (A-Z, a-z), space (32), and control keys
+        if ((charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122) || charCode === 32 || charCode < 32) {
+            return true;
+        }
+        return false;
+    }
+
+    // --- Main DOM Content Loaded Script ---
     document.addEventListener("DOMContentLoaded", function () {
         const form = document.getElementById("registerForm");
         const inputs = form.querySelectorAll("input:not([type='checkbox']):not([type='radio']), textarea");
+        
+        // --- Setup Keypress Listeners for Better UX ---
+        
+        // 1. Name Field Keypress
+        const nameInput = document.getElementById("id_name"); 
+        if (nameInput) {
+            nameInput.setAttribute('maxlength', '34'); 
+            nameInput.addEventListener('keypress', function(e) {
+                if (!isNameKey(e)) {
+                    e.preventDefault();
+                }
+            });
+        }
+        
+        // 2. Phone Number Field Keypress
+        const phoneInput = document.getElementById("id_phone_number"); 
+        if (phoneInput) {
+             phoneInput.addEventListener('keypress', function(e) {
+                if (!isNumberKey(e)) {
+                    e.preventDefault();
+                }
+            });
+        }
 
+        // --- Form Submission Validation ---
         form.addEventListener("submit", function (e) {
             let isValid = true;
 
             inputs.forEach(input => {
                 const errorEl = input.parentNode.querySelector(".error-text");
+                const value = input.value.trim();
+                
                 if (errorEl) errorEl.remove(); // Remove previous errors
                 input.classList.remove("invalid");
 
-                // If field is empty and required
-                if (input.hasAttribute("required") && !input.value.trim()) {
+                // --- 1. Required Field Check (Covers Name, Email, Phone Number) ---
+                if (input.hasAttribute("required") && !value) {
                     isValid = false;
                     input.classList.add("invalid");
                     showError(input, "This field is required.");
+                    return; // Skip further validation for this empty field
                 }
-                // Phone number validation
-                else if (input.name === "phone_number" && input.value.trim() && !/^[0-9]{10}$/.test(input.value.trim())) {
-                    isValid = false;
-                    input.classList.add("invalid");
-                    showError(input, "Please enter a valid 10-digit phone number.");
+                
+                // --- 2. Name Field Validation (Min/Max Length, Characters) ---
+                if (input.id === "id_name" && value) {
+                    const minLength = 3;
+                    const maxLength = 34;
+                    // Regex: Must be 3-34 characters long, containing only letters and spaces.
+                    const namePattern = /^[a-zA-Z\s]+$/; 
+
+                    if (value.length < minLength || value.length > maxLength) {
+                        isValid = false;
+                        input.classList.add("invalid");
+                        showError(input, `Name must be between ${minLength} and ${maxLength} characters.`);
+                    } else if (!namePattern.test(value)) {
+                        isValid = false;
+                        input.classList.add("invalid");
+                        showError(input, "Name can only contain letters and spaces.");
+                    }
                 }
-                // Email validation
-                else if (input.type === "email" && input.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())) {
-                    isValid = false;
-                    input.classList.add("invalid");
-                    showError(input, "Please enter a valid email address.");
+                
+                // --- 3. Phone Number Format Validation (10 Digits) ---
+                else if (input.name === "phone_number" && value) {
+                    if (!/^[0-9]{10}$/.test(value)) {
+                        isValid = false;
+                        input.classList.add("invalid");
+                        showError(input, "Please enter a valid 10-digit phone number.");
+                    }
+                }
+                
+                // --- 4. Email Format Validation ---
+                else if (input.type === "email" && value) {
+                    // Standard email regex pattern
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                        isValid = false;
+                        input.classList.add("invalid");
+                        showError(input, "Please enter a valid email address (e.g., user@domain.com).");
+                    }
                 }
             });
 
             if (!isValid) {
-                e.preventDefault();
+                e.preventDefault(); // Stop form submission if validation fails
             }
         });
 

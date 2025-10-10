@@ -22,6 +22,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
 
     <script>
+        /* This is the new aggressive back button blocker using history.forward(). */
+        
+        // Step 1: Set up a reusable function to force forward movement
+        function noBack() {
+            window.history.forward();
+        }
+
+        // Step 2: Use window.history.forward() immediately on load
+        window.history.forward(); 
+        
+        // Step 3: Add event listeners on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // This ensures the noBack function is used when the browser detects a back movement
+            window.addEventListener('popstate', noBack);
+        });
+        
+    </script>
+    <script>
       tailwind.config = {
         theme: {
           extend: {
@@ -45,7 +63,7 @@
         #fixed-footer { z-index: 100; padding-bottom: 30px; } 
     </style>
 </head>
-<body class="text-gray-800">
+<body class="text-gray-800" onload="noBack()" onpageshow="if (event.persisted) noBack();">
 
 <div class="min-h-screen">
     <header class="bg-white shadow-md sticky top-0 z-20">
@@ -256,8 +274,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         
         // --- START TIMER INIT ---
-        // **ACTION REQUIRED: Ensure 'paper.duration' is a numeric value (minutes) in your Django context.**
-        // Assuming paper.duration is available and passed as an integer/float from Django:
         const durationFromDjango = {{ paper.duration|default:"60" }}; 
         
         if (durationFromDjango > 0) {
