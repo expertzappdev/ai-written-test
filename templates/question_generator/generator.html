@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -11,6 +11,9 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
       input[type="number"]::-webkit-inner-spin-button,
       input[type="number"]::-webkit-outer-spin-button {
@@ -44,6 +47,14 @@
       .question-active .question-toolbar {
         opacity: 1;
       }
+      /* --- START: New CSS for contextual toolbar --- */
+      .contextual-add-toolbar {
+        display: none;
+      }
+      .question-active .contextual-add-toolbar {
+        display: flex;
+      }
+      /* --- END: New CSS --- */
     </style>
   </head>
   <body class="bg-slate-50 text-slate-800 flex min-h-screen font-sans">
@@ -651,24 +662,7 @@
           }
         }
       }
-      // ADD this new function to your script
-      function copyQuestion(sectionIndex, questionIndex) {
-        const questionToCopy =
-          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
 
-        // Create a new, independent copy of the question object
-        const newQuestion = JSON.parse(JSON.stringify(questionToCopy));
-
-        // Insert the copy right after the original question
-        fullPaperPayload.sections[sectionIndex].questions.splice(
-          questionIndex + 1,
-          0,
-          newQuestion
-        );
-
-        // Re-render the paper to show the new question
-        displayGeneratedPaper(fullPaperPayload);
-      }
       function renderDropdown() {
         const skillsDropdown = document.getElementById("skills-dropdown");
         if (!skillsDropdown) return;
@@ -1241,6 +1235,10 @@
       });
     </script>
     <script>
+      // ======================================================
+      // START: PAPER GENERATION AND EDITING SCRIPT (CORRECTED)
+      // ======================================================
+
       function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== "") {
@@ -1257,225 +1255,174 @@
         }
         return cookieValue;
       }
-      // function displayGeneratedPaper(paperData) {
-      //   document.getElementById("form-container").classList.add("hidden");
-      //   const paperContainer = document.getElementById("paper-container");
-      //   paperContainer.classList.remove("hidden");
 
-      //   document.getElementById("paper-header").textContent =
-      //     paperData.title || "Generated Question Paper";
-      //   document.getElementById("paper-jobTitle").textContent =
-      //     formData.jobTitle || "N/A";
-      //   document.getElementById("paper-department").textContent =
-      //     formData.departmentName || "N/A";
-      //   document.getElementById("paper-duration").textContent =
-      //     formData.durationText || "N/A";
-      //   document.getElementById(
-      //     "paper-experience"
-      //   ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+      // --- Text formatting function ---
+      function formatDoc(command, value = null) {
+        if (command) {
+          document.execCommand(command, false, value);
+        }
+      }
 
-      //   const skillsContainer = document.getElementById("paper-skills");
-      //   skillsContainer.innerHTML = "";
-      //   if (formData.skills) {
-      //     formData.skills.split(",").forEach((skill) => {
-      //       if (skill.trim()) {
-      //         const skillTag = document.createElement("span");
-      //         skillTag.className =
-      //           "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
-      //         skillTag.textContent = skill.trim();
-      //         skillsContainer.appendChild(skillTag);
-      //       }
-      //     });
-      //   }
+      // --- START: NEW AND UPDATED FUNCTIONS ---
 
-      //   const questionsContainer = document.getElementById("paper-questions");
-      //   questionsContainer.innerHTML = "";
-      //   let questionCounter = 1;
+      // --- New function to update MCQ option text ---
+      function updateMcqOption(
+        event,
+        sectionIndex,
+        questionIndex,
+        optionIndex
+      ) {
+        if (fullPaperPayload.sections[sectionIndex]?.questions[questionIndex]) {
+          fullPaperPayload.sections[sectionIndex].questions[
+            questionIndex
+          ].options[optionIndex] = event.target.innerHTML;
+        }
+      }
 
-      //   if (Array.isArray(paperData.sections)) {
-      //     paperData.sections.forEach((section, sectionIndex) => {
-      //       if (!section) return;
-      //       const sectionTitle = document.createElement("h3");
-      //       sectionTitle.className =
-      //         "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
-      //       sectionTitle.textContent = section.title || "Unnamed Section";
-      //       questionsContainer.appendChild(sectionTitle);
+      // --- New function to set the correct answer for an MCQ ---
+      function setCorrectAnswer(sectionIndex, questionIndex, optionIndex) {
+        const question =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        if (question) {
+          question.answer = question.options[optionIndex];
+          // A quick re-render to show the visual change of the correct answer
+          displayGeneratedPaper(fullPaperPayload);
+        }
+      }
 
-      //       if (Array.isArray(section.questions)) {
-      //         section.questions.forEach((q, questionIndex) => {
-      //           if (!q) return;
-      //           const questionBlock = document.createElement("div");
-      //           questionBlock.className =
-      //             "p-4 border border-slate-200 rounded-lg bg-white";
+      // --- New function to delete an MCQ option ---
+      function deleteMcqOption(sectionIndex, questionIndex, optionIndex) {
+        event.stopPropagation();
+        const question =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        if (question && question.options.length > 1) {
+          // Prevent deleting the last option
+          question.options.splice(optionIndex, 1);
+          // If the deleted option was the answer, set the first option as the new answer
+          if (!question.options.includes(question.answer)) {
+            question.answer = question.options[0];
+          }
+          displayGeneratedPaper(fullPaperPayload);
+        } else {
+          alert("Each question must have at least one option.");
+        }
+      }
 
-      //           let contentHTML = ""; // To hold options or short answer
+      // --- New function to add a new MCQ option ---
+      function addMcqOption(sectionIndex, questionIndex) {
+        event.stopPropagation();
+        const question =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        if (question) {
+          question.options.push("New Option");
+          displayGeneratedPaper(fullPaperPayload);
+        }
+      }
 
-      //           // --- LOGIC FOR DISPLAYING ANSWERS ---
-      //           if (q.type === "MCQ" && Array.isArray(q.options)) {
-      //             let optionsHTML = '<div class="mt-4 space-y-3">';
-      //             q.options.forEach((option) => {
-      //               const isCorrect = option === q.answer;
-      //               if (isCorrect) {
-      //                 optionsHTML += `<div class="flex items-center text-green-700 font-semibold bg-green-50 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
-      //               } else {
-      //                 optionsHTML += `<div class="flex items-center text-slate-600 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
-      //               }
-      //             });
-      //             optionsHTML += "</div>";
-      //             contentHTML = optionsHTML;
-      //           } else {
-      //             // **NEW**: This shows the answer for Short Answer questions
-      //             contentHTML = `
-      //                       <div class="mt-4 pt-3 border-t border-slate-100">
-      //                           <p class="text-sm">
-      //                               <strong class="font-medium text-slate-500">Answer:</strong>
-      //                               <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
-      //                                 q.answer || "N/A"
-      //                               }</span>
-      //                           </p>
-      //                       </div>
-      //                   `;
-      //           }
+      // --- New function to update the Short Answer text ---
+      function updateShortAnswer(event, sectionIndex, questionIndex) {
+        if (fullPaperPayload.sections[sectionIndex]?.questions[questionIndex]) {
+          fullPaperPayload.sections[sectionIndex].questions[
+            questionIndex
+          ].answer = event.target.innerHTML;
+        }
+      }
 
-      //           // --- NEW TOOLBAR (like the image) ---
-      //           questionBlock.innerHTML = `
-      //                   <p class="font-semibold text-slate-800">${questionCounter}. ${
-      //             q.text || "Question text not available."
-      //           }</p>
-      //                   ${contentHTML}
-      //                   <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-2 text-sm">
-      //                       <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors">
-      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-      //                       </button>
-      //                       <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
-      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-      //                       </button>
-      //                   </div>
-      //               `;
-      //           questionsContainer.appendChild(questionBlock);
-      //           questionCounter++;
-      //         });
-      //       }
-      //     });
-      //   }
-      // }
-      // REPLACE your old displayGeneratedPaper function with this new one.
+      // --- Function to add a question after the current one, based on type ---
+      function addQuestionAfter(sectionIndex, questionIndex, type) {
+        event.stopPropagation();
 
-      // function displayGeneratedPaper(paperData) {
-      //   document.getElementById("form-container").classList.add("hidden");
-      //   const paperContainer = document.getElementById("paper-container");
-      //   paperContainer.classList.remove("hidden");
+        let newQuestionTemplate;
 
-      //   document.getElementById("paper-header").textContent =
-      //     paperData.title || "Generated Question Paper";
-      //   document.getElementById("paper-jobTitle").textContent =
-      //     formData.jobTitle || "N/A";
-      //   document.getElementById("paper-department").textContent =
-      //     formData.departmentName || "N/A";
-      //   document.getElementById("paper-duration").textContent =
-      //     formData.durationText || "N/A";
-      //   document.getElementById(
-      //     "paper-experience"
-      //   ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+        if (type === "MCQ") {
+          newQuestionTemplate = {
+            text: "<em>Write your new multiple choice question here...</em>",
+            type: "MCQ",
+            options: ["Option 1", "Option 2"],
+            answer: "Option 1",
+            required: false,
+          };
+        } else if (type === "Short Answer") {
+          newQuestionTemplate = {
+            text: "<em>Write your new short answer question here...</em>",
+            type: "Short Answer",
+            options: [],
+            answer: "Sample correct answer text.",
+            required: false,
+          };
+        } else {
+          console.error("Unknown question type:", type);
+          return;
+        }
 
-      //   const skillsContainer = document.getElementById("paper-skills");
-      //   skillsContainer.innerHTML = "";
-      //   if (formData.skills) {
-      //     formData.skills.split(",").forEach((skill) => {
-      //       if (skill.trim()) {
-      //         const skillTag = document.createElement("span");
-      //         skillTag.className =
-      //           "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
-      //         skillTag.textContent = skill.trim();
-      //         skillsContainer.appendChild(skillTag);
-      //       }
-      //     });
-      //   }
+        fullPaperPayload.sections[sectionIndex].questions.splice(
+          questionIndex + 1,
+          0,
+          newQuestionTemplate
+        );
 
-      //   const questionsContainer = document.getElementById("paper-questions");
-      //   questionsContainer.innerHTML = "";
-      //   let questionCounter = 1;
+        const targetEditorId = `editor-${sectionIndex}-${questionIndex + 1}`;
+        displayGeneratedPaper(fullPaperPayload);
 
-      //   if (Array.isArray(paperData.sections)) {
-      //     paperData.sections.forEach((section, sectionIndex) => {
-      //       if (!section) return;
-      //       const sectionTitle = document.createElement("h3");
-      //       sectionTitle.className =
-      //         "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
-      //       sectionTitle.textContent = section.title || "Unnamed Section";
-      //       questionsContainer.appendChild(sectionTitle);
+        setTimeout(() => {
+          const newEditor = document.getElementById(targetEditorId);
+          if (newEditor) {
+            const questionBlock = newEditor.closest(".question-block");
+            questionBlock.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            newEditor.focus();
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(newEditor);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }, 100);
+      }
 
-      //       if (Array.isArray(section.questions)) {
-      //         section.questions.forEach((q, questionIndex) => {
-      //           if (!q) return;
-      //           const questionBlock = document.createElement("div");
-      //           questionBlock.className =
-      //             "p-4 border border-slate-200 rounded-lg bg-white";
+      // --- Function to copy a question ---
+      function copyQuestion(sectionIndex, questionIndex) {
+        event.stopPropagation();
+        const questionToCopy =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        const newQuestion = JSON.parse(JSON.stringify(questionToCopy));
+        fullPaperPayload.sections[sectionIndex].questions.splice(
+          questionIndex + 1,
+          0,
+          newQuestion
+        );
+        displayGeneratedPaper(fullPaperPayload);
+      }
 
-      //           let contentHTML = "";
+      // --- Function to delete a question ---
+      function deleteQuestion(sectionIndex, questionIndex) {
+        event.stopPropagation();
+        if (confirm("Are you sure you want to delete this question?")) {
+          fullPaperPayload.sections[sectionIndex].questions.splice(
+            questionIndex,
+            1
+          );
+          displayGeneratedPaper(fullPaperPayload);
+        }
+      }
 
-      //           if (q.type === "MCQ" && Array.isArray(q.options)) {
-      //             let optionsHTML = '<div class="mt-4 space-y-3">';
-      //             q.options.forEach((option) => {
-      //               const isCorrect = option === q.answer;
-      //               if (isCorrect) {
-      //                 optionsHTML += `<div class="flex items-center text-green-700 font-semibold bg-green-50 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
-      //               } else {
-      //                 optionsHTML += `<div class="flex items-center text-slate-600 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
-      //               }
-      //             });
-      //             optionsHTML += "</div>";
-      //             contentHTML = optionsHTML;
-      //           } else {
-      //             contentHTML = `
-      //                       <div class="mt-4 pt-3 border-t border-slate-100">
-      //                           <p class="text-sm">
-      //                               <strong class="font-medium text-slate-500">Answer:</strong>
-      //                               <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
-      //                                 q.answer || "N/A"
-      //                               }</span>
-      //                           </p>
-      //                       </div>
-      //                   `;
-      //           }
+      // --- Function to toggle the 'required' status ---
+      function toggleRequired(checkbox, sectionIndex, questionIndex) {
+        event.stopPropagation();
+        const isChecked = checkbox.checked;
+        if (
+          fullPaperPayload.sections[sectionIndex] &&
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex]
+        ) {
+          fullPaperPayload.sections[sectionIndex].questions[
+            questionIndex
+          ].required = isChecked;
+        }
+      }
 
-      //           // --- UPDATED TOOLBAR ---
-      //           const isRequired = q.required || false; // Default to false if not set
-      //           questionBlock.innerHTML = `
-      //                   <p class="font-semibold text-slate-800">${questionCounter}. ${
-      //             q.text || "Question text not available."
-      //           }</p>
-      //                   ${contentHTML}
-      //                   <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-4 text-sm">
-      //                       <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors">
-      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-      //                       </button>
-      //                       <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
-      //                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-      //                       </button>
-
-      //                       <div class="border-l h-6 border-slate-200 mx-2"></div>
-
-      //                       <div class="flex items-center gap-2">
-      //                           <span class="font-medium text-slate-600">Required</span>
-      //                           <label class="relative inline-flex items-center cursor-pointer">
-      //                               <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
-      //             isRequired ? "checked" : ""
-      //           }>
-      //                               <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
-      //                           </label>
-      //                       </div>
-      //                   </div>
-      //               `;
-      //           questionsContainer.appendChild(questionBlock);
-      //           questionCounter++;
-      //         });
-      //       }
-      //     });
-      //   }
-      // }
-      // REPLACE your old displayGeneratedPaper function with this new one.
-      // REPLACE your current displayGeneratedPaper function with this one.
+      // --- MODIFIED: This function now renders editable options and answers ---
       function displayGeneratedPaper(paperData) {
         document.getElementById("form-container").classList.add("hidden");
         const paperContainer = document.getElementById("paper-container");
@@ -1526,88 +1473,141 @@
 
                 const questionBlock = document.createElement("div");
                 questionBlock.className =
-                  "question-block p-4 border border-slate-200 rounded-lg bg-white cursor-pointer transition-all duration-200";
+                  "question-block relative p-4 border border-slate-200 rounded-lg bg-white transition-all duration-200";
 
                 let contentHTML = "";
+
                 if (q.type === "MCQ" && Array.isArray(q.options)) {
                   let optionsHTML = '<div class="mt-4 space-y-3">';
-                  q.options.forEach((option) => {
+                  q.options.forEach((option, optionIndex) => {
                     const isCorrect = option === q.answer;
-                    if (isCorrect) {
-                      optionsHTML += `<div class="flex items-center text-green-700 font-semibold bg-green-50 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
-                    } else {
-                      optionsHTML += `<div class="flex items-center text-slate-600 p-2 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg><span>${option}</span></div>`;
-                    }
+                    optionsHTML += `
+                <div class="flex items-center group">
+                  <input type="radio" name="correct_answer_${sectionIndex}_${questionIndex}" 
+                         id="radio_${sectionIndex}_${questionIndex}_${optionIndex}" 
+                         class="form-radio h-4 w-4 text-[#736b8e] focus:ring-[#9a92b0] flex-shrink-0"
+                         onchange="setCorrectAnswer(${sectionIndex}, ${questionIndex}, ${optionIndex})"
+                         ${isCorrect ? "checked" : ""}>
+                  <div class="ml-3 flex-grow p-1 outline-none border border-transparent focus-within:border-slate-300 rounded-md"
+                       contenteditable="true" 
+                       oninput="updateMcqOption(event, ${sectionIndex}, ${questionIndex}, ${optionIndex})">${option}</div>
+                  <button onclick="deleteMcqOption(${sectionIndex}, ${questionIndex}, ${optionIndex})" 
+                          class="ml-2 p-1 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                          title="Delete Option">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              `;
                   });
-                  optionsHTML += "</div>";
+                  optionsHTML += `</div>
+              <div class="mt-4">
+                <button onclick="addMcqOption(${sectionIndex}, ${questionIndex})" class="text-sm font-medium text-[#736b8e] hover:text-[#5f5778]">
+                  + Add Option
+                </button>
+              </div>`;
                   contentHTML = optionsHTML;
+                } else if (q.type === "Short Answer") {
+                  contentHTML = `
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <p class="text-sm flex items-start">
+                  <strong class="font-medium text-slate-500 mr-2 mt-1 flex-shrink-0">Answer:</strong>
+                  <div class="flex-grow p-1 outline-none border border-transparent focus-within:border-slate-300 rounded-md bg-green-50 text-green-800 font-mono"
+                       contenteditable="true"
+                       oninput="updateShortAnswer(event, ${sectionIndex}, ${questionIndex})">${
+                    q.answer || ""
+                  }</div>
+                </p>
+              </div>
+            `;
                 } else {
                   contentHTML = `<div class="mt-4 pt-3 border-t border-slate-100"><p class="text-sm"><strong class="font-medium text-slate-500">Answer:</strong> <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
                     q.answer || "N/A"
                   }</span></p></div>`;
                 }
-
                 const isRequired = q.required || false;
 
+                const contextualAddToolbar = `
+            <div class="contextual-add-toolbar absolute top-1/2 -translate-y-1/2 left-full ml-4 z-10 flex-col items-center gap-1 p-1.5 bg-white border border-slate-200 rounded-lg shadow-lg">
+              <button onclick="addQuestionAfter(${sectionIndex}, ${questionIndex}, 'MCQ')" title="Add Multiple Choice" class="p-2 text-slate-500 hover:bg-[#736b8e] hover:text-white rounded-md transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </button>
+              <button onclick="addQuestionAfter(${sectionIndex}, ${questionIndex}, 'Short Answer')" title="Add Short Answer" class="p-2 text-slate-500 hover:bg-[#736b8e] hover:text-white rounded-md transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h8m-8 6h16" /></svg>
+              </button>
+            </div>
+          `;
+
                 questionBlock.innerHTML = `
-                        <p class="font-semibold text-slate-800">${questionCounter}. ${
-                  q.text || "Question text not available."
-                }</p>
-                        ${contentHTML}
-                        <div class="question-toolbar mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-4 text-sm">
-                            <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                            </button>
-                            <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                            <div class="border-l h-6 border-slate-200 mx-2"></div>
-                            <div class="flex items-center gap-2">
-                                <span class="font-medium text-slate-600">Required</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
+            ${contextualAddToolbar}
+            <div class="flex items-start">
+              <span class="font-semibold text-slate-800 pt-1">${questionCounter}.</span>
+              <div class="ml-2 w-full">
+                <div class="question-text-editor outline-none p-1 border border-transparent focus:border-slate-300 rounded-md" 
+                     id="editor-${sectionIndex}-${questionIndex}" 
+                     contenteditable="true">${
+                       q.text || "Question text not available."
+                     }</div>
+                <div class="custom-toolbar hidden mt-2 py-1 flex items-center gap-1 border rounded-lg p-1 bg-slate-50 shadow-sm">
+                    <button onclick="formatDoc('bold')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Bold"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
+                    <button onclick="formatDoc('italic')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Italic"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
+                    <button onclick="formatDoc('underline')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Underline"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path><line x1="4" y1="21" x2="20" y2="21"></line></svg></button>
+                </div>
+                ${contentHTML}
+                <div class="question-toolbar mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-center sm:justify-end items-center gap-2 text-sm">
+                  <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                  <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                  <div class="border-l h-6 border-slate-200 mx-2 hidden sm:block"></div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-600">Required</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
                   isRequired ? "checked" : ""
                 }>
-                                    <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
-                                </label>
-                            </div>
-                        </div>
-                    `;
+                      <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>`;
 
-                // *** THIS IS THE IMPROVED CLICK LOGIC ***
-                questionBlock.addEventListener("click", (event) => {
-                  // If the click is on a button inside the toolbar, do nothing.
-                  if (event.target.closest("button")) {
-                    event.stopPropagation(); // Stop click from bubbling up
-                    return;
-                  }
+                questionsContainer.appendChild(questionBlock);
 
-                  // Check if this block is already active
-                  const wasActive =
-                    questionBlock.classList.contains("question-active");
+                const editorDiv = questionBlock.querySelector(
+                  ".question-text-editor"
+                );
+                const customToolbar =
+                  questionBlock.querySelector(".custom-toolbar");
 
-                  // Remove active class and ring from ALL question blocks
+                // Event listener to show/hide toolbars and set active state
+                editorDiv.addEventListener("focus", () => {
                   document.querySelectorAll(".question-block").forEach((el) => {
                     el.classList.remove(
                       "question-active",
                       "ring-2",
-                      "ring-[#736b8e]",
-                      "border-transparent"
+                      "ring-[#736b8e]"
                     );
                   });
+                  questionBlock.classList.add(
+                    "question-active",
+                    "ring-2",
+                    "ring-[#736b8e]"
+                  );
+                  customToolbar.classList.remove("hidden");
+                });
 
-                  // If it wasn't already active, make it active now
-                  if (!wasActive) {
-                    questionBlock.classList.add(
-                      "question-active",
-                      "ring-2",
-                      "ring-[#736b8e]",
-                      "border-transparent"
-                    );
+                // Event listener to update question text in the data object
+                editorDiv.addEventListener("input", () => {
+                  if (
+                    fullPaperPayload.sections[sectionIndex]?.questions[
+                      questionIndex
+                    ]
+                  ) {
+                    fullPaperPayload.sections[sectionIndex].questions[
+                      questionIndex
+                    ].text = editorDiv.innerHTML;
                   }
                 });
 
-                questionsContainer.appendChild(questionBlock);
                 questionCounter++;
               });
             }
@@ -1621,12 +1621,12 @@
         );
         generateButton.disabled = true;
         generateButton.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Generating...
-        `;
+    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    Generating...
+    `;
 
         const aiPostData = {
           job_title: formData.jobTitle,
@@ -1677,7 +1677,2061 @@
           generateButton.innerHTML = "Generate";
         }
       }
+      document.addEventListener("DOMContentLoaded", function () {
+        // Sidebar toggle
+        const sidebar = document.getElementById("sidebar");
+        const toggleButton = document.getElementById("sidebar-toggle");
+        const sidebarLogo = document.getElementById("sidebar-logo");
+        const sidebarTexts = document.querySelectorAll(".sidebar-text");
+        const sidebarHeader = document.getElementById("sidebar-header");
 
+        if (toggleButton) {
+          toggleButton.addEventListener("click", () => {
+            sidebar.classList.toggle("w-64");
+            sidebar.classList.toggle("w-20");
+            sidebarLogo.classList.toggle("hidden");
+            sidebarHeader.classList.toggle("justify-between");
+            sidebarHeader.classList.toggle("justify-center");
+            sidebarTexts.forEach((text) => {
+              text.classList.toggle("hidden");
+            });
+          });
+        }
+
+        // Profile dropdown
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        if (userMenuButton && userMenu) {
+          userMenuButton.addEventListener("click", (event) => {
+            userMenu.classList.toggle("hidden");
+            event.stopPropagation();
+          });
+
+          document.addEventListener("click", (event) => {
+            if (
+              !userMenu.classList.contains("hidden") &&
+              !userMenuButton.contains(event.target)
+            ) {
+              userMenu.classList.add("hidden");
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Powered Assessment Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+
+      .step-transition {
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+      }
+
+      .step-hidden {
+        display: none;
+      }
+
+      .step-hiding {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      .step-active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .question-toolbar {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      .question-active .question-toolbar {
+        opacity: 1;
+      }
+      /* --- START: New CSS for contextual toolbar --- */
+      .contextual-add-toolbar {
+        display: none;
+      }
+      .question-active .contextual-add-toolbar {
+        display: flex;
+      }
+      /* --- END: New CSS --- */
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800 flex min-h-screen font-sans">
+    {% include 'partials/sidebar.html' %}
+    <div class="flex-1 flex flex-col overflow-hidden">
+      {% include 'partials/header.html' with page_title="" %}
+      <main class="flex-1 p-6 md:p-10">
+        <div id="form-container" class="max-w-4xl mx-auto relative">
+          <div
+            id="step-1"
+            class="step-transition step-active bg-white p-8 rounded-xl shadow-lg max-w-4xl w-full"
+          >
+            <h1 class="text-3xl font-bold mb-8 text-slate-800">
+              Create Question Paper
+            </h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+              <div>
+                <label
+                  for="jobTitle"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                  >Job Title <span class="text-red-500">*</span></label
+                >
+                <input
+                  type="text"
+                  id="jobTitle"
+                  placeholder="Enter Job Title"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                  minlength="3"
+                />
+                <div id="jobTitleError" class="text-red-500 text-sm mt-2"></div>
+              </div>
+              <div>
+                <label
+                  for="department"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Department <span class="text-red-500">*</span>
+                </label>
+
+                <div class="relative">
+                  <select
+                    id="department"
+                    class="w-full px-4 pr-10 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition appearance-none"
+                  >
+                    <option value="" disabled selected>
+                      Select Department
+                    </option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}">{{ dept.name }}</option>
+                    {% endfor %}
+                  </select>
+
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
+                  >
+                    <svg
+                      class="h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M6 8l4 4 4-4"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div
+                  id="departmentError"
+                  class="text-red-500 text-sm mt-2"
+                ></div>
+              </div>
+              <!-- <div>
+                <label
+                  for="department"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                  >Department <span class="text-red-500">*</span></label
+                >
+                <select
+                  id="department"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                >
+                  <option value="" disabled selected>Select Department</option>
+                  {% for dept in departments %}
+                  <option value="{{ dept.id }}">{{ dept.name }}</option>
+                  {% endfor %}
+                </select>
+                <div
+                  id="departmentError"
+                  class="text-red-500 text-sm mt-2"
+                ></div>
+              </div> -->
+              <div>
+                <label
+                  for="skills-input"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Required Skills <span class="text-red-500">*</span>
+                </label>
+                <div class="relative" id="skills-wrapper">
+                  <div
+                    id="skills-container"
+                    class="w-full flex flex-wrap items-center gap-2 p-2 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#736b8e] focus-within:border-transparent transition min-h-[46px]"
+                  >
+                    <input
+                      type="text"
+                      id="skills-input"
+                      placeholder="Select skills..."
+                      class="flex-1 border-none focus:ring-0 outline-none p-1 placeholder-slate-400"
+                    />
+                  </div>
+                  <input type="hidden" id="skills-hidden-input" name="skills" />
+
+                  <div
+                    id="skills-dropdown"
+                    class="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"
+                  ></div>
+                </div>
+                <div id="skillsError" class="text-red-500 text-sm mt-2"></div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1"
+                  >Experience (Years) <span class="text-red-500">*</span></label
+                >
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1"
+                      >Min</label
+                    >
+                    <div
+                      class="flex items-center border border-slate-300 rounded-lg bg-white"
+                    >
+                      <button
+                        onclick="updateCount(this, -1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        id="minExp"
+                        value="0"
+                        min="0"
+                        readonly
+                        class="w-full text-center border-l border-r py-2 focus:outline-none placeholder-slate-400 cursor-default bg-slate-50"
+                      />
+                      <button
+                        onclick="updateCount(this, 1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1"
+                      >Max</label
+                    >
+                    <div
+                      class="flex items-center border border-slate-300 rounded-lg bg-white"
+                    >
+                      <button
+                        onclick="updateCount(this, -1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        id="maxExp"
+                        value="1"
+                        min="0"
+                        readonly
+                        class="w-full text-center border-l border-r py-2 focus:outline-none placeholder-slate-400 cursor-default bg-slate-50"
+                      />
+                      <button
+                        onclick="updateCount(this, 1)"
+                        class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div id="expError" class="text-red-500 text-sm mt-2"></div>
+              </div>
+            </div>
+
+            <div class="mt-12 flex justify-start">
+              <button
+                id="nextButton"
+                onclick="nextStep()"
+                class="w-full sm:w-auto bg-[#736b8e] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          <div id="step-2" class="step-transition step-hidden">
+            <h1 class="text-3xl font-bold mb-8 text-slate-800">
+              Configure Assessment
+            </h1>
+            <div
+              class="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200"
+            >
+              <h3 class="text-lg font-semibold text-slate-800">
+                Number of Questions
+              </h3>
+              <p class="text-sm text-slate-500 mt-1 mb-6">
+                Set the question count for each section of the test.
+              </p>
+              <div
+                id="sectionsError"
+                class="text-red-500 text-sm -mt-4 mb-4 h-4"
+              ></div>
+              <div
+                id="sections-container"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+              ></div>
+              <div class="mt-8 border-t border-slate-200 pt-6">
+                <label
+                  for="duration"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Test Duration
+                  <span class="text-red-500">*</span>
+                </label>
+
+                <div class="relative w-full md:w-1/2">
+                  <select
+                    id="duration"
+                    class="w-full px-4 pr-10 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition appearance-none"
+                  >
+                    <option value="" disabled selected>Select duration</option>
+                    <option value="30">30 Minutes</option>
+                    <option value="45">45 Minutes</option>
+                    <option value="60">1 Hour</option>
+                    <option value="90">1 Hour 30 Minutes</option>
+                    <option value="120">2 Hours</option>
+                    <option value="150">2 Hours 30 Minutes</option>
+                    <option value="180">3 Hours</option>
+                  </select>
+
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
+                  >
+                    <svg
+                      class="h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M6 8l4 4 4-4"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div id="durationError" class="text-red-500 text-sm mt-2"></div>
+              </div>
+              <!-- <div class="mt-8 border-t border-slate-200 pt-6">
+                <label
+                  for="duration"
+                  class="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Test Duration
+                  <span class="text-red-500">*</span>
+                </label>
+                <select
+                  id="duration"
+                  class="w-full md:w-1/2 px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] focus:border-transparent transition"
+                >
+                  <option value="" disabled selected>Select duration</option>
+                  <option value="30">30 Minutes</option>
+                  <option value="45">45 Minutes</option>
+                  <option value="60">1 Hour</option>
+                  <option value="90">1 Hour 30 Minutes</option>
+                  <option value="120">2 Hours</option>
+                  <option value="150">2 Hours 30 Minutes</option>
+                  <option value="180">3 Hours</option>
+                </select>
+                <div id="durationError" class="text-red-500 text-sm mt-2"></div>
+              </div> -->
+            </div>
+            <div class="mt-12 flex flex-col sm:flex-row w-full gap-4">
+              <button
+                onclick="prevStep()"
+                class="w-full sm:w-auto bg-slate-200 text-slate-800 font-semibold px-8 py-3 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onclick="nextStep()"
+                class="w-full sm:w-auto bg-[#736b8e] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          <div id="step-3" class="step-transition step-hidden">
+            <h1 class="text-3xl font-bold mb-8 text-slate-800">
+              Review & Generate
+            </h1>
+            <div
+              class="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200"
+            >
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
+                <div class="space-y-6">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-800">
+                      Role Details
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                      Confirm the details for the position.
+                    </p>
+                  </div>
+                  <div class="space-y-4">
+                    <div
+                      class="flex justify-between items-baseline pb-2 border-b border-slate-100"
+                    >
+                      <p class="text-sm font-medium text-slate-500">
+                        Job Title
+                      </p>
+                      <p
+                        id="review-jobTitle"
+                        class="font-semibold text-slate-800 text-base text-right"
+                      ></p>
+                    </div>
+                    <div
+                      class="flex justify-between items-baseline pb-2 border-b border-slate-100"
+                    >
+                      <p class="text-sm font-medium text-slate-500">
+                        Department
+                      </p>
+                      <p
+                        id="review-department"
+                        class="font-semibold text-slate-800 text-base text-right"
+                      ></p>
+                    </div>
+                    <div
+                      class="flex justify-between items-baseline pb-2 border-b border-slate-100"
+                    >
+                      <p class="text-sm font-medium text-slate-500">
+                        Experience
+                      </p>
+                      <p
+                        id="review-experience"
+                        class="font-semibold text-slate-800 text-base text-right"
+                      ></p>
+                    </div>
+                    <div class="flex items-start">
+                      <p
+                        class="w-32 flex-shrink-0 text-sm font-medium text-slate-500"
+                      >
+                        Required Skills
+                      </p>
+                      <div
+                        id="review-skills"
+                        class="flex flex-1 flex-wrap gap-2 justify-end"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="space-y-6 lg:border-l lg:pl-12 border-slate-200">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-800">
+                      Assessment Structure
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                      A summary of the test format.
+                    </p>
+                  </div>
+                  <div
+                    class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center"
+                  >
+                    <p class="text-sm font-medium text-slate-500">
+                      Test Duration
+                    </p>
+                    <p
+                      id="review-duration"
+                      class="font-semibold text-slate-800 text-lg text-right"
+                    ></p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-slate-500 mb-2">
+                      Sections
+                    </p>
+                    <div
+                      id="review-sections"
+                      class="space-y-2 border rounded-lg p-4"
+                    ></div>
+                  </div>
+                  <div
+                    class="bg-[#736b8e] text-white p-4 rounded-lg flex justify-between items-center"
+                  >
+                    <span class="font-semibold">Total Questions</span>
+                    <span
+                      id="review-total"
+                      class="text-xl font-bold bg-white text-[#736b8e] px-3 py-1 rounded-full"
+                    ></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-12 flex flex-col sm:flex-row w-full gap-4">
+              <button
+                onclick="prevStep()"
+                class="w-full sm:w-auto bg-slate-200 text-slate-800 font-semibold px-8 py-3 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onclick="generatePaper()"
+                class="w-full sm:w-auto bg-[#736b8e] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="paper-container"
+          data-paper-id="{{ paper.id }}"
+          class="max-w-4xl mx-auto hidden"
+        >
+          <div
+            class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8"
+          >
+            <h1
+              id="paper-header"
+              class="text-2xl sm:text-3xl font-bold text-slate-800"
+            ></h1>
+            <div class="flex gap-2 items-center">
+              <button
+                onclick="savePaper()"
+                class="flex-1 sm:flex-none bg-[#736b8e] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+          <div
+            class="relative space-y-6 bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200 mb-8"
+          >
+            <button
+              onclick="openEditModal()"
+              title="Edit Details"
+              class="absolute top-4 right-4 p-2 text-slate-500 rounded-lg hover:bg-slate-200 hover:text-slate-800 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Job Title:</span
+              >
+              <span id="paper-jobTitle" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Department:</span
+              >
+              <span id="paper-department" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Duration:</span
+              >
+              <span id="paper-duration" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mb-1 sm:mb-0"
+                >Experience:</span
+              >
+              <span id="paper-experience" class="text-slate-800"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row">
+              <span
+                class="w-full sm:w-32 font-semibold text-slate-600 mt-1 mb-1 sm:mb-0"
+                >Skills:</span
+              >
+              <div id="paper-skills" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold mb-6 text-slate-800">Questions:</h2>
+            <div class="space-y-8" id="paper-questions"></div>
+
+            <div
+              class="mt-10 pt-6 border-t border-slate-200 flex justify-end gap-2 items-center"
+            >
+              <button
+                onclick="savePaper()"
+                class="flex-1 sm:flex-none bg-[#736b8e] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#5f5778] transition-colors shadow-md hover:shadow-lg"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div
+      id="edit-modal"
+      class="fixed inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div
+        id="edit-modal-content"
+        class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all"
+      >
+        <div
+          class="flex justify-between items-center p-5 border-b border-slate-200"
+        >
+          <h3 class="text-xl font-bold text-slate-800">Edit Paper Details</h3>
+          <button
+            onclick="closeEditModal()"
+            class="text-slate-400 hover:text-slate-600"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <div>
+            <label
+              for="edit-jobTitle"
+              class="block text-sm font-medium text-slate-700 mb-1"
+              >Job Title <span class="text-red-500">*</span></label
+            >
+            <input
+              type="text"
+              id="edit-jobTitle"
+              class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#736b8e] transition"
+            />
+            <div
+              id="edit-jobTitleError"
+              class="text-red-500 text-sm mt-1"
+            ></div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1"
+              >Required Skills <span class="text-red-500">*</span></label
+            >
+            <div class="relative" id="edit-skills-wrapper">
+              <div
+                id="edit-skills-container"
+                class="w-full flex flex-wrap items-center gap-2 p-2 bg-white border border-slate-300 rounded-lg min-h-[46px] focus-within:ring-2 focus-within:ring-[#736b8e]"
+              >
+                <input
+                  type="text"
+                  id="edit-skills-input"
+                  placeholder="Select skills..."
+                  class="flex-1 border-none focus:ring-0 outline-none p-1"
+                />
+              </div>
+              <div
+                id="edit-skills-dropdown"
+                class="absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"
+              ></div>
+            </div>
+            <div id="edit-skillsError" class="text-red-500 text-sm mt-1"></div>
+          </div>
+          <div>
+            <label
+              for="edit-duration"
+              class="block text-sm font-medium text-slate-700 mb-1"
+            >
+              Test Duration <span class="text-red-500">*</span>
+            </label>
+
+            <div class="relative">
+              <select
+                id="edit-duration"
+                class="w-full px-4 pr-10 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] transition appearance-none"
+              >
+                <option value="" disabled>Select duration</option>
+                <option value="30">30 Minutes</option>
+                <option value="45">45 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="90">1 Hour 30 Minutes</option>
+                <option value="120">2 Hours</option>
+                <option value="150">2 Hours 30 Minutes</option>
+                <option value="180">3 Hours</option>
+              </select>
+
+              <div
+                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
+              >
+                <svg
+                  class="h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M6 8l4 4 4-4"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <div
+              id="edit-durationError"
+              class="text-red-500 text-sm mt-1"
+            ></div>
+          </div>
+          <!-- <div>
+            <label
+              for="edit-duration"
+              class="block text-sm font-medium text-slate-700 mb-1"
+              >Test Duration <span class="text-red-500">*</span></label
+            >
+            <select
+              id="edit-duration"
+              class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#736b8e] transition"
+            >
+              <option value="" disabled>Select duration</option>
+              <option value="30">30 Minutes</option>
+              <option value="45">45 Minutes</option>
+              <option value="60">1 Hour</option>
+              <option value="90">1 Hour 30 Minutes</option>
+              <option value="120">2 Hours</option>
+              <option value="150">2 Hours 30 Minutes</option>
+              <option value="180">3 Hours</option>
+            </select>
+            <div
+              id="edit-durationError"
+              class="text-red-500 text-sm mt-1"
+            ></div>
+          </div> -->
+        </div>
+
+        <div
+          class="flex justify-end items-center gap-4 p-5 bg-slate-50 rounded-b-xl"
+        >
+          <button
+            onclick="closeEditModal()"
+            class="bg-slate-200 text-slate-800 font-semibold px-6 py-2.5 rounded-lg hover:bg-slate-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            id="save-changes-button"
+            class="bg-[#736b8e] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-[#5f5778] transition-colors flex items-center"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- START: DATA AND CONFIGURATION ---
+      const sectionCache = {};
+      let currentStep = 1;
+      let formData = { sections: {} };
+      let fullPaperPayload = {};
+      let allSkills = [];
+      let selectedSkills = [];
+
+      // --- DOM CONTENT LOADED ---
+      document.addEventListener("DOMContentLoaded", function () {
+        fetchSkills();
+        const departmentDropdown = document.getElementById("department");
+        if (departmentDropdown) {
+          departmentDropdown.addEventListener("change", (event) => {
+            const departmentId = event.target.value;
+            if (departmentId) {
+              renderSections(departmentId);
+            }
+          });
+        }
+        const skillsContainer = document.getElementById("skills-container");
+        const skillsWrapper = document.getElementById("skills-wrapper");
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        if (skillsContainer) {
+          skillsContainer.addEventListener("click", () => {
+            if (skillsDropdown) skillsDropdown.classList.remove("hidden");
+            document.getElementById("skills-input")?.focus();
+          });
+        }
+        document.addEventListener("click", (e) => {
+          if (skillsWrapper && !skillsWrapper.contains(e.target)) {
+            if (skillsDropdown) skillsDropdown.classList.add("hidden");
+          }
+        });
+
+        // Connect the save changes button in the modal
+        document.getElementById("save-changes-button").onclick = saveChanges;
+      });
+
+      // --- SKILLS COMPONENT FUNCTIONS ---
+      async function fetchSkills() {
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        try {
+          const response = await fetch("{% url 'get_skills_json' %}");
+          if (!response.ok) throw new Error("Failed to fetch skills.");
+          const data = await response.json();
+          allSkills = data.skills.map((skill) => skill.name);
+          renderDropdown();
+        } catch (error) {
+          console.error("Error fetching skills:", error);
+          if (skillsDropdown) {
+            skillsDropdown.innerHTML =
+              '<div class="p-2 text-red-500">Could not load skills.</div>';
+          }
+        }
+      }
+
+      function renderDropdown() {
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        if (!skillsDropdown) return;
+        skillsDropdown.innerHTML = "";
+        const availableSkills = allSkills.filter(
+          (skill) => !selectedSkills.includes(skill)
+        );
+        if (availableSkills.length === 0) {
+          skillsDropdown.innerHTML =
+            '<div class="p-3 text-sm text-slate-500">No more skills available.</div>';
+        } else {
+          availableSkills.forEach((skill) => {
+            const option = document.createElement("div");
+            option.textContent = skill;
+            option.className = "px-4 py-2 cursor-pointer hover:bg-slate-100";
+            option.addEventListener("click", () => selectSkill(skill));
+            skillsDropdown.appendChild(option);
+          });
+        }
+      }
+      function renderTags() {
+        const skillsContainer = document.getElementById("skills-container");
+        const skillsInput = document.getElementById("skills-input");
+        const skillsHiddenInput = document.getElementById(
+          "skills-hidden-input"
+        );
+        if (!skillsContainer || !skillsInput || !skillsHiddenInput) return;
+        document.querySelectorAll(".skill-tag").forEach((tag) => tag.remove());
+        selectedSkills.forEach((skill) => {
+          const tag = document.createElement("span");
+          tag.className =
+            "skill-tag flex items-center bg-[#736b8e] text-white text-sm font-medium pl-3 pr-2 py-1 rounded-full";
+          tag.innerHTML = `
+          ${skill}
+          <button type="button" class="ml-2 text-indigo-100 hover:text-white focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+          </button>
+    `;
+          tag.querySelector("button").addEventListener("click", (e) => {
+            e.stopPropagation();
+            deselectSkill(skill);
+          });
+          skillsContainer.insertBefore(tag, skillsInput);
+        });
+        skillsHiddenInput.value = selectedSkills.join(",");
+        skillsInput.placeholder =
+          selectedSkills.length > 0 ? "" : "Select skills...";
+      }
+
+      function selectSkill(skill) {
+        const skillsInput = document.getElementById("skills-input");
+        const skillsDropdown = document.getElementById("skills-dropdown");
+        if (!selectedSkills.includes(skill)) {
+          selectedSkills.push(skill);
+          renderTags();
+          renderDropdown();
+        }
+        if (skillsInput) skillsInput.value = "";
+        if (skillsDropdown) skillsDropdown.classList.add("hidden");
+      }
+
+      function deselectSkill(skill) {
+        selectedSkills = selectedSkills.filter((s) => s !== skill);
+        renderTags();
+        renderDropdown();
+      }
+
+      // --- FORM STATE AND NAVIGATION ---
+      function resetFormData() {
+        formData = { sections: {} };
+        selectedSkills = [];
+        renderTags();
+        renderDropdown();
+      }
+
+      function showStep(step) {
+        document.querySelectorAll("[id^='step-']").forEach((el) => {
+          el.classList.add("step-hidden");
+          el.classList.remove("step-active");
+        });
+        const activeStep = document.getElementById(`step-${step}`);
+        if (activeStep) {
+          setTimeout(() => {
+            activeStep.classList.remove("step-hidden");
+            activeStep.classList.add("step-active");
+          }, 50);
+        }
+      }
+
+      function collectStepData(step) {
+        if (step === 1) {
+          formData.jobTitle = document.getElementById("jobTitle").value;
+          const deptSelect = document.getElementById("department");
+          formData.departmentId = deptSelect.value;
+          formData.departmentName =
+            deptSelect.selectedIndex > 0
+              ? deptSelect.options[deptSelect.selectedIndex].text
+              : "";
+          formData.skills = document.getElementById(
+            "skills-hidden-input"
+          ).value;
+          formData.minExp = document.getElementById("minExp").value;
+          formData.maxExp = document.getElementById("maxExp").value;
+        } else if (step === 2) {
+          formData.sections = {};
+          document.querySelectorAll("#step-2 [data-section]").forEach((div) => {
+            const sectionName = div.dataset.section;
+            const count = div.querySelector("input").value;
+            if (parseInt(count, 10) > 0) {
+              formData.sections[sectionName] = parseInt(count, 10);
+            }
+          });
+          const durationSelect = document.getElementById("duration");
+          formData.duration = parseInt(durationSelect.value, 10) || 0;
+          formData.durationText =
+            durationSelect.selectedIndex > 0
+              ? durationSelect.options[durationSelect.selectedIndex].text
+              : "";
+        }
+      }
+
+      async function renderSections(departmentId) {
+        const container = document.getElementById("sections-container");
+        if (!container || !departmentId) {
+          if (container)
+            container.innerHTML =
+              '<p class="text-slate-500 col-span-2">Please select a department.</p>';
+          return;
+        }
+        container.innerHTML =
+          '<p class="text-slate-500 col-span-2">Loading sections...</p>';
+        if (sectionCache[departmentId]) {
+          buildSectionsHTML(sectionCache[departmentId]);
+          return;
+        }
+        try {
+          const response = await fetch(
+            `/departments/${departmentId}/sections/`
+          );
+          if (!response.ok) throw new Error(`Failed to load sections.`);
+          const data = await response.json();
+          sectionCache[departmentId] = data.sections;
+          buildSectionsHTML(data.sections);
+        } catch (error) {
+          console.error("Error fetching sections:", error);
+          container.innerHTML = `<p class="text-red-500 col-span-2">Could not load sections.</p>`;
+        }
+      }
+
+      function buildSectionsHTML(sections) {
+        const container = document.getElementById("sections-container");
+        container.innerHTML = "";
+        if (!sections || sections.length === 0) {
+          container.innerHTML =
+            '<p class="text-slate-500 col-span-2">No sections found for this department.</p>';
+          return;
+        }
+        sections.forEach((sectionName) => {
+          const count = formData.sections?.[sectionName] || 1;
+          const sectionHTML = `
+            <div data-section="${sectionName}" class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <label class="font-medium text-slate-700">${sectionName} <span class="text-red-500">*</span></label>
+                <div class="flex items-center border border-slate-300 rounded-lg bg-white w-fit mt-2 sm:mt-0">
+                    <button onclick="updateCount(this, -1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg transition-colors">-</button>
+                    <input type="number" value="${count}" class="w-16 text-center font-semibold text-lg text-[#736b8e] border-l border-r py-1.5 focus:outline-none bg-transparent" />
+                    <button onclick="updateCount(this, 1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg transition-colors">+</button>
+                </div>
+            </div>`;
+          container.insertAdjacentHTML("beforeend", sectionHTML);
+        });
+      }
+
+      function validateExperience() {
+        const minExpInput = document.getElementById("minExp");
+        const maxExpInput = document.getElementById("maxExp");
+        let minExp = parseInt(minExpInput.value, 10) || 0;
+        let maxExp = parseInt(maxExpInput.value, 10) || 0;
+        if (minExp > maxExp) {
+          maxExpInput.value = minExp;
+        }
+      }
+      function validateStep1() {
+        let isValid = true;
+        const jobTitleInput = document.getElementById("jobTitle");
+        const jobTitleError = document.getElementById("jobTitleError");
+        const departmentInput = document.getElementById("department");
+        const departmentError = document.getElementById("departmentError");
+        const skillsHiddenInput = document.getElementById(
+          "skills-hidden-input"
+        );
+        const skillsContainer = document.getElementById("skills-container");
+        const skillsError = document.getElementById("skillsError");
+        const minExpInput = document.getElementById("minExp");
+        const maxExpInput = document.getElementById("maxExp");
+        const expError = document.getElementById("expError");
+        jobTitleError.textContent = "";
+        jobTitleInput.classList.remove("border-red-500");
+        const jobTitleValue = jobTitleInput.value.trim();
+        if (!jobTitleValue) {
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "This field is required.";
+        } else if (jobTitleValue.length < 3) {
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "Must be at least 3 characters long.";
+        } else if (jobTitleValue.length > 30) {
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "Cannot be more than 30 characters.";
+        }
+        departmentError.textContent = "";
+        departmentInput.classList.remove("border-red-500");
+        if (!departmentInput.value) {
+          isValid = false;
+          departmentInput.classList.add("border-red-500");
+          departmentError.textContent = "This field is required.";
+        }
+        skillsError.textContent = "";
+        if (skillsContainer) skillsContainer.classList.remove("border-red-500");
+        if (!skillsHiddenInput.value.trim()) {
+          isValid = false;
+          if (skillsContainer) skillsContainer.classList.add("border-red-500");
+          skillsError.textContent = "This field is required.";
+        }
+        expError.textContent = "";
+        const minExp = parseInt(minExpInput.value, 10);
+        const maxExp = parseInt(maxExpInput.value, 10);
+        if (minExp === 0 && maxExp === 0) {
+          isValid = false;
+          expError.textContent = "Please provide a valid experience range.";
+        }
+        validateExperience();
+        return isValid;
+      }
+      function validateStep2() {
+        let isValid = true;
+        let totalQuestions = 0;
+        const sectionsErrorDiv = document.getElementById("sectionsError");
+        document.querySelectorAll("#step-2 [data-section]").forEach((div) => {
+          totalQuestions += parseInt(div.querySelector("input").value, 10) || 0;
+        });
+        if (sectionsErrorDiv) sectionsErrorDiv.textContent = "";
+        if (totalQuestions <= 0) {
+          isValid = false;
+          if (sectionsErrorDiv)
+            sectionsErrorDiv.textContent = "Please add at least one question.";
+        }
+        const durationSelect = document.getElementById("duration");
+        const durationError = document.getElementById("durationError");
+        durationSelect.classList.remove("border-red-500");
+        if (durationError) durationError.textContent = "";
+        if (!durationSelect.value) {
+          isValid = false;
+          durationSelect.classList.add("border-red-500");
+          if (durationError)
+            durationError.textContent = "Please select a duration.";
+        }
+        return isValid;
+      }
+
+      function nextStep() {
+        if (currentStep === 1 && !validateStep1()) return;
+        if (currentStep === 2 && !validateStep2()) return;
+        collectStepData(currentStep);
+        if (currentStep < 3) {
+          currentStep++;
+          if (currentStep === 2) renderSections(formData.departmentId);
+          if (currentStep === 3) populateReview();
+          showStep(currentStep);
+        }
+      }
+
+      function prevStep() {
+        if (currentStep > 1) {
+          currentStep--;
+          showStep(currentStep);
+        }
+      }
+
+      function updateCount(button, change) {
+        const input = button.parentElement.querySelector("input");
+        let newValue = (parseInt(input.value, 10) || 0) + change;
+        input.value = Math.max(0, newValue);
+        if (input.id === "minExp" || input.id === "maxExp") {
+          validateExperience();
+        }
+      }
+
+      function populateReview() {
+        document.getElementById("review-jobTitle").textContent =
+          formData.jobTitle || "N/A";
+        document.getElementById("review-department").textContent =
+          formData.departmentName || "N/A";
+        document.getElementById("review-duration").textContent =
+          formData.durationText || "N/A";
+        document.getElementById(
+          "review-experience"
+        ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+
+        const skillsContainer = document.getElementById("review-skills");
+        skillsContainer.innerHTML = "";
+        if (formData.skills) {
+          formData.skills.split(",").forEach((skill) => {
+            if (skill.trim()) {
+              const skillTag = document.createElement("span");
+              skillTag.className =
+                "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+              skillTag.textContent = skill.trim();
+              skillsContainer.appendChild(skillTag);
+            }
+          });
+        }
+        const sectionsContainer = document.getElementById("review-sections");
+        sectionsContainer.innerHTML = "";
+        let totalQuestions = 0;
+        for (const section in formData.sections) {
+          const count = formData.sections[section];
+          totalQuestions += count;
+          sectionsContainer.innerHTML += `
+              <div class="flex justify-between items-center text-slate-700">
+                  <span>${section}</span>
+                  <span class="font-medium bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">${count} Questions</span>
+              </div>`;
+        }
+        document.getElementById("review-total").textContent = totalQuestions;
+      }
+
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      async function savePaper() {
+        const saveButtons = document.querySelectorAll(
+          'button[onclick^="savePaper"]'
+        );
+        saveButtons.forEach((button) => {
+          button.disabled = true;
+          button.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            Saving...`;
+        });
+
+        try {
+          const response = await fetch("{% url 'save_paper' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify(fullPaperPayload),
+          });
+
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || "Failed to save the paper.");
+          }
+          alert(result.message);
+          resetFormData();
+          window.location.href = result.redirect_url;
+        } catch (error) {
+          console.error("Save error:", error);
+          alert(`Could not save the paper: ${error.message}`);
+        } finally {
+          saveButtons.forEach((button) => {
+            button.disabled = false;
+            button.textContent = "Save";
+          });
+        }
+      }
+
+      // ======================================================
+      // ============= CORRECTED: EDIT MODAL SCRIPT ===========
+      // ======================================================
+
+      // Global variables for the edit modal's skills component
+      let editSelectedSkills = [];
+      let allEditSkills = []; // This will be a copy of the main `allSkills` array
+
+      function openEditModal() {
+        // 1. Populate modal fields from the current data
+        document.getElementById("edit-jobTitle").value =
+          fullPaperPayload.job_title;
+        document.getElementById("edit-duration").value =
+          fullPaperPayload.duration;
+
+        // 2. Set up skills for the modal
+        allEditSkills = [...allSkills];
+
+        editSelectedSkills = fullPaperPayload.skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        renderEditModalTags();
+        renderEditModalDropdown();
+
+        // 3. Show the modal
+        document.getElementById("edit-modal").classList.remove("hidden");
+      }
+
+      function closeEditModal() {
+        document.getElementById("edit-modal").classList.add("hidden");
+        // Clear previous error messages
+        document.getElementById("edit-jobTitleError").textContent = "";
+        document.getElementById("edit-skillsError").textContent = "";
+        document.getElementById("edit-durationError").textContent = "";
+        document
+          .getElementById("edit-jobTitle")
+          .classList.remove("border-red-500");
+        document
+          .getElementById("edit-skills-container")
+          .classList.remove("border-red-500");
+        document
+          .getElementById("edit-duration")
+          .classList.remove("border-red-500");
+      }
+
+      function saveChanges() {
+        // 1. Frontend Validation
+        let isValid = true;
+        const newJobTitle = document
+          .getElementById("edit-jobTitle")
+          .value.trim();
+        const newDurationSelect = document.getElementById("edit-duration");
+        const newDurationValue = newDurationSelect.value;
+        const newDurationText =
+          newDurationSelect.options[newDurationSelect.selectedIndex].text;
+
+        // Reset errors
+        document.getElementById("edit-jobTitleError").textContent = "";
+        document.getElementById("edit-skillsError").textContent = "";
+        document.getElementById("edit-durationError").textContent = "";
+        document
+          .getElementById("edit-jobTitle")
+          .classList.remove("border-red-500");
+        document
+          .getElementById("edit-skills-container")
+          .classList.remove("border-red-500");
+        newDurationSelect.classList.remove("border-red-500");
+
+        if (!newJobTitle) {
+          document.getElementById("edit-jobTitleError").textContent =
+            "This field is required.";
+          document
+            .getElementById("edit-jobTitle")
+            .classList.add("border-red-500");
+          isValid = false;
+        }
+        if (editSelectedSkills.length === 0) {
+          document.getElementById("edit-skillsError").textContent =
+            "Please select at least one skill.";
+          document
+            .getElementById("edit-skills-container")
+            .classList.add("border-red-500");
+          isValid = false;
+        }
+        if (!newDurationValue) {
+          document.getElementById("edit-durationError").textContent =
+            "This field is required.";
+          newDurationSelect.classList.add("border-red-500");
+          isValid = false;
+        }
+
+        if (!isValid) return;
+
+        // 2. Update the main data objects (fullPaperPayload and formData)
+        fullPaperPayload.job_title = newJobTitle;
+        fullPaperPayload.duration = parseInt(newDurationValue, 10);
+        fullPaperPayload.skills = editSelectedSkills.join(",");
+
+        formData.jobTitle = newJobTitle;
+        formData.duration = parseInt(newDurationValue, 10);
+        formData.skills = editSelectedSkills.join(",");
+        formData.durationText = newDurationText;
+
+        // 3. Re-render the paper display with the new data
+        displayGeneratedPaper(fullPaperPayload);
+
+        // 4. Close the modal
+        closeEditModal();
+        alert(
+          "Changes have been updated. Click the main 'Save' button when you're ready to finalize."
+        );
+      }
+
+      // --- EDIT MODAL SKILLS HELPER FUNCTIONS ---
+      function renderEditModalDropdown() {
+        const dropdown = document.getElementById("edit-skills-dropdown");
+        dropdown.innerHTML = "";
+        const available = allEditSkills.filter(
+          (s) => !editSelectedSkills.includes(s)
+        );
+        if (available.length === 0) {
+          dropdown.innerHTML = `<div class="p-3 text-sm text-slate-500">No more skills.</div>`;
+        } else {
+          available.forEach((skill) => {
+            const option = document.createElement("div");
+            option.textContent = skill;
+            option.className = "px-4 py-2 cursor-pointer hover:bg-slate-100";
+            option.addEventListener("click", () => selectEditModalSkill(skill));
+            dropdown.appendChild(option);
+          });
+        }
+      }
+
+      function renderEditModalTags() {
+        const container = document.getElementById("edit-skills-container");
+        const input = document.getElementById("edit-skills-input");
+        container.querySelectorAll(".skill-tag").forEach((tag) => tag.remove());
+        editSelectedSkills.forEach((skill) => {
+          const tag = document.createElement("span");
+          tag.className =
+            "skill-tag flex items-center bg-[#736b8e] text-white text-sm font-medium pl-3 pr-2 py-1 rounded-full";
+          tag.innerHTML = `${skill} <button type="button" class="ml-2 text-indigo-100 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>`;
+          tag.querySelector("button").addEventListener("click", (e) => {
+            e.stopPropagation();
+            deselectEditModalSkill(skill);
+          });
+          container.insertBefore(tag, input);
+        });
+        input.placeholder =
+          editSelectedSkills.length > 0 ? "" : "Select skills...";
+      }
+
+      function selectEditModalSkill(skill) {
+        if (!editSelectedSkills.includes(skill)) {
+          editSelectedSkills.push(skill);
+          renderEditModalTags();
+          renderEditModalDropdown();
+        }
+        document.getElementById("edit-skills-input").value = "";
+        document.getElementById("edit-skills-dropdown").classList.add("hidden");
+      }
+
+      function deselectEditModalSkill(skill) {
+        editSelectedSkills = editSelectedSkills.filter((s) => s !== skill);
+        renderEditModalTags();
+        renderEditModalDropdown();
+      }
+
+      document
+        .getElementById("edit-skills-container")
+        .addEventListener("click", () => {
+          document
+            .getElementById("edit-skills-dropdown")
+            .classList.remove("hidden");
+          document.getElementById("edit-skills-input").focus();
+        });
+      document.addEventListener("click", (e) => {
+        if (
+          !document.getElementById("edit-skills-wrapper").contains(e.target)
+        ) {
+          document
+            .getElementById("edit-skills-dropdown")
+            .classList.add("hidden");
+        }
+      });
+    </script>
+    <script>
+      // ======================================================
+      // START: PAPER GENERATION AND EDITING SCRIPT (CORRECTED)
+      // ======================================================
+
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + "=")) {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      // --- Text formatting function ---
+      function formatDoc(command, value = null) {
+        if (command) {
+          document.execCommand(command, false, value);
+        }
+      }
+
+      // --- START: NEW AND UPDATED FUNCTIONS ---
+
+      // --- New function to update MCQ option text ---
+      function updateMcqOption(
+        event,
+        sectionIndex,
+        questionIndex,
+        optionIndex
+      ) {
+        if (fullPaperPayload.sections[sectionIndex]?.questions[questionIndex]) {
+          fullPaperPayload.sections[sectionIndex].questions[
+            questionIndex
+          ].options[optionIndex] = event.target.innerHTML;
+        }
+      }
+
+      // --- New function to set the correct answer for an MCQ ---
+      function setCorrectAnswer(sectionIndex, questionIndex, optionIndex) {
+        const question =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        if (question) {
+          question.answer = question.options[optionIndex];
+          // A quick re-render to show the visual change of the correct answer
+          displayGeneratedPaper(fullPaperPayload);
+        }
+      }
+
+      // --- New function to delete an MCQ option ---
+      function deleteMcqOption(sectionIndex, questionIndex, optionIndex) {
+        event.stopPropagation();
+        const question =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        if (question && question.options.length > 1) {
+          // Prevent deleting the last option
+          question.options.splice(optionIndex, 1);
+          // If the deleted option was the answer, set the first option as the new answer
+          if (!question.options.includes(question.answer)) {
+            question.answer = question.options[0];
+          }
+          displayGeneratedPaper(fullPaperPayload);
+        } else {
+          alert("Each question must have at least one option.");
+        }
+      }
+
+      // --- New function to add a new MCQ option ---
+      function addMcqOption(sectionIndex, questionIndex) {
+        event.stopPropagation();
+        const question =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        if (question) {
+          question.options.push("New Option");
+          displayGeneratedPaper(fullPaperPayload);
+        }
+      }
+
+      // --- New function to update the Short Answer text ---
+      function updateShortAnswer(event, sectionIndex, questionIndex) {
+        if (fullPaperPayload.sections[sectionIndex]?.questions[questionIndex]) {
+          fullPaperPayload.sections[sectionIndex].questions[
+            questionIndex
+          ].answer = event.target.innerHTML;
+        }
+      }
+
+      // --- Function to add a question after the current one, based on type ---
+      function addQuestionAfter(sectionIndex, questionIndex, type) {
+        event.stopPropagation();
+
+        let newQuestionTemplate;
+
+        if (type === "MCQ") {
+          newQuestionTemplate = {
+            text: "<em>Write your new multiple choice question here...</em>",
+            type: "MCQ",
+            options: ["Option 1", "Option 2"],
+            answer: "Option 1",
+            required: false,
+          };
+        } else if (type === "Short Answer") {
+          newQuestionTemplate = {
+            text: "<em>Write your new short answer question here...</em>",
+            type: "Short Answer",
+            options: [],
+            answer: "Sample correct answer text.",
+            required: false,
+          };
+        } else {
+          console.error("Unknown question type:", type);
+          return;
+        }
+
+        fullPaperPayload.sections[sectionIndex].questions.splice(
+          questionIndex + 1,
+          0,
+          newQuestionTemplate
+        );
+
+        const targetEditorId = `editor-${sectionIndex}-${questionIndex + 1}`;
+        displayGeneratedPaper(fullPaperPayload);
+
+        setTimeout(() => {
+          const newEditor = document.getElementById(targetEditorId);
+          if (newEditor) {
+            const questionBlock = newEditor.closest(".question-block");
+            questionBlock.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            newEditor.focus();
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(newEditor);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }, 100);
+      }
+
+      // --- Function to copy a question ---
+      function copyQuestion(sectionIndex, questionIndex) {
+        event.stopPropagation();
+        const questionToCopy =
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex];
+        const newQuestion = JSON.parse(JSON.stringify(questionToCopy));
+        fullPaperPayload.sections[sectionIndex].questions.splice(
+          questionIndex + 1,
+          0,
+          newQuestion
+        );
+        displayGeneratedPaper(fullPaperPayload);
+      }
+
+      // --- Function to delete a question ---
+      function deleteQuestion(sectionIndex, questionIndex) {
+        event.stopPropagation();
+        if (confirm("Are you sure you want to delete this question?")) {
+          fullPaperPayload.sections[sectionIndex].questions.splice(
+            questionIndex,
+            1
+          );
+          displayGeneratedPaper(fullPaperPayload);
+        }
+      }
+
+      // --- Function to toggle the 'required' status ---
+      function toggleRequired(checkbox, sectionIndex, questionIndex) {
+        event.stopPropagation();
+        const isChecked = checkbox.checked;
+        if (
+          fullPaperPayload.sections[sectionIndex] &&
+          fullPaperPayload.sections[sectionIndex].questions[questionIndex]
+        ) {
+          fullPaperPayload.sections[sectionIndex].questions[
+            questionIndex
+          ].required = isChecked;
+        }
+      }
+
+      // --- MODIFIED: This function now renders editable options and answers ---
+      // function displayGeneratedPaper(paperData) {
+      //   document.getElementById("form-container").classList.add("hidden");
+      //   const paperContainer = document.getElementById("paper-container");
+      //   paperContainer.classList.remove("hidden");
+
+      //   document.getElementById("paper-header").textContent =
+      //     paperData.title || "Generated Question Paper";
+      //   document.getElementById("paper-jobTitle").textContent =
+      //     formData.jobTitle || "N/A";
+      //   document.getElementById("paper-department").textContent =
+      //     formData.departmentName || "N/A";
+      //   document.getElementById("paper-duration").textContent =
+      //     formData.durationText || "N/A";
+      //   document.getElementById(
+      //     "paper-experience"
+      //   ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+
+      //   const skillsContainer = document.getElementById("paper-skills");
+      //   skillsContainer.innerHTML = "";
+      //   if (formData.skills) {
+      //     formData.skills.split(",").forEach((skill) => {
+      //       if (skill.trim()) {
+      //         const skillTag = document.createElement("span");
+      //         skillTag.className =
+      //           "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+      //         skillTag.textContent = skill.trim();
+      //         skillsContainer.appendChild(skillTag);
+      //       }
+      //     });
+      //   }
+
+      //   const questionsContainer = document.getElementById("paper-questions");
+      //   questionsContainer.innerHTML = "";
+      //   let questionCounter = 1;
+
+      //   if (Array.isArray(paperData.sections)) {
+      //     paperData.sections.forEach((section, sectionIndex) => {
+      //       if (!section) return;
+      //       const sectionTitle = document.createElement("h3");
+      //       sectionTitle.className =
+      //         "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
+      //       sectionTitle.textContent = section.title || "Unnamed Section";
+      //       questionsContainer.appendChild(sectionTitle);
+
+      //       if (Array.isArray(section.questions)) {
+      //         section.questions.forEach((q, questionIndex) => {
+      //           if (!q) return;
+
+      //           const questionBlock = document.createElement("div");
+      //           questionBlock.className =
+      //             "question-block relative p-4 border border-slate-200 rounded-lg bg-white transition-all duration-200";
+
+      //           let contentHTML = "";
+
+      //           if (q.type === "MCQ" && Array.isArray(q.options)) {
+      //             let optionsHTML = '<div class="mt-4 space-y-3">';
+      //             q.options.forEach((option, optionIndex) => {
+      //               const isCorrect = option === q.answer;
+      //               optionsHTML += `
+      //           <div class="flex items-center group">
+      //             <input type="radio" name="correct_answer_${sectionIndex}_${questionIndex}"
+      //                    id="radio_${sectionIndex}_${questionIndex}_${optionIndex}"
+      //                    class="form-radio h-4 w-4 text-[#736b8e] focus:ring-[#9a92b0] flex-shrink-0"
+      //                    onchange="setCorrectAnswer(${sectionIndex}, ${questionIndex}, ${optionIndex})"
+      //                    ${isCorrect ? "checked" : ""}>
+      //             <div class="ml-3 flex-grow p-1 outline-none border border-transparent focus-within:border-slate-300 rounded-md"
+      //                  contenteditable="true"
+      //                  oninput="updateMcqOption(event, ${sectionIndex}, ${questionIndex}, ${optionIndex})">${option}</div>
+      //             <button onclick="deleteMcqOption(${sectionIndex}, ${questionIndex}, ${optionIndex})"
+      //                     class="ml-2 p-1 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+      //                     title="Delete Option">
+      //                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      //             </button>
+      //           </div>
+      //         `;
+      //             });
+      //             optionsHTML += `</div>
+      //           <div class="mt-4">
+      //             <button onclick="addMcqOption(${sectionIndex}, ${questionIndex})" class="text-sm font-medium text-[#736b8e] hover:text-[#5f5778]">
+      //               + Add Option
+      //             </button>
+      //           </div>`;
+      //             contentHTML = optionsHTML;
+      //           } else if (q.type === "Short Answer") {
+      //             contentHTML = `
+      //         <div class="mt-4 pt-3 border-t border-slate-100">
+      //           <p class="text-sm flex items-start">
+      //             <strong class="font-medium text-slate-500 mr-2 mt-1 flex-shrink-0">Answer:</strong>
+      //             <div class="flex-grow p-1 outline-none border border-transparent focus-within:border-slate-300 rounded-md bg-green-50 text-green-800 font-mono"
+      //                  contenteditable="true"
+      //                  oninput="updateShortAnswer(event, ${sectionIndex}, ${questionIndex})">${
+      //               q.answer || ""
+      //             }</div>
+      //           </p>
+      //         </div>
+      //       `;
+      //           } else {
+      //             contentHTML = `<div class="mt-4 pt-3 border-t border-slate-100"><p class="text-sm"><strong class="font-medium text-slate-500">Answer:</strong> <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
+      //               q.answer || "N/A"
+      //             }</span></p></div>`;
+      //           }
+      //           const isRequired = q.required || false;
+
+      //           const contextualAddToolbar = `
+      //       <div class="contextual-add-toolbar absolute top-1/2 -translate-y-1/2 left-full ml-4 z-10 flex-col items-center gap-1 p-1.5 bg-white border border-slate-200 rounded-lg shadow-lg">
+      //         <button onclick="addQuestionAfter(${sectionIndex}, ${questionIndex}, 'MCQ')" title="Add Multiple Choice" class="p-2 text-slate-500 hover:bg-[#736b8e] hover:text-white rounded-md transition-colors">
+      //           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      //         </button>
+      //         <button onclick="addQuestionAfter(${sectionIndex}, ${questionIndex}, 'Short Answer')" title="Add Short Answer" class="p-2 text-slate-500 hover:bg-[#736b8e] hover:text-white rounded-md transition-colors">
+      //           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h8m-8 6h16" /></svg>
+      //         </button>
+      //       </div>
+      //     `;
+
+      //           questionBlock.innerHTML = `
+      //       ${contextualAddToolbar}
+      //       <div class="flex items-start">
+      //         <span class="font-semibold text-slate-800 pt-1">${questionCounter}.</span>
+      //         <div class="ml-2 w-full">
+      //           <div class="question-text-editor outline-none p-1 border border-transparent focus:border-slate-300 rounded-md"
+      //                id="editor-${sectionIndex}-${questionIndex}"
+      //                contenteditable="true">${
+      //                  q.text || "Question text not available."
+      //                }</div>
+      //           <div class="custom-toolbar hidden mt-2 py-1 flex items-center gap-1 border rounded-lg p-1 bg-slate-50 shadow-sm">
+      //               <button onclick="formatDoc('bold')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Bold"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
+      //               <button onclick="formatDoc('italic')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Italic"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
+      //               <button onclick="formatDoc('underline')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Underline"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path><line x1="4" y1="21" x2="20" y2="21"></line></svg></button>
+      //           </div>
+      //           ${contentHTML}
+      //           <div class="question-toolbar mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-center sm:justify-end items-center gap-2 text-sm">
+      //             <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+      //             <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+      //             <div class="border-l h-6 border-slate-200 mx-2 hidden sm:block"></div>
+      //             <div class="flex items-center gap-2">
+      //               <span class="font-medium text-slate-600">Required</span>
+      //               <label class="relative inline-flex items-center cursor-pointer">
+      //                 <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
+      //             isRequired ? "checked" : ""
+      //           }>
+      //                 <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
+      //               </label>
+      //             </div>
+      //           </div>
+      //         </div>
+      //       </div>`;
+
+      //           questionsContainer.appendChild(questionBlock);
+
+      //           const editorDiv = questionBlock.querySelector(
+      //             ".question-text-editor"
+      //           );
+      //           const customToolbar =
+      //             questionBlock.querySelector(".custom-toolbar");
+
+      //           // Event listener to show/hide toolbars and set active state
+      //           editorDiv.addEventListener("focus", () => {
+      //             document.querySelectorAll(".question-block").forEach((el) => {
+      //               el.classList.remove(
+      //                 "question-active",
+      //                 "ring-2",
+      //                 "ring-[#736b8e]"
+      //               );
+      //             });
+      //             questionBlock.classList.add(
+      //               "question-active",
+      //               "ring-2",
+      //               "ring-[#736b8e]"
+      //             );
+      //             customToolbar.classList.remove("hidden");
+      //           });
+
+      //           // Event listener to update question text in the data object
+      //           editorDiv.addEventListener("input", () => {
+      //             if (
+      //               fullPaperPayload.sections[sectionIndex]?.questions[
+      //                 questionIndex
+      //               ]
+      //             ) {
+      //               fullPaperPayload.sections[sectionIndex].questions[
+      //                 questionIndex
+      //               ].text = editorDiv.innerHTML;
+      //             }
+      //           });
+
+      //           questionCounter++;
+      //         });
+      //       }
+      //     });
+      //   }
+      // }
+      // MODIFIED: This function now renders editable options and answers
+      function displayGeneratedPaper(paperData) {
+        document.getElementById("form-container").classList.add("hidden");
+        const paperContainer = document.getElementById("paper-container");
+        paperContainer.classList.remove("hidden");
+
+        document.getElementById("paper-header").textContent =
+          paperData.title || "Generated Question Paper";
+        document.getElementById("paper-jobTitle").textContent =
+          formData.jobTitle || "N/A";
+        document.getElementById("paper-department").textContent =
+          formData.departmentName || "N/A";
+        document.getElementById("paper-duration").textContent =
+          formData.durationText || "N/A";
+        document.getElementById(
+          "paper-experience"
+        ).textContent = `${formData.minExp} - ${formData.maxExp} years`;
+
+        const skillsContainer = document.getElementById("paper-skills");
+        skillsContainer.innerHTML = "";
+        if (formData.skills) {
+          formData.skills.split(",").forEach((skill) => {
+            if (skill.trim()) {
+              const skillTag = document.createElement("span");
+              skillTag.className =
+                "bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1 rounded-full";
+              skillTag.textContent = skill.trim();
+              skillsContainer.appendChild(skillTag);
+            }
+          });
+        }
+
+        const questionsContainer = document.getElementById("paper-questions");
+        questionsContainer.innerHTML = "";
+
+        // Overall counter removed from here
+
+        if (Array.isArray(paperData.sections)) {
+          paperData.sections.forEach((section, sectionIndex) => {
+            if (!section) return;
+            const sectionTitle = document.createElement("h3");
+            sectionTitle.className =
+              "text-xl font-bold text-slate-700 mb-4 pb-2 border-b-2 border-[#736b8e]";
+            sectionTitle.textContent = section.title || "Unnamed Section";
+            questionsContainer.appendChild(sectionTitle);
+
+            // ✨ **CHANGE 1: Initialize a new counter for each section**
+            let questionCounterInSection = 1;
+
+            if (Array.isArray(section.questions)) {
+              section.questions.forEach((q, questionIndex) => {
+                if (!q) return;
+
+                const questionBlock = document.createElement("div");
+                questionBlock.className =
+                  "question-block relative p-4 border border-slate-200 rounded-lg bg-white transition-all duration-200";
+
+                let contentHTML = "";
+
+                if (q.type === "MCQ" && Array.isArray(q.options)) {
+                  let optionsHTML = '<div class="mt-4 space-y-3">';
+                  q.options.forEach((option, optionIndex) => {
+                    const isCorrect = option === q.answer;
+                    optionsHTML += `
+                <div class="flex items-center group">
+                  <input type="radio" name="correct_answer_${sectionIndex}_${questionIndex}"
+                         id="radio_${sectionIndex}_${questionIndex}_${optionIndex}"
+                         class="form-radio h-4 w-4 text-[#736b8e] focus:ring-[#9a92b0] flex-shrink-0"
+                         onchange="setCorrectAnswer(${sectionIndex}, ${questionIndex}, ${optionIndex})"
+                         ${isCorrect ? "checked" : ""}>
+                  <div class="ml-3 flex-grow p-1 outline-none border border-transparent focus-within:border-slate-300 rounded-md"
+                       contenteditable="true"
+                       oninput="updateMcqOption(event, ${sectionIndex}, ${questionIndex}, ${optionIndex})">${option}</div>
+                  <button onclick="deleteMcqOption(${sectionIndex}, ${questionIndex}, ${optionIndex})"
+                          class="ml-2 p-1 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete Option">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              `;
+                  });
+                  optionsHTML += `</div>
+              <div class="mt-4">
+                <button onclick="addMcqOption(${sectionIndex}, ${questionIndex})" class="text-sm font-medium text-[#736b8e] hover:text-[#5f5778]">
+                  + Add Option
+                </button>
+              </div>`;
+                  contentHTML = optionsHTML;
+                } else {
+                  // Handles "Short Answer" and other types
+                  contentHTML = `<div class="mt-4 pt-3 border-t border-slate-100"><p class="text-sm"><strong class="font-medium text-slate-500">Answer:</strong> <span class="text-green-700 font-mono bg-green-50 p-1 rounded">${
+                    q.answer || "N/A"
+                  }</span></p></div>`;
+                }
+
+                const isRequired = q.required || false;
+
+                const contextualAddToolbar = `
+          <div class="contextual-add-toolbar absolute top-1/2 -translate-y-1/2 left-full ml-4 z-10 flex-col items-center gap-1 p-1.5 bg-white border border-slate-200 rounded-lg shadow-lg">
+            <button onclick="addQuestionAfter(${sectionIndex}, ${questionIndex}, 'MCQ')" title="Add Multiple Choice" class="p-2 text-slate-500 hover:bg-[#736b8e] hover:text-white rounded-md transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
+            <button onclick="addQuestionAfter(${sectionIndex}, ${questionIndex}, 'Short Answer')" title="Add Short Answer" class="p-2 text-slate-500 hover:bg-[#736b8e] hover:text-white rounded-md transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h8m-8 6h16" /></svg>
+            </button>
+          </div>
+        `;
+
+                questionBlock.innerHTML = `
+          ${contextualAddToolbar}
+          <div class="flex items-start">
+            <span class="font-semibold text-slate-800 pt-1">${questionCounterInSection}.</span>
+            <div class="ml-2 w-full">
+              <div class="question-text-editor outline-none p-1 border border-transparent focus:border-slate-300 rounded-md"
+                   id="editor-${sectionIndex}-${questionIndex}"
+                   contenteditable="true">${
+                     q.text || "Question text not available."
+                   }</div>
+              <div class="custom-toolbar hidden mt-2 py-1 flex items-center gap-1 border rounded-lg p-1 bg-slate-50 shadow-sm">
+                <button onclick="formatDoc('bold')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Bold"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
+                <button onclick="formatDoc('italic')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Italic"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
+                <button onclick="formatDoc('underline')" class="p-2 rounded-md hover:bg-slate-200 transition-colors" title="Underline"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path><line x1="4" y1="21" x2="20" y2="21"></line></svg></button>
+              </div>
+              ${contentHTML}
+              <div class="question-toolbar mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-center sm:justify-end items-center gap-2 text-sm">
+                <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                <div class="border-l h-6 border-slate-200 mx-2 hidden sm:block"></div>
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-slate-600">Required</span>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${
+                  isRequired ? "checked" : ""
+                }>
+                    <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-[#9a92b0] peer-checked:after:translate-x-full peer-checked:after:border-white after:content[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#736b8e]"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>`;
+
+                questionsContainer.appendChild(questionBlock);
+
+                const editorDiv = questionBlock.querySelector(
+                  ".question-text-editor"
+                );
+                const customToolbar =
+                  questionBlock.querySelector(".custom-toolbar");
+
+                // Event listener to show/hide toolbars and set active state
+                editorDiv.addEventListener("focus", () => {
+                  document.querySelectorAll(".question-block").forEach((el) => {
+                    el.classList.remove(
+                      "question-active",
+                      "ring-2",
+                      "ring-[#736b8e]"
+                    );
+                  });
+                  questionBlock.classList.add(
+                    "question-active",
+                    "ring-2",
+                    "ring-[#736b8e]"
+                  );
+                  customToolbar.classList.remove("hidden");
+                });
+
+                // Event listener to update question text in the data object
+                editorDiv.addEventListener("input", () => {
+                  if (
+                    fullPaperPayload.sections[sectionIndex]?.questions[
+                      questionIndex
+                    ]
+                  ) {
+                    fullPaperPayload.sections[sectionIndex].questions[
+                      questionIndex
+                    ].text = editorDiv.innerHTML;
+                  }
+                });
+
+                // ✨ **CHANGE 3: Increment the section-specific counter**
+                questionCounterInSection++;
+              });
+            }
+          });
+        }
+      }
+      async function generatePaper() {
+        const generateButton = document.querySelector(
+          '#step-3 button[onclick="generatePaper()"]'
+        );
+        generateButton.disabled = true;
+        generateButton.innerHTML = `
+    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    Generating...
+    `;
+
+        const aiPostData = {
+          job_title: formData.jobTitle,
+          min_exp: formData.minExp,
+          max_exp: formData.maxExp,
+          skills: formData.skills,
+          sections: formData.sections,
+        };
+
+        try {
+          const response = await fetch("{% url 'generate_questions' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify(aiPostData),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `Server error: ${response.status} ${response.statusText}. Response: ${errorText}`
+            );
+          }
+          const paperData = await response.json();
+          if (paperData.error) {
+            throw new Error(paperData.error);
+          }
+
+          fullPaperPayload = {
+            job_title: formData.jobTitle,
+            department: formData.departmentName,
+            skills: formData.skills,
+            min_exp: formData.minExp,
+            max_exp: formData.maxExp,
+            duration: formData.duration,
+            title: paperData.title,
+            sections: paperData.sections,
+          };
+
+          displayGeneratedPaper(paperData);
+        } catch (error) {
+          console.error("Failed to generate paper:", error);
+          alert(`An error occurred: ${error.message}`);
+        } finally {
+          generateButton.disabled = false;
+          generateButton.innerHTML = "Generate";
+        }
+      }
       document.addEventListener("DOMContentLoaded", function () {
         // Sidebar toggle
         const sidebar = document.getElementById("sidebar");

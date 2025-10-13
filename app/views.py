@@ -111,6 +111,12 @@ def dashboard(request):
         "-created_at"
     )
 
+    papers = (
+        QuestionPaper.objects.filter(created_by=request.user)
+        .annotate(participant_count=Count("testregistration"))
+        .order_by("-created_at")
+    )
+
     context = {"user": request.user, "title": "User Dashboard", "papers": papers}
     return render(request, "dashboard.html", context)
 
@@ -268,10 +274,14 @@ def paper_detail_view(request, paper_id):
     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
 
     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
+    participants = TestRegistration.objects.filter(question_paper=paper).order_by(
+        "-start_time"
+    )
 
     context = {
         "paper": paper,
         "skills": skills,
+        "participants": participants,  # <-- Pass the participants to the template
         "title": f"Details for {paper.title}",  # Dynamic page title
     }
     return render(request, "question_generator/paper_detail.html", context)

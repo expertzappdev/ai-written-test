@@ -113,8 +113,7 @@
                       class="question-item pl-4 border-l-2 border-theme-primary"
                     >
                       <p class="font-semibold text-gray-800">
-                        Q{{ forloop.parentloop.counter }}.{{ forloop.counter }}.
-                        {{ question.text }}
+                        Q{{ forloop.counter }}. {{ question.text|safe }}
                       </p>
                       <p
                         class="mt-2 text-sm text-gray-800 bg-theme-light p-3 rounded-md"
@@ -132,6 +131,84 @@
                 </p>
                 {% endfor %}
               </div>
+            </div>
+
+            <div class="pt-6 mt-6 border-t">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">Participants</h3>
+
+              {% if participants %}
+              <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Email
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Phone Number
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Completed
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Report
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    {% for registration in participants %}
+                    <tr>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                      >
+                        {{ registration.email }}
+                      </td>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      >
+                        {{ registration.phone_number }}
+                      </td>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      >
+                        {% if registration.is_completed %}
+                        <span class="text-green-600 font-semibold">Yes</span>
+                        {% else %}
+                        <span class="text-red-600">No</span>
+                        {% endif %}
+                      </td>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm font-medium"
+                      >
+                        <a
+                          href="{% url 'test_report' registration.id %}"
+                          class="text-theme-primary hover:text-theme-dark"
+                        >
+                          View Report
+                        </a>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <p class="text-gray-500 bg-gray-50 p-4 rounded-md">
+                No one has attempted this test yet.
+              </p>
+              {% endif %}
             </div>
           </div>
         </main>

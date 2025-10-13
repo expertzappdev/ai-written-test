@@ -7,6 +7,7 @@ from .models import User, UserProfile
 from .models import Department, Skill
 from .models import Section
 from .models import QuestionPaper
+import re
 
 User = get_user_model()
 from django.contrib.auth.forms import AuthenticationForm
@@ -406,13 +407,9 @@ class QuestionPaperEditForm(forms.ModelForm):
             "skills_list",
         ]
         widgets = {
-            # 'job_title' is now defined above, so it's removed from here.
             "job_title": forms.TextInput(attrs={"class": text_input_class}),
-            # "title": forms.TextInput(attrs={"class": text_input_class}),
+            "title": forms.TextInput(attrs={"class": text_input_class}),
             "department_name": forms.TextInput(attrs={"class": text_input_class}),
-            # ✨ REQUIREMENT 2: Min/Max Experience Counter (Backend) ✨
-            # The backend widget remains a NumberInput. The counter UI is a frontend enhancement.
-            # We add a 'min' attribute for basic browser-side validation.
             "duration": forms.NumberInput(
                 attrs={"class": text_input_class, "min": "1"}
             ),
@@ -422,8 +419,6 @@ class QuestionPaperEditForm(forms.ModelForm):
             "max_exp": forms.NumberInput(
                 attrs={"class": text_input_class, "id": "max_exp_input", "min": "0"}
             ),
-            # ✨ REQUIREMENT 3: Skills Auto-suggestion (Backend) ✨
-            # We add a unique class to this input to target it with JavaScript.
             "skills_list": forms.TextInput(
                 attrs={
                     "class": f"{text_input_class} skill-autocomplete-input",  # Added new class
