@@ -82,9 +82,9 @@
               <div class="relative w-full sm:w-48">
                 <select id="filter-status"
                   class="w-full p-2 pr-10 border border-gray-300 rounded-lg bg-white text-sm focus:ring-theme-primary focus:border-theme-primary appearance-none">
-                  <option value="all" {% if selected_status=='all' %}selected{% endif %}>All Statuses</option>
-                  <option value="active" {% if selected_status=='active' %}selected{% endif %}>Active</option>
-                  <option value="inactive" {% if selected_status=='inactive' %}selected{% endif %}>Inactive</option>
+                  <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All Statuses</option>
+                  <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
+                  <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                   <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -96,12 +96,12 @@
               <div class="relative w-full sm:w-48">
                 <select id="filter-experience"
                   class="w-full p-2 pr-10 border border-gray-300 rounded-lg bg-white text-sm focus:ring-theme-primary focus:border-theme-primary appearance-none">
-                  <option value="all" {% if selected_experience=='all' %}selected{% endif %}>All Levels</option>
-                  <option value="0-2" {% if selected_experience=='0-2' %}selected{% endif %}>Beginner (0-2 Years)
+                  <option value="all" {% if selected_experience == 'all' %}selected{% endif %}>All Levels</option>
+                  <option value="0-2" {% if selected_experience == '0-2' %}selected{% endif %}>Beginner (0-2 Years)
                   </option>
-                  <option value="3-5" {% if selected_experience=='3-5' %}selected{% endif %}>Intermediate (3-5 Years)
+                  <option value="3-5" {% if selected_experience == '3-5' %}selected{% endif %}>Intermediate (3-5 Years)
                   </option>
-                  <option value="6+" {% if selected_experience=='6+' %}selected{% endif %}>Advanced (6+ Years)</option>
+                  <option value="6+" {% if selected_experience == '6+' %}selected{% endif %}>Advanced (6+ Years)</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                   <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
