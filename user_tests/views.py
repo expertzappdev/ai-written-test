@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import IntegrityError, transaction 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse # <-- JsonResponse imported
+from django.utils import timezone # <-- timezone imported
+from datetime import timedelta # <-- timedelta imported
 
 # IMPORTS
 from app.models import QuestionPaper, Question 
@@ -79,10 +81,76 @@ def check_flow_and_redirect(request, link_id, current_stage_name):
     
     return None # No redirect needed, proceed to view logic
 
+# --- BACKEND TIMER API VIEW ---
+
+def get_time_remaining_api(request, link_id):
+    """
+    Calculates and returns the time remaining for the currently active test registration.
+    This is the backend source of truth for the timer.
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    registration_id = request.session.get("current_registration_id")
+    if not registration_id:
+        # अगर session में registration ID नहीं है, मतलब test flow शुरू नहीं हुआ है
+        return JsonResponse({'error': 'Registration not found'}, status=403)
+
+    try:
+        paper_id = int(link_id)
+        paper = get_object_or_404(QuestionPaper, pk=paper_id) 
+        
+        # Registration ऑब्जेक्ट प्राप्त करें जो in-progress है (is_completed=False)
+        registration = get_object_or_404(
+            TestRegistration, 
+            pk=registration_id, 
+            question_paper=paper, 
+            is_completed=False 
+        )
+    except Exception:
+        # अगर registration already complete है या कोई और error है
+        return JsonResponse({'remaining_seconds': 0, 'time_up': True})
+
+    # परीक्षा की अवधि मिनटों में
+    duration_minutes = paper.duration
+    
+    # समाप्ति का अनुमानित समय (start_time + duration)
+    expected_end_time = registration.start_time + timedelta(minutes=duration_minutes)
+
+    # शेष समय की गणना
+    time_remaining = expected_end_time - timezone.now()
+
+    remaining_seconds = int(time_remaining.total_seconds())
+
+    # --- Time Up/Auto-Submission Check ---
+    if remaining_seconds <= 0:
+        
+        # DB में mark करें और session clean up करें (Auto-Submit Logic)
+        with transaction.atomic():
+            registration.is_completed = True
+            registration.save()
+            
+            if "current_registration_id" in request.session:
+                del request.session["current_registration_id"] 
+            
+            # Set final session status
+            request.session[get_session_key(link_id)] = 'submitted' 
+            request.session.modified = True 
+            
+        return JsonResponse({'remaining_seconds': 0, 'time_up': True})
+
+    return JsonResponse({
+        'remaining_seconds': remaining_seconds,
+        'time_up': False
+    })
+
+
 # --- VIEWS START HERE ---
 
 def user_register_view(request, link_id):
     """Handles test taker registration."""
+    
+    # ... (rest of user_register_view remains unchanged) ...
     
     # --- FLOW CHECK ---
     redirect_response = check_flow_and_redirect(request, link_id, 'user_register_link')
@@ -99,18 +167,14 @@ def user_register_view(request, link_id):
         return redirect("home") 
 
     # Previous logic to check existing session registration ID and redirect to instructions.
-    # This logic is mostly handled by check_flow_and_redirect now, but we keep this part
-    # to maintain existing functionality flow logic specific to your setup.
     registration_id = request.session.get("current_registration_id")
     if registration_id:
         try:
             # Check if registration exists and is NOT completed
             reg = TestRegistration.objects.get(pk=registration_id, question_paper=paper, is_completed=False)
-            # If found and not completed, the user must go to instructions.
-            # This is correct since they've already passed the registration step.
             return redirect("test:user_instructions", link_id=link_id)
         except TestRegistration.DoesNotExist:
-            pass # Agar complete ho gaya hai ya ID galat hai, toh aage register hone denge
+            pass 
 
 
     if request.method == "POST":
@@ -123,7 +187,7 @@ def user_register_view(request, link_id):
                 
                 # Set Session for BOTH registration ID and flow status
                 request.session["current_registration_id"] = registration.id
-                request.session[get_session_key(link_id)] = 'registered' # <--- FLOW STATUS SET
+                request.session[get_session_key(link_id)] = 'registered' 
                 request.session.modified = True 
                 
                 messages.success(request, "Registration successful. Please read instructions.")
@@ -133,7 +197,6 @@ def user_register_view(request, link_id):
             except IntegrityError:
                 # Already registered with this email for this paper
                 messages.error(request, "You have already registered for this test with this email address.")
-                # We can't redirect to submitted unless we are SURE it was submitted, so we redirect to home or register with error.
                 return redirect("test:user_register_link", link_id=link_id) 
 
     else:
@@ -144,7 +207,7 @@ def user_register_view(request, link_id):
         "link_id": link_id,
         "paper_title": paper.title,
     }
-    return render(request, "user_test/register.html", context)
+    response = render(request, "user_test/register.html", context)
     # ************************************************
     # * NEW: AGGRESSIVE CACHING HEADERS ADDED HERE *
     # ************************************************
@@ -156,6 +219,8 @@ def user_register_view(request, link_id):
 
 def user_instruction_view(request, link_id):
     """Shows test details and instructions before starting."""
+    
+    # ... (rest of user_instruction_view remains unchanged) ...
     
     # --- FLOW CHECK ---
     redirect_response = check_flow_and_redirect(request, link_id, 'user_instructions')
@@ -170,21 +235,18 @@ def user_instruction_view(request, link_id):
         return redirect("home")
 
     registration_id = request.session.get("current_registration_id")
-    # This check is now redundant due to check_flow_and_redirect but kept for clarity:
     if not registration_id:
         return redirect("test:user_register_link", link_id=link_id)
 
     try:
-        # Check if the registration exists and is NOT completed
         reg = TestRegistration.objects.get(pk=registration_id, question_paper=paper, is_completed=False)
     except TestRegistration.DoesNotExist:
-        # Agar registration already complete ho gaya hai, toh final page par bhej do (DB check)
         return redirect("test:user_already_submitted")
 
     # POST: User accepts instructions and starts test
     if request.method == "POST":
         # Set flow status to 'instructed' and redirect to test
-        request.session[get_session_key(link_id)] = 'instructed' # <--- FLOW STATUS SET
+        request.session[get_session_key(link_id)] = 'instructed'
         request.session.modified = True 
         return redirect("test:user_test", link_id=link_id)
 
@@ -211,27 +273,23 @@ def user_test_view(request, link_id):
         
         # We MUST have a registration ID and valid paper
         if not registration_id:
-            # This case is also covered by check_flow_and_redirect, but keeping
-            # this check here is safe for data integrity.
             return redirect("test:user_register_link", link_id=link_id)
             
         # 1. Registration object fetch karein
         registration = get_object_or_404(TestRegistration, pk=registration_id, question_paper=paper) 
 
     except Exception:
-        # Koi bhi access ya data error hone par register page par bhej de
         return redirect("test:user_register_link", link_id=link_id)
         
     # ----------------------------------------------------------------------
     # CRITICAL BACK PREVENTION CHECK (DB check - is_completed)
     # ----------------------------------------------------------------------
     if registration.is_completed:
-        # Agar registration complete hai, toh turant final page par bhej do!
         return redirect("test:user_already_submitted")
     # ----------------------------------------------------------------------
     
     # We set status to 'in_progress' to clearly indicate the user has started the test.
-    request.session[get_session_key(link_id)] = 'in_progress' # <--- FLOW STATUS SET
+    request.session[get_session_key(link_id)] = 'in_progress' 
     request.session.modified = True 
 
     # --- POST SUBMISSION LOGIC ---
@@ -266,7 +324,7 @@ def user_test_view(request, link_id):
                 del request.session["current_registration_id"] 
             if get_session_key(link_id) in request.session:
                  # Set final session status
-                request.session[get_session_key(link_id)] = 'submitted' # <--- FINAL STATUS SET
+                request.session[get_session_key(link_id)] = 'submitted' 
             request.session.modified = True 
 
         return redirect("test:user_already_submitted")
@@ -308,7 +366,7 @@ def user_test_view(request, link_id):
         "paper": paper,
         "sections_list": sections_list, 
         "link_id": link_id,
-        "total_duration": paper.duration * 60, 
+        # "total_duration": paper.duration * 60, <-- REMOVED (now handled by API)
     }
     return render(request, "user_test/test.html", context)
 
@@ -316,9 +374,5 @@ def user_test_view(request, link_id):
 def user_already_submitted_view(request):
     """
     Shows the final 'Response Recorded' screen.
-    (We are using this view name for the final screen).
     """
-    # Note: Since this URL doesn't take link_id, flow check is complex, 
-    # but the checks in other views ensure they only reach here after submission.
-    
     return render(request, "user_test/already_submitted.html")

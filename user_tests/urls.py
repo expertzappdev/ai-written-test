@@ -10,4 +10,6 @@ urlpatterns = [
     path("instructions/<str:link_id>/", views.user_instruction_view, name="user_instructions"),
     path("start/<str:link_id>/", views.user_test_view, name="user_test"),
     path("already-submitted/", views.user_already_submitted_view, name="user_already_submitted"),
+    path('<str:link_id>/time/', views.get_time_remaining_api, name='get_time_remaining_api'),
+
 ]

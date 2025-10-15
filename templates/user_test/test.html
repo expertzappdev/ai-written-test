@@ -22,22 +22,205 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
 
     <script>
-        /* This is the new aggressive back button blocker using history.forward(). */
+        /*
+         * DEDICATED WINDOW LOGIC:
+         * Opens test in a new window and tries to close the original window immediately.
+         */
+        (function() {
+            const windowName = 'dedicatedAssessmentWindow';
+            
+            // Check if the window is already the dedicated one and not a temporary opener.
+            if (window.name !== windowName && !window.opener) { 
+                
+                const url = window.location.href; 
+                
+                // Open a new, dedicated window.
+                const newWindow = window.open(url, windowName, 'width=' + screen.availWidth + ',height=' + screen.availHeight + ',resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no');
+
+                if (newWindow) {
+                    // Try to close the original window immediately.
+                    // Note: window.close() often fails if the window was not opened by script.
+                    setTimeout(function() {
+                        window.close();
+                    }, 50); 
+                    
+                    // Prevent further execution in the original tab (safer approach)
+                    document.body.style.display = 'none';
+                    return; 
+                }
+            }
+        })();
+    </script>
+    <script>
+        /* This is the aggressive back button blocker using history.forward(). */
         
-        // Step 1: Set up a reusable function to force forward movement
         function noBack() {
             window.history.forward();
         }
 
-        // Step 2: Use window.history.forward() immediately on load
         window.history.forward(); 
         
-        // Step 3: Add event listeners on DOMContentLoaded
+        // **Global variable to track if a popstate (back/forward) event occurred.**
+        let isNavigating = false; 
+
         document.addEventListener('DOMContentLoaded', function() {
-            // This ensures the noBack function is used when the browser detects a back movement
-            window.addEventListener('popstate', noBack);
+            window.addEventListener('popstate', function(event) {
+                
+                // **WARNING:** Show a warning when back/forward is attempted
+                alert("⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission.");
+
+                // popstate ट्रिगर होने पर isNavigating को true सेट करें।
+                isNavigating = true; 
+                noBack(); // Prevent history navigation (as per your existing logic)
+                
+                // 500ms के बाद फ़्लैग रीसेट करें।
+                setTimeout(() => {
+                    isNavigating = false;
+                }, 500); 
+            });
         });
         
+    </script>
+    
+    <script>
+        /* * Tab Change & Submission Lock Logic */
+        
+        let editorInstances = {}; // Defined here for global access
+        let tabChangeCount = 0;
+        const MAX_TAB_CHANGES = 10; // Allow 10 warnings before auto-submitting
+        let submissionLocked = false; 
+        
+        // यह function अब Tab Change Logic और Time Up Logic दोनों जगह इस्तेमाल होगा
+        function lockAndAutoSubmit(reason) {
+            if (submissionLocked) return; 
+            submissionLocked = true;
+            
+            // Polling interval को रोकें
+            if (window.pollingInterval) clearInterval(window.pollingInterval);
+
+            // Ensure title is reset/locked on submission
+            document.title = "Assessment Submitted!"; // <-- Title locked
+
+            const form = document.getElementById('assessment-form');
+            const submitButton = form.querySelector('button[type="submit"]');
+
+            const message = reason === 'time_up' 
+                ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
+                : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
+
+            // 1. Disable and update the Submit button (UI feedback)
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Auto-Submitting... 🚫';
+                submitButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                submitButton.classList.add('bg-red-800', 'cursor-not-allowed');
+            }
+            
+            // Update Timer Display for Time Up reason
+            const timerElement = document.getElementById('timer');
+            if (timerElement) {
+               timerElement.textContent = "TIME UP";
+               timerElement.classList.remove('bg-red-600', 'bg-yellow-500', 'text-gray-800');
+               timerElement.classList.add('bg-red-800', 'text-white');
+            }
+
+            // 2. Final alert to the user before submission
+            alert(message);
+
+            // 3. Force submission of the form
+            // Save code editor content before submission
+            document.querySelectorAll('.code-editor').forEach(editorContainer => {
+                const questionId = editorContainer.id.replace('editor-', '');
+                const textarea = document.getElementById(`textarea-${questionId}`);
+                const editor = editorInstances[questionId];
+                if (editor) {
+                    textarea.value = editor.getValue();
+                }
+            });
+            
+            // Force the form submission
+            form.submit(); 
+        }
+
+        function handleVisibilityChange() {
+            // Ignore if navigation is in progress or already submitted.
+            if (window.isNavigating || submissionLocked) {
+                 return; 
+            }
+            
+            const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
+
+            // Check if the document is hidden (user switched tabs or minimized)
+            if (document.hidden) {
+                // **🚨 UI CHANGE: Update title on blur/hide**
+                document.title = "Breakup";
+
+                tabChangeCount++;
+                
+                if (tabChangeCount <= MAX_TAB_CHANGES) {
+                    // --- WARNING STATE ---
+                    alert(`⚠️ WARNING! Tab Switched. You have ${MAX_TAB_CHANGES - tabChangeCount} warnings remaining.`);
+                } else {
+                    // --- LOCK & AUTO-SUBMIT STATE (Trigger auto-submit function) ---
+                    lockAndAutoSubmit('tab_switch');
+                }
+            } else {
+                // **🚨 UI CHANGE: Update title on focus/visible**
+                document.title = "Patch Up"; // Temporarily show "Patch Up"
+                setTimeout(() => {
+                    if (!submissionLocked) {
+                        document.title = originalTitle; // Revert to original title after a short delay
+                    }
+                }, 1000); 
+            } 
+        }
+
+        // Attach the event listener to the document
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+    </script>
+
+    <script>
+        const OFFLINE_DIALOGUE_ID = 'offline-dialogue';
+
+        function showOfflineDialogue() {
+            const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
+            if (dialogue) {
+                dialogue.classList.remove('hidden');
+            }
+        }
+
+        function hideOfflineDialogue() {
+            const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
+            if (dialogue) {
+                dialogue.classList.add('hidden');
+            }
+        }
+        
+        function checkConnectionAndHide() {
+             if (navigator.onLine) {
+                hideOfflineDialogue();
+             } else {
+                // If button is clicked and still offline, give an alert
+                alert("Still offline. Please check your network cables or Wi-Fi connection.");
+             }
+        }
+
+        function handleOnlineStatus() {
+            if (navigator.onLine) {
+                hideOfflineDialogue();
+                console.log("Internet connection restored.");
+            } else {
+                showOfflineDialogue();
+                console.log("Internet connection lost!");
+            }
+        }
+
+        // Add event listeners for online/offline status changes
+        window.addEventListener('online', handleOnlineStatus);
+        window.addEventListener('offline', handleOnlineStatus);
+
+        // Initial check on load
+        document.addEventListener('DOMContentLoaded', handleOnlineStatus);
     </script>
     <script>
       tailwind.config = {
@@ -65,6 +248,20 @@
 </head>
 <body class="text-gray-800" onload="noBack()" onpageshow="if (event.persisted) noBack();">
 
+<div id="offline-dialogue" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden" role="alert" aria-modal="true" aria-labelledby="dialog-title">
+    <div class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full transform transition-all duration-300 scale-100">
+        <div class="text-center">
+            <i class="fas fa-wifi fa-3x text-red-600 mb-4"></i>
+            <h3 id="dialog-title" class="text-2xl font-bold text-gray-900 mb-2">You Are Not Connected to the Internet</h3>
+            <p id="dialog-message" class="text-gray-600 mb-6">
+                Please restore your connection immediately. Assessment integrity requires a stable network.
+            </p>
+            <button onclick="checkConnectionAndHide()" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none">
+                Check Connection Again
+            </button>
+        </div>
+    </div>
+</div>
 <div class="min-h-screen">
     <header class="bg-white shadow-md sticky top-0 z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
@@ -77,7 +274,8 @@
                     Duration: {{ paper.duration }} min
                 </span>
                 <div class="bg-red-600 text-white font-extrabold py-2 px-4 rounded-full shadow-lg text-lg sm:text-xl" id="timer">
-                    </div>
+                    Loading Time...
+                </div>
             </div>
         </div>
     </header>
@@ -166,58 +364,85 @@
 </div>
 
 <script>
-    let editorInstances = {}; // Store editor instances globally
+    // --- NEW BACKEND-CONTROLLED TIMER LOGIC VARIABLES ---
+    let totalSeconds = -1; // Server से प्राप्त होने वाला कुल शेष समय
+    const POLLING_RATE_SECONDS = 15; // हर 15 सेकंड में सर्वर से समय सिंक करें
+    // pollingInterval और submissionLocked globals अब window scope में हैं।
+    window.pollingInterval = null; 
     
-    // --- TIMER AND AUTO-SUBMIT LOGIC ---
-    function startTimer(durationInMinutes, formId) {
-        let timerElement = document.getElementById('timer');
-        let form = document.getElementById(formId);
-        
-        if (!timerElement || !form) return;
+    // --- TIMER DISPLAY HELPER FUNCTIONS ---
+    function formatTime(seconds) {
+        if (seconds < 0) seconds = 0;
+        let minutes = parseInt(seconds / 60, 10);
+        let secs = parseInt(seconds % 60, 10);
 
-        let totalSeconds = durationInMinutes * 60;
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        secs = secs < 10 ? "0" + secs : secs;
 
-        const interval = setInterval(() => {
-            let minutes = parseInt(totalSeconds / 60, 10);
-            let seconds = parseInt(totalSeconds % 60, 10);
-
-            minutes = minutes < 10 ? "0" + minutes : minutes;
-            seconds = seconds < 10 ? "0" + seconds : seconds;
-
-            timerElement.textContent = minutes + ":" + seconds;
-
-            // Optional: Change color when less than 5 minutes remain
-            if (totalSeconds <= 300) {
-                 timerElement.classList.add('bg-yellow-500', 'text-gray-800');
-            }
-            // Optional: Change color when less than 1 minute remains
-            if (totalSeconds <= 60) {
-                 timerElement.classList.remove('bg-yellow-500', 'text-gray-800');
-                 timerElement.classList.add('bg-red-700', 'text-white');
-            }
-
-
-            if (--totalSeconds < 0) {
-                clearInterval(interval);
-                timerElement.textContent = "TIME UP";
-                
-                // 1. Final Save: Update all hidden textareas before submission
-                document.querySelectorAll('.code-editor').forEach(editorContainer => {
-                    const questionId = editorContainer.id.replace('editor-', '');
-                    const textarea = document.getElementById(`textarea-${questionId}`);
-                    const editor = editorInstances[questionId];
-                    if (editor) {
-                        textarea.value = editor.getValue();
-                    }
-                });
-
-                // 2. AUTO-SUBMIT THE FORM
-                form.submit();
-            }
-        }, 1000);
+        return minutes + ":" + secs;
     }
+
+    function updateTimerDisplay(seconds) {
+        let timerElement = document.getElementById('timer');
+        if (!timerElement) return;
+
+        timerElement.textContent = formatTime(seconds);
+
+        // Update color based on remaining time
+        timerElement.classList.remove('bg-yellow-500', 'text-gray-800', 'bg-red-700', 'bg-red-800', 'text-white', 'bg-red-600');
+        
+        if (seconds <= 60) {
+            timerElement.classList.add('bg-red-700', 'text-white');
+        } else if (seconds <= 300) { // 5 minutes
+            timerElement.classList.add('bg-yellow-500', 'text-gray-800');
+        } else {
+             timerElement.classList.add('bg-red-600', 'text-white');
+        }
+    }
+
+    // --- POLLING LOGIC ---
+    function pollTimeRemaining(linkId, formId) {
+        // Django's URL template tag का उपयोग करें
+        const timeUrl = "{% url 'test:get_time_remaining_api' link_id=link_id %}"; 
+        let timerElement = document.getElementById('timer');
+
+        // सर्वर से समय प्राप्त करने के लिए API कॉल
+        fetch(timeUrl, {
+            method: 'GET',
+        })
+        .then(response => {
+            if (!response.ok) {
+                 throw new Error('Server Time API response not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                 console.error('Server Time Error:', data.error);
+                 if(window.pollingInterval) clearInterval(window.pollingInterval); 
+                 if(timerElement) timerElement.textContent = "Error";
+                 return;
+            }
+
+            // सर्वर से प्राप्त सटीक समय को सेट करें
+            totalSeconds = data.remaining_seconds;
+            
+            if (data.time_up || totalSeconds <= 0) {
+                // अगर सर्वर ने 'time_up' भेज दिया है, तो पोलिंग रोकें और सबमिट करें
+                if(window.pollingInterval) clearInterval(window.pollingInterval); 
+                lockAndAutoSubmit('time_up');
+            } else {
+                updateTimerDisplay(totalSeconds);
+            }
+        })
+        .catch(error => {
+            console.error('Fetch Error:', error);
+            if(timerElement) timerElement.textContent = "Sync Error";
+        });
+    }
+
     
-    // --- SKULPT PYTHON EXECUTION LOGIC ---
+    // --- SKULPT PYTHON EXECUTION LOGIC (Remains Unchanged) ---
     function outf(text, questionId) {
         const outputElement = document.getElementById(`output-${questionId}`);
         outputElement.textContent += text;
@@ -248,18 +473,14 @@
         Sk.configure({
             output: (text) => outf(text, questionId),
             read: builtinRead,
-            // Configure max execution time (e.g., 5 seconds) to prevent infinite loops from freezing the browser
             execLimit: 5000 
         });
         
-        // Asynchronously run the code
         (Sk.misceval.asyncToPromise(function() {
             return Sk.importMainWithBody("<stdin>", false, code, true);
         })).then(function(mod) {
-            // Success
             runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
         }, function(err) {
-            // Error
             outputElement.textContent = "Error:\n" + err.toString();
             outputElement.classList.remove('bg-gray-700', 'text-white');
             outputElement.classList.add('bg-red-900', 'text-red-300');
@@ -273,15 +494,35 @@
     // --- MONACO EDITOR & INIT LOGIC ---
     document.addEventListener('DOMContentLoaded', function() {
         
-        // --- START TIMER INIT ---
-        const durationFromDjango = {{ paper.duration|default:"60" }}; 
+        // --- START TIMER INIT: POLLING & LOCAL TICKER ---
+        const linkIdFromDjango = '{{ link_id }}'; 
+        const formId = 'assessment-form';
+
+        // 1. Local Ticker: हर 1 सेकंड में UI को अपडेट करें
+        setInterval(() => {
+            if (totalSeconds > 0 && !submissionLocked) {
+                totalSeconds--;
+                updateTimerDisplay(totalSeconds);
+            }
+            // अगर 0 पर पहुंच गया तो auto-submit logic चलाओ (safety के लिए)
+            if (totalSeconds <= 0 && !submissionLocked) {
+                 if (window.pollingInterval) clearInterval(window.pollingInterval);
+                 lockAndAutoSubmit('time_up');
+            }
+        }, 1000);
         
-        if (durationFromDjango > 0) {
-            startTimer(durationFromDjango, 'assessment-form');
-        } else {
-            // Hide timer if duration is invalid/zero
-            document.getElementById('timer').style.display = 'none';
-        }
+        // 2. Server Polling: हर 15 सेकंड में सर्वर से सटीक समय प्राप्त करें
+        window.pollingInterval = setInterval(() => {
+             // Only poll if not already locked
+             if (!submissionLocked) {
+                 pollTimeRemaining(linkIdFromDjango, formId);
+             } else {
+                 clearInterval(window.pollingInterval);
+             }
+        }, POLLING_RATE_SECONDS * 1000); 
+        
+        // 3. पेज लोड पर तुरंत एक बार कॉल करें (Initial Time प्राप्त करने के लिए)
+        pollTimeRemaining(linkIdFromDjango, formId);
 
 
         // Monaco Editor Initialization
@@ -314,6 +555,8 @@
         
         // Final submission handler (Saves all code before submission)
         document.getElementById('assessment-form').addEventListener('submit', function() {
+            if (window.pollingInterval) clearInterval(window.pollingInterval); // Stop polling on manual submit
+            
             document.querySelectorAll('.code-editor').forEach(editorContainer => {
                  const questionId = editorContainer.id.replace('editor-', '');
                  const textarea = document.getElementById(`textarea-${questionId}`);
