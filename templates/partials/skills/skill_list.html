@@ -6,9 +6,13 @@
     <title>Skills Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      .modal-init {
+        visibility: hidden;
+        opacity: 0;
+      }
       #skillModal,
       #user-menu {
-        transition: opacity 0.3s ease-in-out;
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
       }
       #modalContent {
         transition: transform 0.3s ease-in-out;
@@ -48,8 +52,9 @@
             >
               <span
                 class="skill-name-text text-lg text-slate-700 font-medium mb-3 sm:mb-0"
-                >{{ skill.name }}</span
               >
+                {{ skill.pretty_name }}
+              </span>
               <div class="flex space-x-3">
                 <button
                   class="edit-btn bg-[#9a92b2] text-white text-sm font-medium py-2 px-5 rounded-lg hover:bg-[#8981a1] transition duration-300"
@@ -77,7 +82,7 @@
 
     <div
       id="skillModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 opacity-0 pointer-events-none"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 modal-init"
     >
       <div
         id="modalContent"
@@ -93,8 +98,9 @@
             <label
               for="skillName"
               class="block text-sm font-medium text-slate-600 mb-2"
-              >Name <span class="text-red-500">*</span></label
             >
+              Name <span class="text-red-500">*</span>
+            </label>
             <input
               type="text"
               id="skillName"
@@ -115,9 +121,10 @@
                 checked
               />
               <span class="ml-3 text-sm text-slate-700 select-none"
-                >is Active</span
+                >Is Active</span
               >
             </label>
+            <p id="is-active-error" class="text-red-500 text-sm mt-1"></p>
           </div>
           <div class="flex justify-end space-x-4">
             <button
@@ -140,6 +147,7 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
+        // --- CSRF Token Function ---
         function getCookie(name) {
           let cookieValue = null;
           if (document.cookie && document.cookie !== "") {
@@ -157,7 +165,7 @@
           return cookieValue;
         }
 
-        // --- Sidebar Toggle Logic ---
+        // --- 💡 SIDEBAR SCRIPT ADDED START ---
         const sidebar = document.getElementById("sidebar");
         const toggleButton = document.getElementById("sidebar-toggle");
         const sidebarLogo = document.getElementById("sidebar-logo");
@@ -169,20 +177,21 @@
             sidebar.classList.toggle("w-64"); // Full width
             sidebar.classList.toggle("w-20"); // Collapsed width
 
-            // Hide/show text and logo
             if (sidebarLogo) sidebarLogo.classList.toggle("hidden");
             if (sidebarTexts)
               sidebarTexts.forEach((text) => text.classList.toggle("hidden"));
 
-            // Adjust header alignment
             if (sidebarHeader) {
               sidebarHeader.classList.toggle("justify-between");
               sidebarHeader.classList.toggle("justify-center");
             }
           });
         }
+        // --- 💡 SIDEBAR SCRIPT ADDED END ---
+
         const csrftoken = getCookie("csrftoken");
 
+        // --- Modal Elements ---
         const addSkillBtn = document.getElementById("addSkillBtn");
         const skillModal = document.getElementById("skillModal");
         const modalContent = document.getElementById("modalContent");
@@ -194,12 +203,20 @@
         const skillNameInput = document.getElementById("skillName");
         const isActiveInput = document.getElementById("isActive");
         const nameError = document.getElementById("skill-name-error");
+        const isActiveError = document.getElementById("is-active-error");
 
+        // Prepare the modal (hide it properly on load)
+        skillModal.classList.remove("modal-init");
+        skillModal.classList.add("invisible", "opacity-0");
+
+        // --- Modal Functions ---
         const openModal = (mode = "add", skill = null) => {
           skillForm.reset();
           skillIdInput.value = "";
           nameError.textContent = "";
+          isActiveError.textContent = "";
           skillNameInput.classList.remove("border-red-500");
+
           if (mode === "edit" && skill) {
             modalTitle.textContent = "Edit Skill";
             skillIdInput.value = skill.id;
@@ -209,7 +226,8 @@
             modalTitle.textContent = "Add New Skill";
             isActiveInput.checked = true;
           }
-          skillModal.classList.remove("opacity-0", "pointer-events-none");
+
+          skillModal.classList.remove("opacity-0", "invisible");
           modalContent.classList.remove("scale-95");
           skillNameInput.focus();
         };
@@ -218,10 +236,11 @@
           modalContent.classList.add("scale-95");
           skillModal.classList.add("opacity-0");
           setTimeout(() => {
-            skillModal.classList.add("pointer-events-none");
+            skillModal.classList.add("invisible");
           }, 300);
         };
 
+        // --- Event Listeners ---
         addSkillBtn.addEventListener("click", () => openModal("add"));
         cancelBtn.addEventListener("click", closeModal);
         skillModal.addEventListener("click", (e) => {
@@ -233,12 +252,28 @@
 
         skillForm.addEventListener("submit", (e) => {
           e.preventDefault();
+          nameError.textContent = "";
+          skillNameInput.classList.remove("border-red-500");
+          isActiveError.textContent = "";
+
           const id = skillIdInput.value;
           const name = skillNameInput.value.trim();
           const is_active = isActiveInput.checked;
+          let isValid = true;
+
+          if (!name) {
+            nameError.textContent = "Skill name is required.";
+            skillNameInput.classList.add("border-red-500");
+            isValid = false;
+          }
+          if (!is_active) {
+            isActiveError.textContent =
+              "The skill must be set to active to save.";
+            isValid = false;
+          }
+          if (!isValid) return;
 
           const url = id ? `/skills/update/${id}/` : "{% url 'skill_create' %}";
-
           fetch(url, {
             method: "POST",
             headers: {
@@ -251,7 +286,7 @@
             .then((data) => {
               if (data.status === "success") {
                 location.reload();
-              } else {
+              } else if (data.errors && data.errors.name) {
                 nameError.textContent = data.errors.name[0];
                 skillNameInput.classList.add("border-red-500");
               }
@@ -286,9 +321,7 @@
                       "opacity 0.3s ease, transform 0.3s ease";
                     skillItem.style.opacity = "0";
                     skillItem.style.transform = "translateX(20px)";
-                    setTimeout(() => {
-                      skillItem.remove();
-                    }, 300);
+                    setTimeout(() => skillItem.remove(), 300);
                   } else {
                     alert(data.message || "Failed to delete skill.");
                   }
@@ -298,22 +331,26 @@
           }
         });
 
-        // User menu toggle
+        // --- 💡 HEADER (USER MENU) SCRIPT ADDED START ---
         const userMenuButton = document.getElementById("user-menu-button");
         const userMenu = document.getElementById("user-menu");
+
         if (userMenuButton && userMenu) {
           userMenuButton.addEventListener("click", () =>
             userMenu.classList.toggle("hidden")
           );
+
           document.addEventListener("click", (e) => {
             if (
               !userMenu.classList.contains("hidden") &&
-              !userMenuButton.contains(e.target)
+              !userMenuButton.contains(e.target) &&
+              !userMenu.contains(e.target)
             ) {
               userMenu.classList.add("hidden");
             }
           });
         }
+        // --- 💡 HEADER (USER MENU) SCRIPT ADDED END ---
       });
     </script>
   </body>

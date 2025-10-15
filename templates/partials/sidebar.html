@@ -1,12 +1,19 @@
+{% load static %}
 <aside
   id="sidebar"
   class="bg-white text-slate-800 w-64 flex flex-col transition-all duration-300 ease-in-out shadow-md"
 >
   <div
     id="sidebar-header"
-    class="flex items-center justify-between h-16 px-4 border-b border-slate-200"
+    class="flex items-center justify-between h-16 px-6 border-b border-slate-200"
   >
-    <h1 id="sidebar-logo" class="text-xl font-bold text-slate-800">Averybit</h1>
+    <a href="/" id="sidebar-logo">
+      <img
+        src="{% static '/Averybit 1.png' %}"
+        alt="Averybit Logo"
+        class="h-12 w-32"
+      />
+    </a>
     <button
       id="sidebar-toggle"
       class="text-slate-500 hover:text-slate-700 focus:outline-none"
@@ -27,7 +34,6 @@
       </svg>
     </button>
   </div>
-
   <nav class="flex-1 px-2 py-4 space-y-2">
     <a
       href="{% url 'dashboard' %}"
@@ -109,47 +115,16 @@
       </svg>
       <span class="sidebar-text">Skills</span>
     </a>
-    <a
-      href="{% url 'user_list' %}"
-      class="flex items-center px-4 py-2.5 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-100"
-    >
-      <svg
-        class="w-5 h-5 mr-3"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="1.5"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-1.063M15 19.128v-3.86a2.25 2.25 0 01.9-1.751l3.17-2.385a2.25 2.25 0 012.87 0L21 13.5M15 19.128V15.75M15 9.75c0-1.036.84-1.875 1.875-1.875h.375c1.036 0 1.875.84 1.875 1.875v3.375c0 1.036-.84 1.875-1.875 1.875h-.375C15.84 15.125 15 14.286 15 13.25V9.75zM8.25 19.128v-3.86a2.25 2.25 0 01.9-1.751l3.17-2.385a2.25 2.25 0 012.87 0L21 13.5M8.25 19.128V15.75M8.25 9.75c0-1.036.84-1.875 1.875-1.875h.375c1.036 0 1.875.84 1.875 1.875v3.375c0 1.036-.84 1.875-1.875 1.875h-.375C9.09 15.125 8.25 14.286 8.25 13.25V9.75zM3 19.128v-3.86a2.25 2.25 0 01.9-1.751l3.17-2.385a2.25 2.25 0 012.87 0L12 13.5"
-        />
-      </svg>
-      <span class="sidebar-text">Manage Users</span>
-    </a>
   </nav>
 </aside>
-
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // Get the current page's path (e.g., "/dashboard/")
     const currentPath = window.location.pathname;
-
-    // Get all the links inside the sidebar navigation
     const navLinks = document.querySelectorAll("#sidebar nav a");
-
-    // Loop through each link
     navLinks.forEach((link) => {
-      // Get the path from the link's URL
       const linkPath = new URL(link.href).pathname;
-
-      // If the link's path matches the current page's path...
       if (linkPath === currentPath) {
-        // ...add the highlight class to it.
         link.classList.add("bg-slate-100");
-        // You can also add other classes for active state, like making the text bold
         link.classList.add("font-semibold");
       }
     });

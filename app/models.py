@@ -7,6 +7,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.db import models
+import re
 
 User = get_user_model()
 
@@ -43,6 +44,19 @@ class Skill(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def pretty_name(self):
+        """
+        Returns a nicely formatted name for the UI.
+        """
+
+        if self.name == "nodejs":
+            return "Node.js"
+        if self.name == "javascript":
+            return "JavaScript"
+
+        return self.name.title()
+
     def __str__(self):
         return self.name
 
@@ -51,7 +65,7 @@ class Skill(models.Model):
 
 
 class Department(models.Model):
-    name = models.CharField(max_length=100, default="Unassigned")
+    name = models.CharField(max_length=100, default="")
     sections = models.ManyToManyField(Section)
 
     def __str__(self):
@@ -65,7 +79,6 @@ class QuestionPaper(models.Model):
 
     title = models.CharField(max_length=255)
     job_title = models.CharField(max_length=200)
-    # Yeh CharField hai, jo bilkul sahi hai.
     department_name = models.CharField(max_length=100, default="Unassigned")
     min_exp = models.PositiveIntegerField()
     max_exp = models.PositiveIntegerField()
@@ -81,7 +94,7 @@ class QuestionPaper(models.Model):
     )
     total_questions = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
-    # is_public = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
     is_public_active = models.BooleanField(null=True, blank=True)
 
     def __str__(self):
@@ -106,15 +119,11 @@ class PaperSection(models.Model):
         return f"Section '{self.title}' of paper '{self.question_paper.title}'"
 
 
-# ... baaki models waise hi rahenge
-
-
 class Question(models.Model):
     """
     Represents a single question within a PaperSection.
     """
 
-    # Question Types ke liye choices define karein
     class QuestionType(models.TextChoices):
         MCQ = "MCQ", "Multiple Choice"
         SA = "SA", "Short Answer"
@@ -128,13 +137,10 @@ class Question(models.Model):
     options = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
-    # === YEH NAYI FIELD ADD KAREIN ===
     question_type = models.CharField(
         max_length=15,
         choices=QuestionType.choices,
-        # default=QuestionType.UNCLASSIFIED,
     )
-    # ================================
 
     class Meta:
         ordering = ["order"]
@@ -152,9 +158,8 @@ class TestRegistration(models.Model):
     question_paper = models.ForeignKey(QuestionPaper, on_delete=models.CASCADE)
 
     class Meta:
-        # Yeh Django ko batata hai ki yeh model kis table ke liye hai
         db_table = "app_testregistration"
-        managed = False  # Important: Agar table pehle se bani hai to False rakhein
+        managed = False
 
     def __str__(self):
         return f"{self.email} - Paper ID: {self.question_paper.id}"
@@ -162,14 +167,11 @@ class TestRegistration(models.Model):
 
 class UserResponse(models.Model):
     user_answer = models.TextField()
-    # Establish a relationship with your Question and TestRegistration models
     question = models.ForeignKey(Question, on_delete=models.DO_NOTHING)
     registration = models.ForeignKey(TestRegistration, on_delete=models.DO_NOTHING)
 
     class Meta:
-        # Tell Django to use your existing table
         db_table = "user_tests_userresponse"
-        # Important: Prevents Django from trying to create or modify this table
         managed = False
 
     def __str__(self):

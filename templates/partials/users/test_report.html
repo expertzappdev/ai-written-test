@@ -6,6 +6,24 @@
     <title>{{ title }}</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "theme-primary": "#736b8e",
+              "theme-dark": "#5f5778",
+              "theme-light": "#e5e3e9",
+              "gray-text": "#6B7280",
+            },
+          },
+        },
+      };
+    </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
     <style>
       ::-webkit-scrollbar {
@@ -34,9 +52,9 @@
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50">
           <div class="container mx-auto px-6 py-8">
             <header class="mb-6">
-              <h4 class="text-2xl font-bold text-slate-800">
+              <h6 class="text-2xl font-bold text-slate-800">
                 {{ registration.question_paper.title }} Report
-              </h4>
+              </h6>
               <p class="text-sm text-slate-500 mt-1">
                 Detailed report for <strong>{{ registration.email }}</strong>'s
                 attempt on {{ registration.start_time }}.

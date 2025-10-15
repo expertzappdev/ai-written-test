@@ -1,274 +1,394 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ title|default:"Admin Dashboard" }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-    />
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              // Standardized Color Palette
-              "theme-primary": "#736b8e",
-              "theme-dark": "#5f5778",
-              "theme-light": "#e5e3e9",
-              "gray-text": "#6B7280",
-            },
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title|default:"Admin Dashboard" }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "theme-primary": "#736b8e",
+            "theme-dark": "#5f5778",
+            "theme-light": "#e5e3e9",
+            "gray-text": "#6B7280",
           },
         },
-      };
-    </script>
-    <style>
-      /* Enforcing Inter font for the entire body */
-      body {
-        font-family: "Inter", sans-serif;
-      }
-      /* Custom scrollbar (optional, can be removed) */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f5f9;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-    </style>
-  </head>
-  <body class="text-gray-800">
-    <div class="flex h-screen">
-      {% include 'partials/sidebar.html' %}
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+    }
 
-      <div class="flex-1 flex flex-col overflow-hidden">
-        {% include 'partials/header.html' with page_title="" %}
-        <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div>
-            <div
-              class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4"
-            >
-              <h2 class="text-xl font-bold text-gray-800">Question Papers</h2>
-              <a
-                href="{% url 'generate_questions' %}"
-                class="w-full sm:w-auto bg-theme-primary text-white text-center font-semibold py-2 px-4 rounded-lg hover:bg-theme-dark transition-colors"
-              >
-                Create Question Paper
-              </a>
-            </div>
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
 
-            <div class="space-y-3">
-              {% for paper in papers %}
-              <a
-                href="{% url 'paper_detail' paper.id %}"
-                class="block bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-theme-primary transition-all duration-200"
-              >
-                <div class="flex justify-between items-center">
-                  <div>
-                    <h3 class="font-semibold text-lg text-gray-900">
-                      {{ paper.title }} {% if not paper.is_active %} {% endif %}
-                    </h3>
-                    <p class="text-xs sm:text-sm text-gray-text mt-1">
-                      <i class="fas fa-clock mr-1"></i>
-                      Duration: {{ paper.duration }} min &bull;
-                      <i class="fas fa-list-ol ml-2 mr-1"></i>
-                      {{ paper.total_questions }} Questions &bull;
-                      <i class="fas fa-users ml-2 mr-1"></i>
-                      Active Participants: 2
-                    </p>
-                  </div>
-                  <div class="flex items-center space-x-1 z-10 relative">
-                    <button
-                      data-paper-title="{{ paper.title }}"
-                      data-share-link="{% url 'take_paper' paper.id %}"
-                      data-is-public="{{ paper.is_public_active|yesno:'true,false' }}"
-                      data-paper-id="{{ paper.id }}"
-                      title="Share Paper"
-                      class="share-button p-2 text-gray-500 rounded-full hover:bg-theme-light hover:text-theme-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-primary"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <circle cx="18" cy="5" r="3"></circle>
-                        <circle cx="6" cy="12" r="3"></circle>
-                        <circle cx="18" cy="19" r="3"></circle>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                      </svg>
-                    </button>
-                  </div>
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+
+    .toast {
+      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      opacity: 0;
+      transform: translateX(100%);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #736b8e;
+    }
+
+    .toggle-checkbox:checked+.toggle-label {
+      background-color: #736b8e;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-gray-800">
+  <div class="flex h-screen">
+    {% include 'partials/sidebar.html' %}
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+      {% include 'partials/header.html' with page_title="" %}
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 flex-shrink-0">
+              Question Papers
+            </h2>
+            <div class="flex-1 flex flex-col sm:flex-row justify-start sm:justify-center items-center gap-4 w-full">
+
+              <div class="relative w-full sm:w-48">
+                <select id="filter-status"
+                  class="w-full p-2 pr-10 border border-gray-300 rounded-lg bg-white text-sm focus:ring-theme-primary focus:border-theme-primary appearance-none">
+                  <option value="all" {% if selected_status=='all' %}selected{% endif %}>All Statuses</option>
+                  <option value="active" {% if selected_status=='active' %}selected{% endif %}>Active</option>
+                  <option value="inactive" {% if selected_status=='inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
                 </div>
-              </a>
-              {% empty %}
-              <div
-                class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 text-center"
-              >
-                <p class="text-gray-text">
-                  You haven't created any question papers yet.
-                </p>
               </div>
+
+              <div class="relative w-full sm:w-48">
+                <select id="filter-experience"
+                  class="w-full p-2 pr-10 border border-gray-300 rounded-lg bg-white text-sm focus:ring-theme-primary focus:border-theme-primary appearance-none">
+                  <option value="all" {% if selected_experience=='all' %}selected{% endif %}>All Levels</option>
+                  <option value="0-2" {% if selected_experience=='0-2' %}selected{% endif %}>Beginner (0-2 Years)
+                  </option>
+                  <option value="3-5" {% if selected_experience=='3-5' %}selected{% endif %}>Intermediate (3-5 Years)
+                  </option>
+                  <option value="6+" {% if selected_experience=='6+' %}selected{% endif %}>Advanced (6+ Years)</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
+
+            </div>
+
+            <a href="{% url 'generate_questions' %}"
+              class="w-full sm:w-auto bg-theme-primary text-white text-center font-semibold py-2 px-5 rounded-lg hover:bg-theme-dark transition-all duration-300 shadow hover:shadow-lg transform hover:-translate-y-0.5">
+              <i class="fas fa-plus mr-2"></i>Create Paper
+            </a>
+          </div>
+          <div class="space-y-4" id="papers-container">
+            {% for paper in papers %}
+            <div id="paper-card-{{ paper.id }}"
+              class="paper-card bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-theme-primary transition-all duration-300"
+              data-status="{% if paper.is_public_active %}active{% else %}inactive{% endif %}"
+              data-experience="{{ paper.experience_level|default:'beginner'|lower }}">
+              <div class="flex justify-between items-start">
+                <a href="{% url 'paper_detail' paper.id %}" class="flex-grow">
+                  <div class="flex items-center mb-2">
+                    <span id="status-dot-{{ paper.id }}"
+                      class="h-3 w-3 rounded-full mr-3 {% if paper.is_public_active %} bg-green-500 {% else %} bg-gray-400 {% endif %}"
+                      title="{% if paper.is_public_active %}Public link is Active{% else %}Public link is Inactive{% endif %}"></span>
+                    <h3 class="font-semibold text-lg text-gray-900">
+                      {{ paper.title }}
+                    </h3>
+                  </div>
+                  <p class="text-xs sm:text-sm text-gray-text mt-1 pl-6">
+                    <i class="fas fa-clock mr-1 opacity-70"></i>
+                    Duration: {{ paper.duration }} min &bull;
+                    <i class="fas fa-list-ol ml-2 mr-1 opacity-70"></i>
+                    {{ paper.total_questions }} Questions &bull;
+                    <i class="fas fa-users ml-2 mr-1 opacity-70"></i>
+                    Participants: {{ paper.participant_count }}
+                  </p>
+                </a>
+
+                <div class="flex items-center space-x-1 z-10 relative flex-shrink-0">
+                  <button data-paper-title="{{ paper.title }}" data-share-link="{% url 'take_paper' paper.id %}"
+                    data-is-public="{{ paper.is_public_active|yesno:'true,false' }}" data-paper-id="{{ paper.id }}"
+                    title="Share Paper"
+                    class="share-button p-2 text-gray-500 rounded-full hover:bg-theme-light hover:text-theme-primary focus:outline-none">
+                    <i class="fas fa-share-alt"></i>
+                  </button>
+                  <button data-paper-id="{{ paper.id }}" data-paper-title="{{ paper.title }}" title="Deactivate Paper"
+                    class="deactivate-paper-button p-2 text-gray-500 rounded-full hover:bg-red-100 hover:text-red-600 focus:outline-none">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            {% empty %}
+            <div class="bg-white p-12 rounded-lg shadow-sm border-2 border-dashed border-gray-300 text-center mt-8">
+              <i class="fas fa-file-alt fa-3x text-gray-300 mb-4"></i>
+              <h3 class="text-xl font-semibold text-gray-700">
+                No Papers Found
+              </h3>
+              <p class="text-gray-text mt-2">
+                Click on "Create Paper" to get started!
+              </p>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mt-8 flex justify-center items-center">
+            {% if papers.has_other_pages %}
+            <nav class="flex items-center space-x-2" aria-label="Pagination">
+              {% if papers.has_previous %}
+              <a href="?page={{ papers.previous_page_number }}"
+                class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                <i class="fas fa-chevron-left mr-1"></i>
+                Prev
+              </a>
+              {% else %}
+              <span
+                class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg cursor-not-allowed">
+                <i class="fas fa-chevron-left mr-1"></i>
+                Prev
+              </span>
+              {% endif %}
+
+              {% for i in papers.paginator.page_range %}
+              {% if papers.number == i %}
+              <span aria-current="page"
+                class="px-4 py-2 text-sm font-bold text-white bg-theme-primary border border-theme-dark rounded-lg z-10">
+                {{ i }}
+              </span>
+              {% else %}
+              <a href="?page={{ i }}"
+                class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                {{ i }}
+              </a>
+              {% endif %}
               {% endfor %}
+
+              {% if papers.has_next %}
+              <a href="?page={{ papers.next_page_number }}"
+                class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                Next
+                <i class="fas fa-chevron-right ml-1"></i>
+              </a>
+              {% else %}
+              <span
+                class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg cursor-not-allowed">
+                Next
+                <i class="fas fa-chevron-right ml-1"></i>
+              </span>
+              {% endif %}
+            </nav>
+            {% endif %}
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+
+  </div>
+  </main>
+  </div>
+  </div>
+
+  <div id="share-modal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex justify-center items-center p-4">
+    <div id="share-modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto">
+      <div class="flex justify-between items-center p-5 border-b border-gray-200">
+        <h3 class="text-xl font-bold text-gray-800">Share Paper</h3>
+        <button id="close-share-modal-top" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times fa-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-5">
+        <p class="text-sm text-gray-text font-medium">
+          Anyone with this link can attempt the "<strong id="modal-paper-title"></strong>" paper.
+        </p>
+        <div class="relative">
+          <input type="text" id="share-link-input" readonly
+            class="w-full p-3 pr-28 border border-gray-300 rounded-lg bg-slate-50 text-sm focus:ring-theme-primary focus:border-theme-primary" />
+          <button id="copy-link-button"
+            class="absolute right-1 top-1/2 -translate-y-1/2 bg-theme-primary text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-theme-dark transition-colors">
+            Copy Link
+          </button>
+        </div>
+        <div class="pt-5 border-t border-gray-100">
+          <div class="flex justify-between items-center">
+            <div>
+              <h4 class="font-semibold text-gray-800">Public Link Access</h4>
+              <p class="text-xs text-gray-text">
+                Controls if the link is active or not.
+              </p>
+            </div>
+            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+              <input type="checkbox" name="toggle" id="public-link-toggle"
+                class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" />
+              <label for="public-link-toggle"
+                class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
-
-    <div
-      id="share-modal"
-      class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex justify-center items-center p-4 transition-opacity duration-300"
-    >
-      <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto transform transition-transform duration-300 scale-95 opacity-0"
-        id="share-modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-      >
-        <div
-          class="flex justify-between items-center p-5 border-b border-gray-100"
-        >
-          <h3 id="modal-title" class="text-xl font-bold text-gray-800">
-            Share Question Paper
-          </h3>
-          <button
-            id="close-share-modal-top"
-            class="text-gray-400 hover:text-gray-600 focus:outline-none"
-          >
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
-        </div>
-        <div class="p-4 sm:p-6 space-y-4">
-          <p class="text-sm text-gray-text font-medium">
-            Share this link to allow anyone to attempt the "<strong
-              id="modal-paper-title"
-            ></strong
-            >" paper.
-          </p>
-          <div class="relative">
-            <input
-              type="text"
-              id="share-link-input"
-              readonly
-              class="w-full p-3 pr-28 border-2 border-gray-200 rounded-lg bg-slate-50 text-sm focus:ring-theme-primary focus:border-theme-primary truncate"
-              value=""
-            />
-            <button
-              id="copy-link-button"
-              class="absolute right-1 top-1/2 -translate-y-1/2 bg-theme-primary text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-theme-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-primary"
-            >
-              Copy Link
-            </button>
-          </div>
-          <p id="copy-message" class="text-sm text-green-600 hidden mt-2">
-            Link copied to clipboard! ✅
-          </p>
-          <div class="pt-4 border-t border-gray-100">
-            <h4 class="font-semibold text-gray-800 mb-2">Link Control</h4>
-            <p class="text-xs text-gray-text mb-3">
-              This controls the public accessibility. Toggling it off will
-              immediately deactivate the link.
-            </p>
-            <button
-              id="deactivate-link-button"
-              data-paper-id=""
-              class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Deactivate Public Link
-            </button>
-            <p id="deactivate-message" class="text-sm text-red-600 hidden mt-2">
-              Link is now deactivated! 🔒 (Requires backend logic)
-            </p>
-          </div>
-        </div>
-        <div class="p-4 border-t border-gray-100 flex justify-end">
-          <button
-            id="close-share-modal-footer"
-            class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
-          >
-            Done
-          </button>
         </div>
       </div>
+      <div class="p-4 bg-gray-50 rounded-b-xl flex justify-end">
+        <button id="close-share-modal-footer"
+          class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">
+          Done
+        </button>
+      </div>
     </div>
+  </div>
 
-    <script>
-      function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-          const cookies = document.cookie.split(";");
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + "=")) {
-              cookieValue = decodeURIComponent(
-                cookie.substring(name.length + 1)
-              );
-              break;
-            }
+  <div id="confirm-modal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex justify-center items-center p-4">
+    <div id="confirm-modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-auto">
+      <div class="p-6 text-center">
+        <i class="fas fa-exclamation-triangle text-4xl text-yellow-500 mb-4"></i>
+        <h3 id="confirm-modal-title" class="text-lg font-bold text-gray-800">
+          Confirm Action
+        </h3>
+        <p id="confirm-modal-text" class="text-sm text-gray-text mt-2">
+          Are you sure?
+        </p>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
+        <button id="confirm-modal-cancel"
+          class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">
+          Cancel
+        </button>
+        <button id="confirm-modal-confirm"
+          class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-3"></div>
+
+  <script>
+    // --- Reusable Toast Notification Function ---
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
+      const icon =
+        type === "success"
+          ? '<i class="fas fa-check-circle"></i>'
+          : '<i class="fas fa-times-circle"></i>';
+      toast.className = `toast text-white text-sm font-semibold p-3 rounded-lg shadow-lg flex items-center space-x-3 ${bgColor}`;
+      toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add("show"), 10);
+      setTimeout(() => {
+        toast.classList.remove("show");
+        toast.addEventListener("transitionend", () => toast.remove());
+      }, 3000);
+    }
+
+    // --- Reusable Confirmation Modal Function ---
+    function showConfirmModal(title, message, onConfirm) {
+      const modal = document.getElementById("confirm-modal");
+      const modalContent = document.getElementById("confirm-modal-content");
+      document.getElementById("confirm-modal-title").textContent = title;
+      document.getElementById("confirm-modal-text").innerHTML = message;
+
+      const confirmBtn = document.getElementById("confirm-modal-confirm");
+      const cancelBtn = document.getElementById("confirm-modal-cancel");
+
+      const closeModal = () => modal.classList.add("hidden");
+
+      const confirmHandler = () => {
+        onConfirm();
+        closeModal();
+      };
+
+      const newConfirmBtn = confirmBtn.cloneNode(true);
+      confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+      newConfirmBtn.addEventListener("click", confirmHandler, { once: true });
+      cancelBtn.addEventListener("click", closeModal, { once: true });
+
+      modal.classList.remove("hidden");
+    }
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.startsWith(name + "=")) {
+            cookieValue = decodeURIComponent(
+              cookie.substring(name.length + 1)
+            );
+            break;
           }
         }
-        return cookieValue;
+      }
+      return cookieValue;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // Sidebar toggle
+      const sidebar = document.getElementById("sidebar");
+      const toggleButton = document.getElementById("sidebar-toggle");
+      const sidebarLogo = document.getElementById("sidebar-logo");
+      const sidebarTexts = document.querySelectorAll(".sidebar-text");
+      const sidebarHeader = document.getElementById("sidebar-header");
+
+      if (toggleButton) {
+        toggleButton.addEventListener("click", () => {
+          sidebar.classList.toggle("w-64");
+          sidebar.classList.toggle("w-20");
+          sidebarLogo.classList.toggle("hidden");
+          sidebarHeader.classList.toggle("justify-between");
+          sidebarHeader.classList.toggle("justify-center");
+          sidebarTexts.forEach((text) => {
+            text.classList.toggle("hidden");
+          });
+        });
       }
 
-      document.addEventListener("DOMContentLoaded", function () {
-        const sidebar = document.getElementById("sidebar");
-        const toggleButton = document.getElementById("sidebar-toggle");
-        const sidebarLogo = document.getElementById("sidebar-logo");
-        const sidebarTexts = document.querySelectorAll(".sidebar-text");
-        const sidebarHeader = document.getElementById("sidebar-header");
+      // Profile dropdown
+      const userMenuButton = document.getElementById("user-menu-button");
+      const userMenu = document.getElementById("user-menu");
 
-        if (toggleButton) {
-          toggleButton.addEventListener("click", () => {
-            sidebar.classList.toggle("w-64");
-            sidebar.classList.toggle("w-20");
-            sidebarLogo.classList.toggle("hidden");
-            sidebarHeader.classList.toggle("justify-between");
-            sidebarHeader.classList.toggle("justify-center");
-            sidebarTexts.forEach((text) => {
-              text.classList.toggle("hidden");
-            });
-          });
-        }
-
-        const userMenuButton = document.getElementById("user-menu-button");
-        const userMenu = document.getElementById("user-menu");
-
+      if (userMenuButton && userMenu) {
         userMenuButton.addEventListener("click", (event) => {
           userMenu.classList.toggle("hidden");
           event.stopPropagation();
@@ -282,223 +402,187 @@
             userMenu.classList.add("hidden");
           }
         });
+      }
+    });
 
-        // --- Share Modal Logic (No change) ---
-        const shareModal = document.getElementById("share-modal");
-        const modalContent = document.getElementById("share-modal-content");
-        const shareButtons = document.querySelectorAll(".share-button");
-        const closeShareModalButtons = document.querySelectorAll(
-          "#close-share-modal-top, #close-share-modal-footer"
-        );
-        const shareLinkInput = document.getElementById("share-link-input");
-        const copyLinkButton = document.getElementById("copy-link-button");
-        const copyMessage = document.getElementById("copy-message");
-        const modalPaperTitle = document.getElementById("modal-paper-title");
-        const deactivateButton = document.getElementById(
-          "deactivate-link-button"
-        );
-        const deactivateMessage = document.getElementById("deactivate-message");
+    // --- START: UPDATED FILTER LOGIC ---
+    const filterStatus = document.getElementById("filter-status");
+    const filterExperience = document.getElementById("filter-experience");
+    const paperCards = document.querySelectorAll(".paper-card");
+    const noResultsMessage = document.getElementById("no-results-message");
 
-        shareButtons.forEach((button) => {
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
+    function applyFilters() {
+      const statusValue = filterStatus.value;
+      const experienceValue = filterExperience.value;
+      // Build the new URL with query params
+      const params = new URLSearchParams(window.location.search);
+      params.set("status", statusValue);
+      params.set("experience", experienceValue);
+      params.delete("page"); // Reset to first page on filter change
+      window.location.search = params.toString();
+    }
 
-            const shareLink = button.getAttribute("data-share-link");
-            const paperTitle = button.getAttribute("data-paper-title");
-            const paperId = button.getAttribute("data-paper-id");
+    // Add event listeners to the filter inputs
+    if (filterStatus) filterStatus.addEventListener("change", applyFilters);
+    if (filterExperience) filterExperience.addEventListener("change", applyFilters);
+    // --- END: UPDATED FILTER LOGIC ---
 
-            const isPublic = button.getAttribute("data-is-public") === "true";
+    const shareModal = document.getElementById("share-modal");
+    const closeShareModalButtons = document.querySelectorAll(
+      "#close-share-modal-top, #close-share-modal-footer"
+    );
 
-            const fullShareLink = window.location.origin + shareLink;
-            shareLinkInput.value = fullShareLink;
-            modalPaperTitle.textContent = paperTitle;
-            deactivateButton.setAttribute("data-paper-id", paperId);
+    // --- Open Share Modal ---
+    document.querySelectorAll(".share-button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const shareLink = button.dataset.shareLink;
+        const fullShareLink = window.location.origin + shareLink;
+        document.getElementById("share-link-input").value = fullShareLink;
+        document.getElementById("modal-paper-title").textContent =
+          button.dataset.paperTitle;
 
-            copyMessage.classList.add("hidden");
-            deactivateMessage.classList.add("hidden");
-            copyLinkButton.textContent = "Copy Link";
+        const toggle = document.getElementById("public-link-toggle");
+        toggle.checked = button.dataset.isPublic === "true";
+        toggle.dataset.paperId = button.dataset.paperId;
 
-            if (isPublic) {
-              deactivateButton.textContent = "Deactivate Public Link";
-              deactivateButton.classList.remove(
-                "bg-green-500",
-                "hover:bg-green-600"
-              );
-              deactivateButton.classList.add("bg-red-500", "hover:bg-red-600");
-            } else {
-              deactivateButton.textContent = "Activate Public Link";
-              deactivateButton.classList.remove(
-                "bg-red-500",
-                "hover:bg-red-600"
-              );
-              deactivateButton.classList.add(
-                "bg-green-500",
-                "hover:bg-green-600"
-              );
-            }
+        shareModal.classList.remove("hidden");
+      });
+    });
 
-            shareModal.classList.remove("hidden");
-            setTimeout(() => {
-              modalContent.classList.remove("scale-95", "opacity-0");
-            }, 10);
-          });
-        });
-        const closeModal = () => {
-          modalContent.classList.add("scale-95", "opacity-0");
+    // --- Close Share Modal ---
+    const closeShareModal = () => shareModal.classList.add("hidden");
+    closeShareModalButtons.forEach((btn) =>
+      btn.addEventListener("click", closeShareModal)
+    );
+
+    // --- Copy Link Button ---
+    document
+      .getElementById("copy-link-button")
+      .addEventListener("click", (e) => {
+        const linkInput = document.getElementById("share-link-input");
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+          e.target.textContent = "Copied!";
+          showToast("Link copied to clipboard!");
           setTimeout(() => {
-            shareModal.classList.add("hidden");
-          }, 300);
-        };
-        closeShareModalButtons.forEach((button) => {
-          button.addEventListener("click", closeModal);
+            e.target.textContent = "Copy Link";
+          }, 2000);
         });
-        shareModal.addEventListener("click", (event) => {
-          if (event.target === shareModal) closeModal();
-        });
-        copyLinkButton.addEventListener("click", () => {
-          navigator.clipboard.writeText(shareLinkInput.value).then(() => {
-            copyMessage.classList.remove("hidden");
-            copyLinkButton.textContent = "Copied!";
-            setTimeout(() => {
-              copyMessage.classList.add("hidden");
-              copyLinkButton.textContent = "Copy Link";
-            }, 3000);
-          });
-        });
-        deactivateButton.addEventListener("click", () => {
-          const paperId = deactivateButton.getAttribute("data-paper-id");
-          const toggleUrl = `/api/paper/${paperId}/toggle-public/`;
-          const icon = `<i class="fas fa-spinner fa-spin mr-2"></i>`;
+      });
 
-          deactivateButton.disabled = true;
-          deactivateButton.innerHTML = `${icon} Updating...`;
+    // --- REFACTORED: Public Link Toggle Switch Logic ---
+    const publicLinkToggle = document.getElementById("public-link-toggle");
+    publicLinkToggle.addEventListener("change", () => {
+      const paperId = publicLinkToggle.dataset.paperId;
+      const isChecked = publicLinkToggle.checked;
+      const toggleUrl = `/api/paper/${paperId}/toggle-public/`;
 
-          fetch(toggleUrl, {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": getCookie("csrftoken"),
-              "Content-Type": "application/json",
-            },
-          })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
+      publicLinkToggle.disabled = true;
+
+      fetch(toggleUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+          "Content-Type": "application/json",
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") {
+            const message = data.is_public_active
+              ? "Public link activated!"
+              : "Public link deactivated!";
+            showToast(message);
+
+            // Update status dot on the main page
+            const statusDot = document.getElementById(
+              `status-dot-${paperId}`
+            );
+            statusDot.classList.toggle("bg-green-500", data.is_public_active);
+            statusDot.classList.toggle("bg-gray-400", !data.is_public_active);
+
+            // Update the data attribute on the share button for consistency
+            const shareButton = document.querySelector(
+              `.share-button[data-paper-id='${paperId}']`
+            );
+            shareButton.dataset.isPublic = data.is_public_active;
+          } else {
+            throw new Error(data.message || "Failed to update.");
+          }
+        })
+        .catch((error) => {
+          showToast("An error occurred. Please try again.", "error");
+          publicLinkToggle.checked = !isChecked; // Revert toggle on error
+        })
+        .finally(() => {
+          publicLinkToggle.disabled = false;
+        });
+    });
+
+    // --- NEW: Deactivate Paper Logic ---
+    // --- Deactivate Paper Logic ---
+    document
+      .querySelectorAll(".deactivate-paper-button")
+      .forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const paperId = button.dataset.paperId;
+          const paperTitle = button.dataset.paperTitle;
+
+          showConfirmModal(
+            "Deactivate Paper?",
+            `Are you sure you want to deactivate "<strong>${paperTitle}</strong>"? This action cannot be undone.`,
+            () => {
+              const card = document.getElementById(`paper-card-${paperId}`);
+              if (card) {
+                card.style.transition = "opacity 0.5s ease";
+                card.style.opacity = "0.4";
               }
-              return response.json();
-            })
-            .then((data) => {
-              if (data.status === "success") {
-                const isPublic = data.is_public_active;
 
-                if (isPublic) {
-                  -deactivateMessage.classList.add("hidden");
-                  deactivateButton.textContent = "Deactivate Public Link";
-                  deactivateButton.classList.remove(
-                    "bg-green-500",
-                    "hover:bg-green-600"
-                  );
-                  deactivateButton.classList.add(
-                    "bg-red-500",
-                    "hover:bg-red-600"
-                  );
-                  alert("Link is now active and public! ✅");
-                } else {
-                  deactivateMessage.textContent = "Link is now deactivated! 🔒";
-                  deactivateMessage.classList.remove("hidden");
-                  deactivateButton.textContent = "Activate Public Link";
-                  deactivateButton.classList.remove(
-                    "bg-red-500",
-                    "hover:bg-red-600"
-                  );
-                  deactivateButton.classList.add(
-                    "bg-green-500",
-                    "hover:bg-green-600"
-                  );
-                }
-              } else {
-                throw new Error(data.message || "Failed to update status.");
-              }
-            })
-            .catch((error) => {
-              console.error("Error toggling paper status:", error);
-              deactivateMessage.textContent =
-                "An error occurred. Please try again.";
-              deactivateMessage.classList.remove("hidden");
-              deactivateMessage.classList.add("text-red-600");
-            })
-            .finally(() => {
-              deactivateButton.disabled = false;
-            });
-        });
-
-        const deactivatePaperButtons = document.querySelectorAll(
-          ".deactivate-paper-button"
-        );
-
-        deactivatePaperButtons.forEach((button) => {
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const paperId = button.getAttribute("data-paper-id");
-            const paperTitle = button.getAttribute("data-paper-title");
-            const card = button.closest("a");
-
-            if (
-              confirm(
-                `Are you sure you want to deactivate the paper "${paperTitle}"?\nThis will make the paper and its share link inaccessible.`
-              )
-            ) {
+              // ✨ REPLACED FAKE CALL WITH REAL FETCH REQUEST ✨
               const deactivateUrl = `/api/paper/${paperId}/deactivate/`;
-              const icon = button.querySelector("i");
-
-              button.disabled = true;
-              icon.classList.add("fa-spin");
 
               fetch(deactivateUrl, {
                 method: "POST",
                 headers: {
-                  "X-CSRFToken": getCookie("csrftoken"),
+                  "X-CSRFToken": getCookie("csrftoken"), // Important for security
                   "Content-Type": "application/json",
                 },
               })
-                .then((response) => {
-                  if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                  }
-                  return response.json();
-                })
+                .then((response) => response.json())
                 .then((data) => {
                   if (data.status === "success") {
-                    card.classList.add("opacity-50", "pointer-events-none");
-
-                    const titleElement = card.querySelector("h3");
-                    if (titleElement) {
-                      titleElement.innerHTML +=
-                        ' <span class="text-xs font-normal text-red-600">(Deactivated)</span>';
+                    // On success, remove the card from the page
+                    if (card) {
+                      card.remove();
                     }
-
-                    icon.classList.remove("fa-spin");
-                    button.classList.remove(
-                      "hover:bg-red-100",
-                      "hover:text-red-600"
-                    );
-                    button.classList.add("text-red-400");
+                    showToast(data.message, "success");
                   } else {
-                    throw new Error(data.message || "Failed to deactivate.");
+                    // If the backend sends an error, show it
+                    showToast(data.message || "An error occurred.", "error");
+                    if (card) {
+                      card.style.opacity = "1"; // Restore opacity on failure
+                    }
                   }
                 })
                 .catch((error) => {
+                  // Handle network errors
                   console.error("Deactivation Error:", error);
-                  alert("An error occurred. Could not deactivate the paper.");
-                  button.disabled = false;
-                  icon.classList.remove("fa-spin");
+                  showToast(
+                    "Could not connect to the server. Please try again.",
+                    "error"
+                  );
+                  if (card) {
+                    card.style.opacity = "1";
+                  }
                 });
             }
-          });
+          );
         });
       });
-    </script>
-  </body>
+  </script>
+</body>
+
 </html>

@@ -113,8 +113,7 @@
                       class="question-item pl-4 border-l-2 border-theme-primary"
                     >
                       <p class="font-semibold text-gray-800">
-                        Q{{ forloop.parentloop.counter }}.{{ forloop.counter }}.
-                        {{ question.text }}
+                        Q{{ forloop.counter }}. {{ question.text|safe }}
                       </p>
                       <p
                         class="mt-2 text-sm text-gray-800 bg-theme-light p-3 rounded-md"
@@ -132,6 +131,84 @@
                 </p>
                 {% endfor %}
               </div>
+            </div>
+
+            <div class="pt-6 mt-6 border-t">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">Participants</h3>
+
+              {% if participants %}
+              <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Email
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Phone Number
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Completed
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Report
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    {% for registration in participants %}
+                    <tr>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                      >
+                        {{ registration.email }}
+                      </td>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      >
+                        {{ registration.phone_number }}
+                      </td>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      >
+                        {% if registration.is_completed %}
+                        <span class="text-green-600 font-semibold">Yes</span>
+                        {% else %}
+                        <span class="text-red-600">No</span>
+                        {% endif %}
+                      </td>
+                      <td
+                        class="px-6 py-4 whitespace-nowrap text-sm font-medium"
+                      >
+                        <a
+                          href="{% url 'test_report' registration.id %}"
+                          class="text-theme-primary hover:text-theme-dark"
+                        >
+                          View Report
+                        </a>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <p class="text-gray-500 bg-gray-50 p-4 rounded-md">
+                No one has attempted this test yet.
+              </p>
+              {% endif %}
             </div>
           </div>
         </main>
@@ -179,3 +256,322 @@
     </script>
   </body>
 </html>
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title|default:"Paper Details" }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "theme-primary": "#736b8e",
+              "theme-dark": "#5f5778",
+              "theme-light": "#e5e3e9",
+              "gray-text": "#6B7280",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      /* --- Styles for Accordion --- */
+      .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+      .accordion-button .accordion-icon {
+        transition: transform 0.3s ease;
+      }
+      .accordion-button.active .accordion-icon {
+        transform: rotate(180deg);
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-gray-800">
+    <div class="flex h-screen">
+      {% include 'partials/sidebar.html' %}
+      <div class="flex-1 flex flex-col overflow-hidden">
+        {% include 'partials/header.html' with page_title="" %}
+
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div class="max-w-7xl mx-auto space-y-6">
+            <div
+              class="bg-white p-5 rounded-lg shadow-sm border border-gray-200"
+            >
+              <div
+                class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"
+              >
+                <div class="flex items-center gap-4">
+                  <div
+                    class="hidden sm:block bg-theme-light text-theme-dark p-3 rounded-lg"
+                  >
+                    <i class="fas fa-file-alt fa-2x"></i>
+                  </div>
+                  <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900">
+                      {{ paper.job_title }}
+                    </h2>
+                    <p class="text-md text-gray-500">{{ paper.title }}</p>
+                  </div>
+                </div>
+                <a
+                  href="{% url 'paper_edit' paper.id %}"
+                  class="w-full sm:w-auto bg-theme-primary text-white text-center font-semibold py-2 px-5 rounded-lg hover:bg-theme-dark transition-colors flex items-center justify-center gap-2"
+                >
+                  <i class="fas fa-pencil-alt"></i> Edit Paper
+                </a>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div
+                class="bg-white p-4 rounded-lg shadow-sm border flex items-center gap-4"
+              >
+                <i
+                  class="fas fa-building fa-2x text-theme-primary opacity-70"
+                ></i>
+                <div>
+                  <label class="text-sm font-medium text-gray-500"
+                    >Department</label
+                  >
+                  <p class="text-base font-semibold text-gray-900">
+                    {{ paper.department_name }}
+                  </p>
+                </div>
+              </div>
+              <div
+                class="bg-white p-4 rounded-lg shadow-sm border flex items-center gap-4"
+              >
+                <i class="fas fa-clock fa-2x text-theme-primary opacity-70"></i>
+                <div>
+                  <label class="text-sm font-medium text-gray-500"
+                    >Duration</label
+                  >
+                  <p class="text-base font-semibold text-gray-900">
+                    {{ paper.duration }} Minutes
+                  </p>
+                </div>
+              </div>
+              <div
+                class="bg-white p-4 rounded-lg shadow-sm border flex items-center gap-4"
+              >
+                <i
+                  class="fas fa-briefcase fa-2x text-theme-primary opacity-70"
+                ></i>
+                <div>
+                  <label class="text-sm font-medium text-gray-500"
+                    >Experience</label
+                  >
+                  <p class="text-base font-semibold text-gray-900">
+                    {{ paper.min_exp }} - {{ paper.max_exp }} Years
+                  </p>
+                </div>
+              </div>
+              <div class="bg-white p-4 rounded-lg shadow-sm border">
+                <div class="flex items-center gap-4">
+                  <i
+                    class="fas fa-tags fa-2x text-theme-primary opacity-70"
+                  ></i>
+                  <label class="text-sm font-medium text-gray-500"
+                    >Skills</label
+                  >
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  {% for skill in skills %}
+                  <span
+                    class="bg-theme-light text-theme-dark text-xs font-semibold px-3 py-1 rounded-full"
+                    >{{ skill }}</span
+                  >
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">Questions</h3>
+              <div class="space-y-3">
+                {% for section in paper.paper_sections.all %}
+                <div class="border rounded-md">
+                  <button
+                    class="accordion-button w-full flex justify-between items-center text-left p-4 bg-slate-50 hover:bg-slate-100"
+                  >
+                    <span class="font-semibold text-theme-primary"
+                      >{{ section.title }}</span
+                    >
+                    <i class="fas fa-chevron-down accordion-icon"></i>
+                  </button>
+                  <div class="accordion-content">
+                    <div class="p-4 space-y-4 border-t">
+                      {% for question in section.questions.all %}
+                      <div>
+                        <p class="font-semibold text-gray-800">
+                          {{ forloop.counter }}. {{ question.text|safe }}
+                        </p>
+                        <div
+                          class="mt-2 text-sm text-gray-800 bg-theme-light p-3 rounded-md flex gap-3"
+                        >
+                          <span class="font-bold text-theme-dark">Answer:</span>
+                          <span>{{ question.answer }}</span>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 bg-gray-50 p-4 rounded-md">
+                  This paper has no sections or questions.
+                </p>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">Participants</h3>
+              {% if participants %}
+              <div class="overflow-x-auto">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="border-b bg-slate-50">
+                      <th
+                        class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
+                        Email
+                      </th>
+                      <th
+                        class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
+                        Phone Number
+                      </th>
+                      <th
+                        class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
+                        Status
+                      </th>
+                      <th
+                        class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
+                        Report
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for registration in participants %}
+                    <tr class="border-b hover:bg-slate-50">
+                      <td class="px-4 py-3 text-sm text-gray-900">
+                        {{ registration.email }}
+                      </td>
+                      <td class="px-4 py-3 text-sm text-gray-500">
+                        {{ registration.phone_number }}
+                      </td>
+                      <td class="px-4 py-3">
+                        {% if registration.is_completed %}
+                        <span
+                          class="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full"
+                          >Completed</span
+                        >
+                        {% else %}
+                        <span
+                          class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full"
+                          >Pending</span
+                        >
+                        {% endif %}
+                      </td>
+                      <td class="px-4 py-3">
+                        <a
+                          href="{% url 'test_report' registration.id %}"
+                          class="text-theme-primary hover:text-theme-dark font-semibold text-sm"
+                          >View Report</a
+                        >
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="text-center py-10 bg-slate-50 rounded-lg">
+                <i class="fas fa-users fa-3x text-gray-300 mb-3"></i>
+                <p class="font-semibold text-gray-700">No Participants Yet</p>
+                <p class="text-sm text-gray-500">
+                  When someone attempts the test, their details will appear
+                  here.
+                </p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const sidebar = document.getElementById("sidebar");
+        const toggleButton = document.getElementById("sidebar-toggle");
+        // ... (rest of the script is unchanged) ...
+        const sidebarLogo = document.getElementById("sidebar-logo");
+        const sidebarTexts = document.querySelectorAll(".sidebar-text");
+        const sidebarHeader = document.getElementById("sidebar-header");
+        if (toggleButton) {
+          toggleButton.addEventListener("click", () => {
+            sidebar.classList.toggle("w-64");
+            sidebar.classList.toggle("w-20");
+            sidebarLogo.classList.toggle("hidden");
+            sidebarHeader.classList.toggle("justify-between");
+            sidebarHeader.classList.toggle("justify-center");
+            sidebarTexts.forEach((text) => {
+              text.classList.toggle("hidden");
+            });
+          });
+        }
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+        if (userMenuButton) {
+          userMenuButton.addEventListener("click", (event) => {
+            userMenu.classList.toggle("hidden");
+            event.stopPropagation();
+          });
+        }
+        document.addEventListener("click", (event) => {
+          if (
+            userMenu &&
+            !userMenu.classList.contains("hidden") &&
+            !userMenuButton.contains(event.target)
+          ) {
+            userMenu.classList.add("hidden");
+          }
+        });
+      });
+      // --- Accordion Logic ---
+      const accordionButtons = document.querySelectorAll(".accordion-button");
+      accordionButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const content = button.nextElementSibling;
+          button.classList.toggle("active");
+          if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+          } else {
+            content.style.maxHeight = content.scrollHeight + "px";
+          }
+        });
+      });
+    </script>
+  </body>
+</html> -->
