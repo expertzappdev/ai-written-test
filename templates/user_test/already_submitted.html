@@ -37,7 +37,22 @@
         background-color: #f4f7f9;
       }
     </style>
-</head>
+
+    <script>
+        /* This script prevents the user from using the browser's back button 
+           once the test is submitted. */
+        (function () {
+            // Pushes the current page into history to make it the 'top' entry.
+            window.history.pushState(null, null, window.location.href);
+            
+            // When the user attempts to go back (popstate event fires), 
+            // it immediately pushes the current page again, blocking the move.
+            window.addEventListener('popstate', function (event) {
+                window.history.pushState(null, null, window.location.href);
+            });
+        })();
+    </script>
+    </head>
 <body class="text-gray-800">
 
 <div class="min-h-screen flex items-center justify-center p-4">
@@ -63,23 +78,6 @@
         
         </div>
 </div>
-
-<script>
-    // **Back Navigation Prevention**
-    // Submission ke baad, browser history se back entry ko replace kar do.
-    // Isse user back button dabane par current page par hi rahega ya usse pehle wale page par jayega.
-    window.onload = function() {
-        if (history.replaceState) {
-            // Current URL ko ek dummy state se replace karein
-            history.replaceState(null, null, window.location.href);
-        }
-
-        // Optional: Back button click ko disable karne ki koshish karein
-        window.addEventListener('popstate', function(event) {
-            history.pushState(null, null, window.location.href);
-        });
-    };
-</script>
 
 </body>
 </html>
