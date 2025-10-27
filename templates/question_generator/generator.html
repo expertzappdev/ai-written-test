@@ -145,6 +145,7 @@
                     <input
                       type="text"
                       id="skills-input"
+                      readonly
                       placeholder="Select skills..."
                       class="flex-1 border-none focus:ring-0 outline-none p-1 placeholder-slate-400"
                     />
@@ -806,11 +807,11 @@
           tag.className =
             "skill-tag flex items-center bg-[#736b8e] text-white text-sm font-medium pl-3 pr-2 py-1 rounded-full";
           tag.innerHTML = `
-        ${skill}
-        <button type="button" class="ml-2 text-indigo-100 hover:text-white focus:outline-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-        </button>
-    `;
+              ${skill}
+              <button type="button" class="ml-2 text-indigo-100 hover:text-white focus:outline-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+              </button>
+          `;
           tag.querySelector("button").addEventListener("click", (e) => {
             e.stopPropagation();
             deselectSkill(skill);
@@ -932,14 +933,14 @@
         sections.forEach((sectionName) => {
           const count = formData.sections?.[sectionName] || 1;
           const sectionHTML = `
-          <div data-section="${sectionName}" class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <label class="font-medium text-slate-700">${sectionName} <span class="text-red-500">*</span></label>
-              <div class="flex items-center border border-slate-300 rounded-lg bg-white w-fit mt-2 sm:mt-0">
-                  <button onclick="updateCount(this, -1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg transition-colors">-</button>
-                  <input type="number" value="${count}" readonly class="w-16 text-center font-semibold text-lg text-[#736b8e] border-l border-r py-1.5 focus:outline-none bg-transparent cursor-default" />
-                  <button onclick="updateCount(this, 1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg transition-colors">+</button>
-              </div>
-          </div>`;
+                <div data-section="${sectionName}" class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <label class="font-medium text-slate-700">${sectionName} <span class="text-red-500">*</span></label>
+                    <div class="flex items-center border border-slate-300 rounded-lg bg-white w-fit mt-2 sm:mt-0">
+                        <button onclick="updateCount(this, -1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-l-lg transition-colors">-</button>
+                        <input type="number" value="${count}" readonly class="w-16 text-center font-semibold text-lg text-[#736b8e] border-l border-r py-1.5 focus:outline-none bg-transparent cursor-default" />
+                        <button onclick="updateCount(this, 1)" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-r-lg transition-colors">+</button>
+                    </div>
+                </div>`;
           container.insertAdjacentHTML("beforeend", sectionHTML);
         });
       }
@@ -967,13 +968,35 @@
         const minExpInput = document.getElementById("minExp");
         const maxExpInput = document.getElementById("maxExp");
         const expError = document.getElementById("expError");
-        jobTitleError.textContent = "";
-        jobTitleInput.classList.remove("border-red-500");
+
+        // jobTitleError.textContent = "";
+        //jobTitleInput.classList.remove("border-red-500");
+        // const jobTitleValue = jobTitleInput.value.trim();
+        // if (!jobTitleValue) {
+        //   isValid = false;
+        //   jobTitleInput.classList.add("border-red-500");
+        //   jobTitleError.textContent = "This field is required.";
+        // } else if (jobTitleValue.length < 3) {
+        //isValid = false;
+        // jobTitleInput.classList.add("border-red-500");
+        //jobTitleError.textContent = "Must be at least 3 characters long.";
+        // } else if (jobTitleValue.length > 30) {
+        //   isValid = false;
+        //   jobTitleInput.classList.add("border-red-500");
+        //   jobTitleError.textContent = "Cannot be more than 30 characters.";
+        // }
         const jobTitleValue = jobTitleInput.value.trim();
+        const hasNumber = /\d/.test(jobTitleValue); // यह लाइन नंबर चेक करती है
+
         if (!jobTitleValue) {
           isValid = false;
           jobTitleInput.classList.add("border-red-500");
           jobTitleError.textContent = "This field is required.";
+        } else if (hasNumber) {
+          // नई जाँच
+          isValid = false;
+          jobTitleInput.classList.add("border-red-500");
+          jobTitleError.textContent = "Job Title cannot contain numbers.";
         } else if (jobTitleValue.length < 3) {
           isValid = false;
           jobTitleInput.classList.add("border-red-500");
@@ -1098,10 +1121,10 @@
           const count = formData.sections[section];
           totalQuestions += count;
           sectionsContainer.innerHTML += `
-              <div class="flex justify-between items-center text-slate-700">
-                  <span>${section}</span>
-                  <span class="font-medium bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">${count} Questions</span>
-              </div>`;
+                    <div class="flex justify-between items-center text-slate-700">
+                        <span>${section}</span>
+                        <span class="font-medium bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full">${count} Questions</span>
+                    </div>`;
         }
         document.getElementById("review-total").textContent = totalQuestions;
       }
@@ -1130,8 +1153,8 @@
         saveButtons.forEach((button) => {
           button.disabled = true;
           button.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        Saving...`;
+              <svg class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Saving...`;
         });
 
         try {
@@ -1199,7 +1222,6 @@
           .getElementById("edit-duration")
           .classList.remove("border-red-500");
       }
-
       function saveChanges() {
         let isValid = true;
         const newJobTitle = document
@@ -1210,36 +1232,57 @@
         const newDurationText =
           newDurationSelect.options[newDurationSelect.selectedIndex].text;
 
-        document.getElementById("edit-jobTitleError").textContent = "";
-        document.getElementById("edit-skillsError").textContent = "";
-        document.getElementById("edit-durationError").textContent = "";
-        document
-          .getElementById("edit-jobTitle")
-          .classList.remove("border-red-500");
+        // --- START: Error elements ko pehle se define kar lein ---
+        const editJobTitleInput = document.getElementById("edit-jobTitle");
+        const editJobTitleError = document.getElementById("edit-jobTitleError");
+        const editSkillsError = document.getElementById("edit-skillsError");
+        const editDurationError = document.getElementById("edit-durationError");
+        // --- END ---
+
+        // Pehle sabhi errors ko clear karein
+        editJobTitleError.textContent = "";
+        editSkillsError.textContent = "";
+        editDurationError.textContent = "";
+        editJobTitleInput.classList.remove("border-red-500");
         document
           .getElementById("edit-skills-container")
           .classList.remove("border-red-500");
         newDurationSelect.classList.remove("border-red-500");
 
+        // --- START: JOB TITLE VALIDATION BADLAV YAHAN HAI ---
+        const hasNumberInEdit = /\d/.test(newJobTitle); // Number check karne ke liye
+
         if (!newJobTitle) {
-          document.getElementById("edit-jobTitleError").textContent =
-            "This field is required.";
-          document
-            .getElementById("edit-jobTitle")
-            .classList.add("border-red-500");
+          editJobTitleError.textContent = "This field is required.";
+          editJobTitleInput.classList.add("border-red-500");
+          isValid = false;
+        } else if (hasNumberInEdit) {
+          // Check karein ki number to nahi hai
+          editJobTitleError.textContent = "Job Title cannot contain numbers.";
+          editJobTitleInput.classList.add("border-red-500");
+          isValid = false;
+        } else if (newJobTitle.length < 3) {
+          // Minimum length check
+          editJobTitleError.textContent = "Must be at least 3 characters long.";
+          editJobTitleInput.classList.add("border-red-500");
+          isValid = false;
+        } else if (newJobTitle.length > 30) {
+          // Maximum length check
+          editJobTitleError.textContent = "Cannot be more than 30 characters.";
+          editJobTitleInput.classList.add("border-red-500");
           isValid = false;
         }
+        // --- END: JOB TITLE VALIDATION ---
+
         if (editSelectedSkills.length === 0) {
-          document.getElementById("edit-skillsError").textContent =
-            "Please select at least one skill.";
+          editSkillsError.textContent = "Please select at least one skill.";
           document
             .getElementById("edit-skills-container")
             .classList.add("border-red-500");
           isValid = false;
         }
         if (!newDurationValue) {
-          document.getElementById("edit-durationError").textContent =
-            "This field is required.";
+          editDurationError.textContent = "This field is required.";
           newDurationSelect.classList.add("border-red-500");
           isValid = false;
         }
@@ -1623,8 +1666,8 @@
               <div class="question-toolbar mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-center sm:justify-end items-center gap-x-4 gap-y-2 text-sm">
                 <button onclick="copyQuestion(${sectionIndex}, ${questionIndex})" title="Copy Question" class="p-2 text-slate-500 hover:text-[#736b8e] hover:bg-slate-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
                 <button onclick="deleteQuestion(${sectionIndex}, ${questionIndex})" title="Delete Question" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                <div class="border-l h-6 border-slate-200 mx-2 hidden sm:block"></div>
-                <div class="flex items-center gap-2">
+                <div class="border-l h-6 border-slate-200 hidden mx-2 hidden sm:block"></div>
+                <div class="flex items-center gap-2 hidden">
                   <span class="font-medium text-slate-600">Required</span>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" onchange="toggleRequired(this, ${sectionIndex}, ${questionIndex})" class="sr-only peer" ${

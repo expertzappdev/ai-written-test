@@ -321,7 +321,9 @@ def paper_edit_view(request, paper_id):
                         question.answer = request.POST[question_answer_name]
 
                     question.save()
-            return redirect("paper_detail", paper_id=paper.id)
+                    # **NEW: Add the success message here**
+            messages.success(request, "Paper updated successfully!")
+            return redirect("/dashboard/")
 
     else:
         form = QuestionPaperEditForm(instance=paper)
