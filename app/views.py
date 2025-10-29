@@ -133,6 +133,97 @@ def dashboard(request):
     return render(request, "dashboard.html", context)
 
 
+# @login_required
+# def generate_questions(request):
+#     if request.method == "POST":
+#         try:
+#             data = json.loads(request.body)
+#             job_title = data.get("job_title")
+#             min_exp = data.get("min_exp")
+#             max_exp = data.get("max_exp")
+#             skills_raw = data.get("skills")
+#             sections_data = data.get("sections", {})
+#             total_questions = sum(sections_data.values())
+
+#             seniority = "Junior"
+#             if int(max_exp) > 5:
+#                 seniority = "Senior"
+#             elif int(max_exp) > 2:
+#                 seniority = "Mid-Level"
+
+#             # --- KEY CHANGES START HERE ---
+
+#             prompt = f"""
+#             Act as a seasoned technical assessment creator and principal engineer. Your primary goal is to build a well-balanced and experience-appropriate technical test. The entire response MUST be a single, valid JSON object without any markdown.
+
+#             ## Core Specifications
+#             1.  **Job Role**: {job_title}
+#             2.  **Experience Level**: {min_exp} to {max_exp} years ({seniority}-level).
+#             3.  **Core Skills**: {skills_raw}
+#             4.  **Paper Sections**: {json.dumps(sections_data)}
+
+#             ## Guiding Principles: Think Like an Assessor
+#             You must follow these hierarchical rules precisely.
+
+#             1.  **Overall Difficulty**: The complexity of every single question must align with the **{seniority}** level.
+
+#             2.  **Situational Questions**: For non-technical sections like 'Aptitude', provide realistic, job-related scenarios.
+
+#             3.  **⭐ Intelligent Generation for Programming/Coding Sections ⭐**: This is your most important directive. For any section with a title containing 'Programming', 'Coding', or 'Algorithm', you must create an **intelligent mix of question types (`MCQ`, `SA`, `CODE`)** that reflects the candidate's seniority. Do NOT just generate one type of question.
+
+#                 * **If `{seniority}` is Junior (0-2 yrs)**: The focus is on fundamentals. The section mix should be mostly `MCQ` and `SA` questions about syntax, core concepts, and predicting output. You may include **one** simple, introductory `CODE` problem (e.g., fizzbuzz, reverse a string).
+
+#                 * **If `{seniority}` is Mid-Level (3-5 yrs)**: The balance must shift to practical application. The mix should contain fewer basic MCQs. Include `SA` questions about best practices and design choices. The **majority** of the questions should be `CODE` problems of medium complexity (e.g., interacting with data, implementing common algorithms).
+
+#                 * **If `{seniority}` is Senior (6+ yrs)**: The focus is on depth, design, and complex problem-solving. This section must be **dominated by challenging `CODE` problems** (e.g., involving performance optimization, concurrency, or architectural patterns). Any `MCQ` or `SA` questions must be highly advanced, focusing on architectural trade-offs or subtle language features, not basics.
+
+#             4.  **Answer Formatting**: The format of the question and answer depends strictly on its `type`.
+#                 * For **`MCQ` and `SA`** questions: The `answer` must be concise (a word, phrase, or single line of code).
+#                 * For **`CODE`** questions: The `text` must be a full problem description (task, input, expected output). The `answer` must be a complete, multi-line code solution, formatted as a single JSON string with `\\n` for newlines.
+
+#             ## Output Structure (Strict)
+#             - Root JSON object: 'title' (string), 'sections' (array).
+#             - Section object: 'title' (string), 'questions' (array).
+#             - Question object: 'text', 'answer', 'type'. `MCQ` types must also have an 'options' array.
+
+#             Generate the {seniority}-level assessment now, creating the perfect, balanced mix of questions for each section as instructed.
+#             """
+
+#             # --- KEY CHANGES END HERE ---
+
+#             genai.configure(api_key=settings.GEMINI_API_KEY)
+#             # Using a powerful model is key for understanding these nuanced instructions
+#             model = genai.GenerativeModel("gemini-2.5-pro")
+#             response = model.generate_content(prompt)
+
+#             json_text = response.text.strip()
+#             if json_text.startswith("```json"):
+#                 json_text = json_text[7:]
+#             if json_text.endswith("```"):
+#                 json_text = json_text[:-3]
+
+#             generated_paper = json.loads(json_text)
+
+#             return JsonResponse(generated_paper)
+#         except json.JSONDecodeError as e:
+#             print(f"JSON Decode Error: {e}")
+#             print(f"Received text from AI: {response.text}")
+#             return JsonResponse(
+#                 {
+#                     "error": "Failed to decode the AI's response. The format was invalid."
+#                 },
+#                 status=500,
+#             )
+#         except Exception as e:
+#             print(f"An unexpected error occurred: {str(e)}")
+#             return JsonResponse(
+#                 {"error": f"An unexpected error occurred: {str(e)}"}, status=500
+#             )
+
+
+#     departments = Department.objects.all()
+#     context = {"departments": departments}
+#     return render(request, "question_generator/generator.html", context)
 @login_required
 def generate_questions(request):
     if request.method == "POST":
@@ -151,7 +242,7 @@ def generate_questions(request):
             elif int(max_exp) > 2:
                 seniority = "Mid-Level"
 
-            # --- KEY CHANGES START HERE ---
+            # --- UPDATED PROMPT START HERE ---
 
             prompt = f"""
             Act as a seasoned technical assessment creator and principal engineer. Your primary goal is to build a well-balanced and experience-appropriate technical test. The entire response MUST be a single, valid JSON object without any markdown.
@@ -167,17 +258,21 @@ def generate_questions(request):
 
             1.  **Overall Difficulty**: The complexity of every single question must align with the **{seniority}** level.
 
-            2.  **Situational Questions**: For non-technical sections like 'Aptitude', provide realistic, job-related scenarios.
+            2.  **Question Uniqueness (CRITICAL)**: **ABSOLUTELY NO DUPLICATE QUESTIONS.** Ensure every question generated, across all sections, is unique. If this function is run multiple times, the generated questions must be new and diverse, not a repeat of previously generated content.
 
-            3.  **⭐ Intelligent Generation for Programming/Coding Sections ⭐**: This is your most important directive. For any section with a title containing 'Programming', 'Coding', or 'Algorithm', you must create an **intelligent mix of question types (`MCQ`, `SA`, `CODE`)** that reflects the candidate's seniority. Do NOT just generate one type of question.
+            3.  **Situational & Communication Questions**:
+                * For non-technical sections like 'Aptitude', provide realistic, job-related scenarios.
+                * **For 'Communication' sections, the focus MUST be on evaluating English grammar, syntax, sentence structure, and vocabulary proficiency, NOT general soft skills.** Design questions (MCQ/SA) that test language correctness.
 
-                * **If `{seniority}` is Junior (0-2 yrs)**: The focus is on fundamentals. The section mix should be mostly `MCQ` and `SA` questions about syntax, core concepts, and predicting output. You may include **one** simple, introductory `CODE` problem (e.g., fizzbuzz, reverse a string).
+            4.  **⭐ Intelligent Generation for Programming/Coding Sections ⭐**: This is your most important directive. For any section with a title containing 'Programming', 'Coding', or 'Algorithm', you must create an **intelligent mix of question types (`MCQ`, `SA`, `CODE`)** that reflects the candidate's seniority. Do NOT just generate one type of question.
+
+                * **If `{seniority}` is Junior (0-2 yrs)**: The focus is on fundamentals. The **primary quantity and focus MUST be on `CODE` questions**. These `CODE` problems must be simple, foundational problems, equivalent to **LeetCode Easy** level (e.g., array manipulations, string reversals, FizzBuzz, basic data structure implementation). The number of `CODE` questions should be at least **50% of the total** questions in this section, with the remainder being `MCQ` and `SA` on core concepts and predicting output.
                 
-                * **If `{seniority}` is Mid-Level (3-5 yrs)**: The balance must shift to practical application. The mix should contain fewer basic MCQs. Include `SA` questions about best practices and design choices. The **majority** of the questions should be `CODE` problems of medium complexity (e.g., interacting with data, implementing common algorithms).
+                * **If `{seniority}` is Mid-Level (3-5 yrs)**: The mix must contain fewer basic MCQs and SAs. The **primary focus and highest quantity of questions MUST be `CODE` problems** of medium complexity (e.g., interacting with data, implementing common algorithms, simple API design). The number of `CODE` questions should **significantly outweigh the sum of `MCQ` and `SA` questions** in this section.
                 
-                * **If `{seniority}` is Senior (6+ yrs)**: The focus is on depth, design, and complex problem-solving. This section must be **dominated by challenging `CODE` problems** (e.g., involving performance optimization, concurrency, or architectural patterns). Any `MCQ` or `SA` questions must be highly advanced, focusing on architectural trade-offs or subtle language features, not basics.
+                * **If `{seniority}` is Senior (6+ yrs)**: The focus is on depth, design, and complex problem-solving. This section **MUST be overwhelmingly dominated by challenging `CODE` problems**. The number of `CODE` questions must constitute the **vast majority** of the section's total, with any remaining `MCQ` or `SA` questions being highly advanced, focusing on architectural trade-offs or subtle language features, not basics.
 
-            4.  **Answer Formatting**: The format of the question and answer depends strictly on its `type`.
+            5.  **Answer Formatting**: The format of the question and answer depends strictly on its `type`.
                 * For **`MCQ` and `SA`** questions: The `answer` must be concise (a word, phrase, or single line of code).
                 * For **`CODE`** questions: The `text` must be a full problem description (task, input, expected output). The `answer` must be a complete, multi-line code solution, formatted as a single JSON string with `\\n` for newlines.
 
@@ -189,7 +284,7 @@ def generate_questions(request):
             Generate the {seniority}-level assessment now, creating the perfect, balanced mix of questions for each section as instructed.
             """
 
-            # --- KEY CHANGES END HERE ---
+            # --- UPDATED PROMPT END HERE ---
 
             genai.configure(api_key=settings.GEMINI_API_KEY)
             # Using a powerful model is key for understanding these nuanced instructions
@@ -385,10 +480,91 @@ from .models import QuestionPaper, TestRegistration
 #     }
 #     return render(request, "question_generator/paper_detail.html", context)
 
+from .models import UserResponse
+
+
+# @login_required
+# def paper_detail_view(request, paper_id):
+#     """
+#     Displays the details of a single question paper.
+#     This version RE-CALCULATES the score for each participant to ensure
+#     consistency with the test report, even if answers have been edited.
+#     """
+#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
+#     status_filter = request.GET.get("status", "all")
+#     shortlist_filter = request.GET.get("shortlist_status", "all")
+
+#     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
+
+#     all_participants = list(
+#         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
+#     )
+
+#     # ▼▼▼ THE FINAL, CORRECTED LOGIC IS HERE ▼▼▼
+#     for p in all_participants:
+#         if p.is_completed:
+#             # 1. Fetch all responses for this participant
+#             user_responses = UserResponse.objects.filter(registration=p)
+
+#             # 2. Recalculate the number of correct answers
+#             correct_answers_count = 0
+#             for response in user_responses:
+#                 # Ensure we handle cases where a question or its answer might be missing
+#                 if response.question and response.question.answer:
+#                     if (
+#                         response.user_answer.strip().lower()
+#                         == response.question.answer.strip().lower()
+#                     ):
+#                         correct_answers_count += 1
+
+#             # 3. Calculate the percentage score live
+#             total_questions = p.question_paper.total_questions
+#             live_percentage = 0
+#             if total_questions > 0:
+#                 live_percentage = round((correct_answers_count / total_questions) * 100)
+
+#             # 4. Use this live percentage for the status check
+#             cutoff = p.question_paper.cutoff_score
+#             if cutoff is not None:
+#                 if live_percentage >= cutoff:
+#                     p.status = "pass"
+#                 else:
+#                     p.status = "fail"
+#             else:
+#                 # If no cutoff is set, any completed test is considered a "pass"
+#                 p.status = "pass"
+#         else:
+#             p.status = "pending"
+#     # ▲▲▲ END OF CORRECTED LOGIC ▲▲▲
+
+#     # --- The filtering logic remains the same ---
+#     if status_filter != "all":
+#         filtered_participants = [
+#             p for p in all_participants if p.status == status_filter
+#         ]
+#     else:
+#         filtered_participants = all_participants
+
+#     if shortlist_filter == "shortlisted":
+#         final_participants = [p for p in filtered_participants if p.is_shortlisted]
+#     elif shortlist_filter == "not_shortlisted":
+#         final_participants = [p for p in filtered_participants if not p.is_shortlisted]
+#     else:
+#         final_participants = filtered_participants
+
+#     context = {
+#         "paper": paper,
+#         "skills": skills,
+#         "participants": final_participants,
+#         "title": f"Details for {paper.title}",
+#         "selected_status": status_filter,
+#         "selected_shortlist_status": shortlist_filter,
+#     }
+#     return render(request, "question_generator/paper_detail.html", context)
+
 # app/views.py
 
-# Make sure this import is at the top of your views.py file
-from .models import UserResponse
+# ... (imports and other views) ...
 
 
 @login_required
@@ -396,7 +572,7 @@ def paper_detail_view(request, paper_id):
     """
     Displays the details of a single question paper.
     This version RE-CALCULATES the score for each participant to ensure
-    consistency with the test report, even if answers have been edited.
+    consistency with the test report. (FIXED LOGIC BELOW)
     """
     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
     status_filter = request.GET.get("status", "all")
@@ -411,19 +587,46 @@ def paper_detail_view(request, paper_id):
     # ▼▼▼ THE FINAL, CORRECTED LOGIC IS HERE ▼▼▼
     for p in all_participants:
         if p.is_completed:
-            # 1. Fetch all responses for this participant
             user_responses = UserResponse.objects.filter(registration=p)
-
-            # 2. Recalculate the number of correct answers
             correct_answers_count = 0
+
             for response in user_responses:
-                # Ensure we handle cases where a question or its answer might be missing
-                if response.question and response.question.answer:
-                    if (
-                        response.user_answer.strip().lower()
-                        == response.question.answer.strip().lower()
-                    ):
-                        correct_answers_count += 1
+                question = response.question
+                user_answer = response.user_answer.strip()
+                is_correct = False
+
+                if not user_answer:
+                    # Unattempted answers are always incorrect (score-wise)
+                    is_correct = False
+                elif question and question.answer:
+                    # 1. MCQ: Direct comparison
+                    if question.question_type == "MCQ":
+                        is_correct = (
+                            user_answer.lower() == question.answer.strip().lower()
+                        )
+                    # 2. SA/CODE/TF: AI Evaluation
+                    else:
+                        # Map internal question type to evaluator type
+                        qtype = question.question_type.upper()
+                        if qtype in ("CODE", "CODING"):
+                            evaluator_type = "coding"
+                        elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
+                            evaluator_type = "short"
+                        elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
+                            evaluator_type = "true_false"
+                        else:
+                            evaluator_type = "short"
+
+                        # Use the smart AI evaluation
+                        is_correct, _ = evaluate_answer_with_ai(
+                            question_text=question.text,
+                            user_answer=user_answer,
+                            model_answer=question.answer.strip(),
+                            question_type=evaluator_type,
+                        )
+
+                if is_correct:
+                    correct_answers_count += 1
 
             # 3. Calculate the percentage score live
             total_questions = p.question_paper.total_questions
@@ -433,14 +636,15 @@ def paper_detail_view(request, paper_id):
 
             # 4. Use this live percentage for the status check
             cutoff = p.question_paper.cutoff_score
+            p.score = live_percentage  # Attach live score for comparison/display
+
             if cutoff is not None:
                 if live_percentage >= cutoff:
                     p.status = "pass"
                 else:
                     p.status = "fail"
             else:
-                # If no cutoff is set, any completed test is considered a "pass"
-                p.status = "pass"
+                p.status = "pass"  # No cutoff means any completed test is a pass
         else:
             p.status = "pending"
     # ▲▲▲ END OF CORRECTED LOGIC ▲▲▲
@@ -827,40 +1031,45 @@ def toggle_paper_public_status(request, paper_id):
 #     score = 0
 #     results_data = []
 
+#     # ▼▼▼ ISSE ISME BADALNA HAI (CHANGE THIS) ▼▼▼
 #     for response in user_responses:
-#         is_correct = (
-#             response.user_answer.strip().lower()
-#             == response.question.answer.strip().lower()
-#         )
+#         question = response.question
+#         user_answer = response.user_answer.strip()
+#         is_correct = False  # Assume incorrect by default
+
+#         # Rule 1: For MCQs, do a simple, direct text comparison.
+#         if question.question_type == "MCQ":
+#             model_answer = question.answer.strip()
+#             if user_answer.lower() == model_answer.lower():
+#                 is_correct = True
+
+#         # Rule 2: For any other type (SA, CODE), use the smart AI to evaluate.
+#         else:
+#             is_correct = evaluate_answer_with_ai(
+#                 question_text=question.text,
+#                 user_answer=user_answer,
+#                 model_answer=question.answer.strip(),
+#             )
+
 #         if is_correct:
 #             score += 1
+
 #         results_data.append(
 #             {
 #                 "question_text": response.question.text,
 #                 "user_answer": response.user_answer,
 #                 "correct_answer": response.question.answer,
-#                 "is_correct": is_correct,
+#                 "is_correct": is_correct,  # Now this value is from the correct logic
 #             }
 #         )
+#     # ▲▲▲ YAHAN TAK BADLAV KIYA GAYA HAI (CHANGES END HERE) ▲▲▲
 
 #     incorrect_answers = total_questions - score
+#     percentage = round((score / total_questions) * 100) if total_questions > 0 else 0
 
-#     if total_questions > 0:
-#         percentage = round((score / total_questions) * 100)
-#     else:
-#         percentage = 0
-
-#     # --- NEW LOGIC STARTS HERE ---
-
-#     # Get the cutoff score from the paper
-#     cutoff_score = paper.cutoff_score
-
-#     # Determine the status
 #     status = "Fail"
 #     if percentage >= cutoff_score:
 #         status = "Pass"
-
-#     # --- NEW LOGIC ENDS HERE ---
 
 #     context = {
 #         "registration": registration,
@@ -911,10 +1120,23 @@ def test_result(request, registration_id):
                 model_answer = question.answer.strip()
                 is_correct = user_answer.lower() == model_answer.lower()
             else:
-                is_correct = evaluate_answer_with_ai(
+                # Map internal question type to evaluator type
+                qtype = question.question_type.upper()
+                if qtype in ("CODE", "CODING"):
+                    evaluator_type = "coding"
+                elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
+                    evaluator_type = "short"
+                elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
+                    evaluator_type = "true_false"
+                else:
+                    evaluator_type = "short"
+
+                # evaluate_answer_with_ai returns (is_correct, details)
+                is_correct, _ = evaluate_answer_with_ai(
                     question_text=question.text,
                     user_answer=user_answer,
                     model_answer=question.answer.strip(),
+                    question_type=evaluator_type,
                 )
 
             # Set status based on correctness
@@ -1028,9 +1250,6 @@ def test_result(request, registration_id):
 #     }
 
 #     return render(request, "partials/users/test_report.html", context)
-
-
-# ... (rest of your views.py)
 
 
 @csrf_exempt
@@ -1289,57 +1508,69 @@ def toggle_shortlist(request, registration_id):
     )
 
 
-def evaluate_answer_with_ai(question_text, user_answer, model_answer):
+import json
+import re
+from typing import Tuple, Dict, Any
+import google.generativeai as genai
+from django.conf import settings
+
+
+def evaluate_answer_with_ai(
+    question_text: str,
+    user_answer: str,
+    model_answer: str,
+    question_type: str = "short",
+) -> Tuple[bool, Dict[str, Any]]:
     """
     Uses Gemini AI to evaluate if a user's answer is conceptually correct.
-    Returns True if answer is at least 50% correct conceptually.
+
+    Args:
+        question_text: The question being asked
+        user_answer: User's submitted answer
+        model_answer: Correct/reference answer
+        question_type: Type of question - "mcq", "short", "coding", "true_false"
+
+    Returns:
+        Tuple of (is_correct: bool, details: dict with confidence and reason)
     """
+    # Empty answer check
     if not user_answer or not user_answer.strip():
-        return False
+        return False, {
+            "is_correct": False,
+            "confidence": 100,
+            "reason": "Answer is empty",
+        }
+
+    # Normalize inputs
+    user_answer = user_answer.strip()
+    model_answer = model_answer.strip()
 
     try:
+        # Quick checks for specific question types before AI call
+        if question_type.lower() == "mcq":
+            return _evaluate_mcq(user_answer, model_answer)
+
+        elif question_type.lower() in ["true_false", "boolean"]:
+            return _evaluate_boolean(user_answer, model_answer)
+
+        # AI evaluation for short answer and coding
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash-exp")  # Updated model
+        model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
-        prompt = f"""
-        You are an expert technical evaluator. Your job is to check if a user's answer demonstrates understanding of the concept.
-
-        **Question:**
-        {question_text}
-
-        **Model Answer (Reference):**
-        {model_answer}
-
-        **User's Answer:**
-        {user_answer}
-
-        **Evaluation Rules:**
-        1. Check if the user's answer conveys the CORE CONCEPT correctly
-        2. Accept answers that are at least 50% conceptually correct
-        3. Ignore minor grammar mistakes, typos, or extra words
-        4. Accept synonyms and alternative explanations if they're correct
-        5. Focus on understanding, not exact word matching
-
-        **Examples of what to accept:**
-        - If model answer is "Lists are mutable, tuples are immutable"
-        - Accept: "You can change lists but not tuples"
-        - Accept: "Lists can be modified, tuples cannot be modified"
-        - Accept: "Tuples are read-only, lists are not"
-
-        Respond with ONLY a JSON object:
-        {{
-            "is_correct": true/false,
-            "confidence": 0-100,
-            "reason": "brief explanation"
-        }}
-        """
+        # Different prompts for different question types
+        if question_type.lower() == "coding":
+            prompt = _get_coding_prompt(question_text, user_answer, model_answer)
+        else:
+            prompt = _get_short_answer_prompt(question_text, user_answer, model_answer)
 
         response = model.generate_content(prompt)
         cleaned_text = response.text.strip()
 
-        # Remove markdown if present
+        # Remove markdown code blocks if present
         if cleaned_text.startswith("```json"):
             cleaned_text = cleaned_text[7:]
+        elif cleaned_text.startswith("```"):
+            cleaned_text = cleaned_text[3:]
         if cleaned_text.endswith("```"):
             cleaned_text = cleaned_text[:-3]
         cleaned_text = cleaned_text.strip()
@@ -1347,16 +1578,453 @@ def evaluate_answer_with_ai(question_text, user_answer, model_answer):
         result = json.loads(cleaned_text)
 
         # Log for debugging
-        print(f"AI Evaluation - Question: {question_text[:50]}...")
-        print(f"User Answer: {user_answer}")
+        print(f"\n{'='*60}")
+        print(f"Question Type: {question_type}")
+        print(f"Question: {question_text[:80]}...")
+        print(f"User Answer: {user_answer[:100]}...")
+        print(f"Model Answer: {model_answer[:100]}...")
         print(f"AI Result: {result}")
+        print(f"{'='*60}\n")
 
-        return result.get("is_correct", False)
+        is_correct = result.get("is_correct", False)
+        return is_correct, result
+
+    except json.JSONDecodeError as e:
+        print(f"JSON Parse Error: {e}")
+        print(f"Raw AI response: {cleaned_text[:200]}...")
+        return _fallback_evaluation(user_answer, model_answer, question_type)
 
     except Exception as e:
         print(f"AI Evaluation Error: {e}")
-        # Fallback: do basic string matching
-        return user_answer.lower().strip() in model_answer.lower()
+        return _fallback_evaluation(user_answer, model_answer, question_type)
+
+
+def _get_short_answer_prompt(
+    question_text: str, user_answer: str, model_answer: str
+) -> str:
+    """Generate prompt for short answer evaluation"""
+    return f"""You are an expert technical evaluator. Evaluate if the user's answer demonstrates understanding of the concept.
+
+**Question:**
+{question_text}
+
+**Reference Answer:**
+{model_answer}
+
+**User's Answer:**
+{user_answer}
+
+**Evaluation Criteria:**
+1. Check if the user's answer conveys the CORE CONCEPT correctly
+2. Accept answers that are at least 50% conceptually correct
+3. Ignore minor grammar mistakes, typos, spelling errors, or extra/missing articles
+4. Accept synonyms, paraphrases, and alternative explanations if conceptually correct
+5. Accept answers in different languages (Hindi/English/Hinglish) if meaning is correct
+6. Focus on understanding, not exact word matching
+7. Accept partial answers if they cover the main points
+8. Be lenient with formatting, structure, and presentation
+9. Accept additional correct information beyond the reference answer
+10. Ignore irrelevant extra words if core concept is present
+
+**Examples of Acceptable Variations:**
+- Technical terms with synonyms: "function" = "method", "array" = "list", "variable" = "identifier"
+- Word order changes that preserve meaning
+- Additional explanations, examples, or context
+- Simpler or more complex language that captures the concept
+- Missing articles (a, an, the), conjunctions, or prepositions
+- Common abbreviations: "func", "var", "obj", "arr"
+- Different sentence structures expressing same idea
+- Casual/conversational tone vs formal tone
+
+**Scoring Guide:**
+- is_correct: true if answer demonstrates understanding (50%+ concept match)
+- is_correct: false if answer is fundamentally wrong or irrelevant
+- confidence: 90-100% for excellent answers
+- confidence: 70-89% for good answers with minor issues
+- confidence: 50-69% for acceptable answers covering basics
+- confidence: below 50% for incorrect/incomplete answers
+
+Respond with ONLY a valid JSON object (no markdown, no extra text):
+{{
+    "is_correct": true/false,
+    "confidence": 0-100,
+    "reason": "brief explanation in one line"
+}}"""
+
+
+def _get_coding_prompt(question_text: str, user_code: str, model_code: str) -> str:
+    """Generate prompt for coding evaluation with stricter criteria."""
+    return f"""You are an expert programming instructor. Evaluate if the user's code correctly solves the problem.
+
+**Question:**
+{question_text}
+
+**Reference Solution (Use for context, but do not require exact matching):**
+```
+{model_code}
+```
+
+**User's Code:**
+```
+{user_code}
+```
+
+**Evaluation Criteria:**
+1. **CRITICAL: The user's code MUST solve the specific problem described in the Question.**
+2. **If the question specifies a language (e.g., 'Write a JavaScript function...'), a solution in a different, incompatible language (e.g., Python for a JavaScript-specific task) should result in is_correct: false.** If the logic is sound and easily translatable, you may be lenient, but prioritize the requested language.
+3. The core logic must be sound, even if the implementation style differs.
+4. Accept different approaches: loops vs. comprehensions, recursion vs. iteration.
+5. Accept different but correct algorithms.
+6. Ignore minor syntax variations: spacing, indentation, bracket styles.
+7. Accept more efficient or optimized solutions.
+8. Accept solutions with additional features (error handling, edge cases).
+
+**What to REJECT (This must result in is_correct: false):**
+- **Code that solves a COMPLETELY DIFFERENT PROBLEM than the one asked.**
+- **Code that is in a different language when the question explicitly requires a specific one.**
+- Logic errors that produce incorrect output.
+- Missing critical functionality.
+- Code that would crash or throw errors on valid inputs.
+
+**Scoring Guide:**
+- is_correct: true if code would work and solve the problem (50%+ functionality)
+- is_correct: false if code has fundamental logic errors or solves the wrong problem
+- confidence: 90-100% for perfect or near-perfect solutions
+- confidence: 70-89% for working solutions with minor issues
+- confidence: 50-69% for solutions that mostly work
+- confidence: below 50% for non-working code or solutions to the wrong problem
+
+Respond with ONLY valid JSON (no markdown, no extra text):
+{{
+    "is_correct": true/false,
+    "confidence": 0-100,
+    "reason": "brief explanation"
+}}"""
+
+
+def _evaluate_mcq(user_answer: str, model_answer: str) -> Tuple[bool, Dict]:
+    """Evaluate MCQ answers with flexibility for different formats"""
+
+    # Normalize both answers
+    user_clean = re.sub(r"[^\w\s]", "", user_answer.lower()).strip()
+    model_clean = re.sub(r"[^\w\s]", "", model_answer.lower()).strip()
+
+    # Direct match
+    if user_clean == model_clean:
+        return True, {"is_correct": True, "confidence": 100, "reason": "Exact match"}
+
+    # Extract option letters (A, B, C, D)
+    option_patterns = [
+        r"^([a-d])\)?\.?\s*",  # A, A), A.
+        r"option\s*([a-d])",  # Option A
+        r"^([a-d])\s*[-:]\s*",  # A - something, A: something
+        r"\(([a-d])\)",  # (A)
+        r"answer\s*:?\s*([a-d])",  # Answer: A
+    ]
+
+    user_option = None
+    model_option = None
+
+    for pattern in option_patterns:
+        if not user_option:
+            user_match = re.search(pattern, user_answer.lower())
+            if user_match:
+                user_option = user_match.group(1)
+
+        if not model_option:
+            model_match = re.search(pattern, model_answer.lower())
+            if model_match:
+                model_option = model_match.group(1)
+
+    # Compare extracted options
+    if user_option and model_option:
+        if user_option == model_option:
+            return True, {
+                "is_correct": True,
+                "confidence": 95,
+                "reason": f"Correct option: {user_option.upper()}",
+            }
+        else:
+            return False, {
+                "is_correct": False,
+                "confidence": 100,
+                "reason": f"Wrong option: {user_option.upper()} (correct: {model_option.upper()})",
+            }
+
+    # Full text comparison (if user wrote full option text)
+    if len(user_clean) > 3 and len(model_clean) > 3:
+        if user_clean in model_clean or model_clean in user_clean:
+            return True, {
+                "is_correct": True,
+                "confidence": 90,
+                "reason": "Answer matches option text",
+            }
+
+        # Word overlap check
+        user_words = set(user_clean.split())
+        model_words = set(model_clean.split())
+        if len(model_words) > 0:
+            overlap = len(user_words & model_words) / len(model_words)
+            if overlap > 0.7:
+                return True, {
+                    "is_correct": True,
+                    "confidence": int(overlap * 100),
+                    "reason": f"High text similarity: {overlap:.0%}",
+                }
+
+    return False, {"is_correct": False, "confidence": 100, "reason": "Incorrect option"}
+
+
+def _evaluate_boolean(user_answer: str, model_answer: str) -> Tuple[bool, Dict]:
+    """Evaluate True/False questions with support for multiple formats"""
+
+    # Define variants for True
+    true_variants = [
+        "true",
+        "t",
+        "yes",
+        "y",
+        "1",
+        "correct",
+        "right",
+        "sahi",
+        "han",
+        "haan",
+        "sach",
+        "theek",
+        "✓",
+        "tick",
+        "check",
+    ]
+
+    # Define variants for False
+    false_variants = [
+        "false",
+        "f",
+        "no",
+        "n",
+        "0",
+        "incorrect",
+        "wrong",
+        "galat",
+        "nahi",
+        "nai",
+        "jhoot",
+        "ghalat",
+        "✗",
+        "cross",
+        "x",
+    ]
+
+    user_clean = user_answer.lower().strip()
+    model_clean = model_answer.lower().strip()
+
+    # Check what user answered
+    user_is_true = any(variant in user_clean for variant in true_variants)
+    user_is_false = any(variant in user_clean for variant in false_variants)
+
+    # Check correct answer
+    model_is_true = any(variant in model_clean for variant in true_variants)
+    model_is_false = any(variant in model_clean for variant in false_variants)
+
+    # If both detected in user answer, take first occurrence
+    if user_is_true and user_is_false:
+        first_true = min(
+            (user_clean.find(v) for v in true_variants if v in user_clean), default=999
+        )
+        first_false = min(
+            (user_clean.find(v) for v in false_variants if v in user_clean), default=999
+        )
+        user_is_true = first_true < first_false
+        user_is_false = not user_is_true
+
+    # Compare answers
+    if model_is_true and user_is_true:
+        return True, {"is_correct": True, "confidence": 100, "reason": "Correct: True"}
+    elif model_is_false and user_is_false:
+        return True, {"is_correct": True, "confidence": 100, "reason": "Correct: False"}
+    elif not model_is_false and user_is_false:
+        return False, {
+            "is_correct": False,
+            "confidence": 100,
+            "reason": "Incorrect: answered False (correct: True)",
+        }
+    elif not model_is_true and user_is_true:
+        return False, {
+            "is_correct": False,
+            "confidence": 100,
+            "reason": "Incorrect: answered True (correct: False)",
+        }
+
+    # If we can't determine, return False
+    return False, {
+        "is_correct": False,
+        "confidence": 50,
+        "reason": "Could not determine boolean value from answer",
+    }
+
+
+def _fallback_evaluation(
+    user_answer: str, model_answer: str, question_type: str
+) -> Tuple[bool, Dict]:
+    """Fallback evaluation when AI fails"""
+
+    user_clean = user_answer.lower().strip()
+    model_clean = model_answer.lower().strip()
+
+    # Exact match
+    if user_clean == model_clean:
+        return True, {
+            "is_correct": True,
+            "confidence": 100,
+            "reason": "Exact match (fallback mode)",
+        }
+
+    # Substring match for longer answers
+    if len(user_clean) > 10 and (
+        user_clean in model_clean or model_clean in user_clean
+    ):
+        return True, {
+            "is_correct": True,
+            "confidence": 85,
+            "reason": "Substring match (fallback mode)",
+        }
+
+    # Word overlap for short answers
+    user_words = set(re.findall(r"\w+", user_clean))
+    model_words = set(re.findall(r"\w+", model_clean))
+
+    # Remove common stop words
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "and",
+        "or",
+        "but",
+    }
+    user_words -= stop_words
+    model_words -= stop_words
+
+    if len(model_words) > 0:
+        overlap = len(user_words & model_words) / len(model_words)
+
+        # For coding, be more strict
+        threshold = 0.4 if question_type.lower() == "coding" else 0.6
+
+        if overlap >= threshold:
+            return True, {
+                "is_correct": True,
+                "confidence": int(overlap * 100),
+                "reason": f"Word overlap: {overlap:.0%} (fallback mode)",
+            }
+
+    # For very short answers, check if user answer is substring
+    if len(model_words) <= 3 and len(user_words & model_words) >= 1:
+        return True, {
+            "is_correct": True,
+            "confidence": 70,
+            "reason": "Key term match (fallback mode)",
+        }
+
+    return False, {
+        "is_correct": False,
+        "confidence": 60,
+        "reason": "No sufficient match (fallback mode)",
+    }
+
+
+# Backward compatible wrapper (returns only boolean like your original)
+def evaluate_answer_simple(
+    question_text: str, user_answer: str, model_answer: str
+) -> bool:
+    """
+    Simple version that returns only True/False (backward compatible)
+    """
+    is_correct, _ = evaluate_answer_with_ai(
+        question_text, user_answer, model_answer, "short"
+    )
+    return is_correct
+
+
+# def evaluate_answer_with_ai(question_text, user_answer, model_answer):
+#     """
+#     Uses Gemini AI to evaluate if a user's answer is conceptually correct.
+#     Returns True if answer is at least 50% correct conceptually.
+#     """
+#     if not user_answer or not user_answer.strip():
+#         return False
+
+#     try:
+#         genai.configure(api_key=settings.GEMINI_API_KEY)
+#         model = genai.GenerativeModel("gemini-2.0-flash-exp")  # Updated model
+
+#         prompt = f"""
+#         You are an expert technical evaluator. Your job is to check if a user's answer demonstrates understanding of the concept.
+
+#         **Question:**
+#         {question_text}
+
+#         **Model Answer (Reference):**
+#         {model_answer}
+
+#         **User's Answer:**
+#         {user_answer}
+
+#         **Evaluation Rules:**
+#         1. Check if the user's answer conveys the CORE CONCEPT correctly
+#         2. Accept answers that are at least 50% conceptually correct
+#         3. Ignore minor grammar mistakes, typos, or extra words
+#         4. Accept synonyms and alternative explanations if they're correct
+#         5. Focus on understanding, not exact word matching
+
+#         **Examples of what to accept:**
+#         - If model answer is "Lists are mutable, tuples are immutable"
+#         - Accept: "You can change lists but not tuples"
+#         - Accept: "Lists can be modified, tuples cannot be modified"
+#         - Accept: "Tuples are read-only, lists are not"
+
+#         Respond with ONLY a JSON object:
+#         {{
+#             "is_correct": true/false,
+#             "confidence": 0-100,
+#             "reason": "brief explanation"
+#         }}
+#         """
+
+#         response = model.generate_content(prompt)
+#         cleaned_text = response.text.strip()
+
+#         # Remove markdown if present
+#         if cleaned_text.startswith("```json"):
+#             cleaned_text = cleaned_text[7:]
+#         if cleaned_text.endswith("```"):
+#             cleaned_text = cleaned_text[:-3]
+#         cleaned_text = cleaned_text.strip()
+
+#         result = json.loads(cleaned_text)
+
+#         # Log for debugging
+#         print(f"AI Evaluation - Question: {question_text[:50]}...")
+#         print(f"User Answer: {user_answer}")
+#         print(f"AI Result: {result}")
+
+#         return result.get("is_correct", False)
+
+#     except Exception as e:
+#         print(f"AI Evaluation Error: {e}")
+#         # Fallback: do basic string matching
+#         return user_answer.lower().strip() in model_answer.lower()
 
 
 # @require_POST
@@ -1399,7 +2067,7 @@ def evaluate_answer_with_ai(question_text, user_answer, model_answer):
 #                     model_answer=question.answer.strip(),
 #                 )
 #             else:
-#                 print(f"Skipping empty answer for: {question.text[:30]}...")
+#                 print(f"Skipping empty answer for: {question.text[:30]}")
 
 #         if is_correct:
 #             correct_answers_count += 1
@@ -1450,10 +2118,23 @@ def submit_test(request, registration_id):
                 model_answer = question.answer.strip()
                 is_correct = user_answer.lower() == model_answer.lower()
             else:
-                is_correct = evaluate_answer_with_ai(
+                # Map internal question type to evaluator type
+                qtype = question.question_type.upper()
+                if qtype in ("CODE", "CODING"):
+                    evaluator_type = "coding"
+                elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
+                    evaluator_type = "short"
+                elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
+                    evaluator_type = "true_false"
+                else:
+                    evaluator_type = "short"
+
+                # evaluate_answer_with_ai returns (is_correct, details)
+                is_correct, _ = evaluate_answer_with_ai(
                     question_text=question.text,
                     user_answer=user_answer,
                     model_answer=question.answer.strip(),
+                    question_type=evaluator_type,
                 )
 
             if is_correct:

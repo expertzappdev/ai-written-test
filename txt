@@ -1,11 +1,245 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ title }}</title>
-
+    <title>Assessment: {{ paper.title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
+
+    <script>
+      /*
+       * DEDICATED WINDOW LOGIC:
+       * Opens test in a new window and tries to close the original window immediately.
+       */
+      (function () {
+        const windowName = "dedicatedAssessmentWindow";
+
+        // Check if the window is already the dedicated one and not a temporary opener.
+        if (window.name !== windowName && !window.opener) {
+          const url = window.location.href;
+
+          // Open a new, dedicated window.
+          const newWindow = window.open(
+            url,
+            windowName,
+            "width=" +
+              screen.availWidth +
+              ",height=" +
+              screen.availHeight +
+              ",resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no"
+          );
+
+          if (newWindow) {
+            // Try to close the original window immediately.
+            setTimeout(function () {
+              window.close();
+            }, 50);
+
+            // Prevent further execution in the original tab (safer approach)
+            document.body.style.display = "none";
+            return;
+          }
+        }
+      })();
+    </script>
+    <script>
+      /* This is the aggressive back button blocker using history.forward(). */
+
+      function noBack() {
+        window.history.forward();
+      }
+
+      window.history.forward();
+
+      // **Global variable to track if a popstate (back/forward) event occurred.**
+      let isNavigating = false;
+
+      document.addEventListener("DOMContentLoaded", function () {
+        window.addEventListener("popstate", function (event) {
+          // **WARNING:** Show a warning when back/forward is attempted
+          alert(
+            "⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission."
+          );
+
+          // popstate ट्रिगर होने पर isNavigating को true सेट करें।
+          isNavigating = true;
+          noBack(); // Prevent history navigation (as per your existing logic)
+
+          // 500ms के बाद फ़्लैग रीसेट करें।
+          setTimeout(() => {
+            isNavigating = false;
+          }, 500);
+        });
+      });
+    </script>
+
+    <script>
+      /* * Tab Change & Submission Lock Logic */
+
+      let editorInstances = {}; // Defined here for global access
+      let tabChangeCount = 0;
+      const MAX_TAB_CHANGES = 3; // Allow 3 warnings before auto-submitting
+      let submissionLocked = false;
+
+      // यह function अब Tab Change Logic और Time Up Logic दोनों जगह इस्तेमाल होगा
+      function lockAndAutoSubmit(reason) {
+        if (submissionLocked) return;
+        submissionLocked = true;
+
+        // Polling interval को रोकें
+        if (window.pollingInterval) clearInterval(window.pollingInterval);
+
+        // Ensure title is reset/locked on submission
+        document.title = "Assessment Submitted!"; // <-- Title locked
+
+        const form = document.getElementById("assessment-form");
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        const message =
+          reason === "time_up"
+            ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
+            : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
+
+        // 1. Disable and update the Submit button (UI feedback)
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = "Auto-Submitting... 🚫";
+          submitButton.classList.remove("bg-green-600", "hover:bg-green-700");
+          submitButton.classList.add("bg-red-800", "cursor-not-allowed");
+        }
+
+        // Update Timer Display for Time Up reason
+        const timerElement = document.getElementById("timer");
+        if (timerElement) {
+          timerElement.textContent = "TIME UP";
+          timerElement.classList.remove(
+            "bg-red-600",
+            "bg-yellow-500",
+            "text-gray-800"
+          );
+          timerElement.classList.add("bg-red-800", "text-white");
+        }
+
+        // 2. Final alert to the user before submission
+        alert(message);
+
+        // 3. Force submission of the form
+        // Save code editor content before submission
+        document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+          const questionId = editorContainer.id.replace("editor-", "");
+          const textarea = document.getElementById(`textarea-${questionId}`);
+          const editor = editorInstances[questionId];
+          if (editor) {
+            // CRITICAL: Ensure the final code is captured
+            textarea.value = editor.getValue();
+          }
+        });
+
+        // Force the form submission
+        form.submit();
+      }
+
+      function handleVisibilityChange() {
+        // Ignore if navigation is in progress or already submitted.
+        if (window.isNavigating || submissionLocked) {
+          return;
+        }
+
+        const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
+
+        // Check if the document is hidden (user switched tabs or minimized)
+        if (document.hidden) {
+          // **🚨 UI CHANGE: Update title on blur/hide**
+          document.title = "Breakup";
+
+          tabChangeCount++;
+
+          if (tabChangeCount <= MAX_TAB_CHANGES) {
+            // --- WARNING STATE ---
+            alert(
+              `⚠️ WARNING! Tab Switched. You have ${
+                MAX_TAB_CHANGES - tabChangeCount
+              } warnings remaining.`
+            );
+          } else {
+            // --- LOCK & AUTO-SUBMIT STATE (Trigger auto-submit function) ---
+            lockAndAutoSubmit("tab_switch");
+          }
+        } else {
+          // **🚨 UI CHANGE: Update title on focus/visible**
+          document.title = "Patch Up"; // Temporarily show "Patch Up"
+          setTimeout(() => {
+            if (!submissionLocked) {
+              document.title = originalTitle; // Revert to original title after a short delay
+            }
+          }, 1000);
+        }
+      }
+
+      // Attach the event listener to the document
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    </script>
+
+    <script>
+      const OFFLINE_DIALOGUE_ID = "offline-dialogue";
+
+      function showOfflineDialogue() {
+        const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
+        if (dialogue) {
+          dialogue.classList.remove("hidden");
+        }
+      }
+
+      function hideOfflineDialogue() {
+        const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
+        if (dialogue) {
+          dialogue.classList.add("hidden");
+        }
+      }
+
+      function checkConnectionAndHide() {
+        if (navigator.onLine) {
+          hideOfflineDialogue();
+        } else {
+          // If button is clicked and still offline, give an alert
+          alert(
+            "Still offline. Please check your network cables or Wi-Fi connection."
+          );
+        }
+      }
+
+      function handleOnlineStatus() {
+        if (navigator.onLine) {
+          hideOfflineDialogue();
+          console.log("Internet connection restored.");
+        } else {
+          showOfflineDialogue();
+          console.log("Internet connection lost!");
+        }
+      }
+
+      // Add event listeners for online/offline status changes
+      window.addEventListener("online", handleOnlineStatus);
+      window.addEventListener("offline", handleOnlineStatus);
+
+      // Initial check on load
+      document.addEventListener("DOMContentLoaded", handleOnlineStatus);
+    </script>
     <script>
       tailwind.config = {
         theme: {
@@ -20,361 +254,520 @@
         },
       };
     </script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
     <style>
-      ::-webkit-scrollbar {
-        width: 8px;
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f4f7f9;
       }
-      ::-webkit-scrollbar-track {
-        background: #f1f5f9; /* slate-100 */
+
+      .question-card {
+        transition: box-shadow 0.2s;
       }
-      ::-webkit-scrollbar-thumb {
-        background: #94a3b8; /* slate-400 */
-        border-radius: 10px;
+
+      .question-card:hover {
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
+
+      .answer-input {
+        @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary;
+      }
+
+      .code-editor {
+        /* CRITICAL: Must have a defined size for Monaco */
+        min-height: 250px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+      }
+
+      /* Reduced padding from 50px to 30px for compaction */
+      #fixed-footer {
+        z-index: 100;
+        padding-bottom: 30px;
       }
     </style>
   </head>
 
-  <body class="h-screen bg-slate-50 font-sans">
-    <div class="flex h-screen">
-      {% include 'partials/sidebar.html' %}
+  <body
+    class="text-gray-800"
+    onload="noBack()"
+    onpageshow="if (event.persisted) noBack();"
+  >
+    <div
+      id="start-overlay"
+      class="fixed inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-50 text-center"
+    >
+      <h1 class="text-white text-3xl font-bold mb-4">
+        Ready to Begin Your Test?
+      </h1>
+      <p class="text-gray-300 mb-6">
+        Click below to start. Assessment integrity requires a stable network and
+        focus.
+      </p>
+      <button
+        id="start-btn"
+        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-lg"
+      >
+        Start Test
+      </button>
+    </div>
 
-      <div class="flex flex-1 flex-col overflow-hidden">
-        {% include 'partials/header.html' with page_title="Test Report" %}
+    <script>
+      // SIMPLIFIED START BUTTON LOGIC
+      document
+        .getElementById("start-btn")
+        .addEventListener("click", function () {
+          // 1. Hide the overlay immediately
+          document.getElementById("start-overlay").style.display = "none";
 
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50">
-          <div class="container mx-auto px-6 py-8">
-            <header class="mb-6">
-              <h6 class="text-2xl font-bold text-slate-800">
-                {{ registration.question_paper.title }} Report
-              </h6>
-              <p class="text-sm text-slate-500 mt-1">
-                Detailed report for <strong>{{ registration.email }}</strong
-                >'s attempt on {{ registration.start_time }}.
-              </p>
-            </header>
+          // 2. Request fullscreen (optional, can be commented out)
+          const docEl = document.documentElement;
+          if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().catch(() => {});
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen().catch(() => {});
+          }
 
-            <section class="bg-white p-6 rounded-xl shadow-lg">
-              <div class="flex justify-between items-start mb-6 gap-6">
-                <div
-                  class="p-4 rounded-lg flex-grow {% if status == 'Pass' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}"
-                >
-                  <h4 class="text-xl font-bold">
-                    Final Result:
-                    <span
-                      class="{% if status == 'Pass' %}text-green-600{% else %}text-red-600{% endif %}"
-                    >
-                      {{ status }}
-                    </span>
-                  </h4>
+          // 3. Force Monaco Layout to render correctly after overlay is hidden
+          setTimeout(() => {
+            if (window.monaco && window.monaco.editor) {
+              Object.values(editorInstances).forEach((editor) => {
+                if (editor && editor.layout) {
+                  editor.layout();
+                }
+              });
+            }
+          }, 100);
+        });
+    </script>
+    <div
+      id="offline-dialogue"
+      class="fixed inset-0 z-50 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden"
+      role="alert"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+    >
+      <div
+        class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full transform transition-all duration-300 scale-100"
+      >
+        <div class="text-center">
+          <i class="fas fa-wifi fa-3x text-red-600 mb-4"></i>
+          <h3 id="dialog-title" class="text-2xl font-bold text-gray-900 mb-2">
+            You Are Not Connected to the Internet
+          </h3>
+          <p id="dialog-message" class="text-gray-600 mb-6">
+            Please restore your connection immediately. Assessment integrity
+            requires a stable network.
+          </p>
+          <button
+            onclick="checkConnectionAndHide()"
+            class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none"
+          >
+            Check Connection Again
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="min-h-screen">
+      <header class="bg-white shadow-md sticky top-0 z-20">
+        <div
+          class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center"
+        >
+          <h1 class="text-xl font-bold text-theme-dark truncate">
+            {{ paper.title }}
+          </h1>
 
-                  {% if status == 'Pass' %}
-                  <p class="mt-1">
-                    Congratulations! You have successfully passed the
-                    assessment.
-                  </p>
-                  {% else %}
-                  <p class="mt-1">
-                    You did not meet the required cutoff score for this
-                    assessment.
-                  </p>
-                  {% endif %}
-                </div>
-                <div class="flex-shrink-0">
-                  <label
-                    for="shortlist-checkbox"
-                    class="flex items-center cursor-pointer select-none"
-                  >
-                    <div class="relative">
-                      <input
-                        type="checkbox"
-                        id="shortlist-checkbox"
-                        class="sr-only"
-                        data-registration-id="{{ registration.id }}"
-                        {%
-                        if
-                        registration.is_shortlisted
-                        %}checked{%
-                        endif
-                        %}
-                      />
-                      <div
-                        class="block bg-gray-200 w-14 h-8 rounded-full"
-                      ></div>
-                      <div
-                        class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition"
-                      ></div>
-                    </div>
-                    <div class="ml-3 text-slate-700 font-semibold">
-                      Shortlist
-                    </div>
-                  </label>
-                  <p
-                    id="shortlist-status"
-                    class="text-xs text-center mt-1 font-medium {% if registration.is_shortlisted %}text-green-600{% else %}text-slate-500{% endif %}"
-                  >
-                    {% if registration.is_shortlisted %}Shortlisted{% else %}Not
-                    Shortlisted{% endif %}
-                  </p>
-                </div>
-
-                <style>
-                  input:checked ~ .dot {
-                    transform: translateX(100%);
-                    background-color: #736b8e; /* theme-primary */
-                  }
-                  input:checked ~ .block {
-                    background-color: #e5e3e9; /* theme-light */
-                  }
-                </style>
-              </div>
-              <div
-                class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center"
-              >
-                <div class="bg-slate-100 p-4 rounded-lg">
-                  <p
-                    class="text-xs font-medium text-slate-500 uppercase tracking-wider"
-                  >
-                    Your Score
-                  </p>
-                  <p
-                    class="text-3xl font-bold {% if status == 'Pass' %}text-green-600{% else %}text-red-600{% endif %} tracking-tight mt-1"
-                  >
-                    {{ percentage }}%
-                  </p>
-                </div>
-                <div class="bg-slate-100 p-4 rounded-lg">
-                  <p
-                    class="text-xs font-medium text-slate-500 uppercase tracking-wider"
-                  >
-                    Cutoff Score
-                  </p>
-                  <p
-                    class="text-3xl font-bold text-slate-600 tracking-tight mt-1"
-                  >
-                    {{ cutoff_score }}%
-                  </p>
-                </div>
-                <div class="bg-slate-100 p-4 rounded-lg">
-                  <p
-                    class="text-xs font-medium text-slate-500 uppercase tracking-wider"
-                  >
-                    Correct Answers
-                  </p>
-                  <p
-                    class="text-3xl font-bold text-green-600 tracking-tight mt-1"
-                  >
-                    {{ score }} / {{ total_questions }}
-                  </p>
-                </div>
-                <div class="bg-slate-100 p-4 rounded-lg">
-                  <p
-                    class="text-xs font-medium text-slate-500 uppercase tracking-wider"
-                  >
-                    Incorrect Answers
-                  </p>
-                  <p
-                    class="text-3xl font-bold text-red-600 tracking-tight mt-1"
-                  >
-                    {{ incorrect_answers }} / {{ total_questions }}
-                  </p>
-                </div>
-              </div>
-            </section>
-            <section class="mt-8">
-              <h2 class="text-lg font-semibold text-slate-800 mb-4">
-                Questions & Answers
-              </h2>
-
-              <div class="space-y-4">
-                {% for result in results %}
-                <div
-                  class="bg-white p-5 rounded-xl shadow-md border-l-4 {% if result.is_correct %}border-green-400{% else %}border-red-400{% endif %}"
-                >
-                  <div class="flex justify-between items-start gap-4">
-                    <p class="text-base font-semibold text-slate-800">
-                      {{ forloop.counter }}. {{ result.question_text | safe }}
-                    </p>
-                    {% if result.is_correct %}
-                    <div
-                      class="flex-shrink-0 flex items-center gap-1.5 text-green-700"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        class="w-5 h-5"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.06 0l4.001-5.498Z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                      <span class="font-medium text-sm">Correct</span>
-                    </div>
-                    {% else %}
-                    <div
-                      class="flex-shrink-0 flex items-center gap-1.5 text-red-700"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        class="w-5 h-5"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                      <span class="font-medium text-sm">Incorrect</span>
-                    </div>
-                    {% endif %}
-                  </div>
-                  <div class="mt-4 pl-1 space-y-3">
-                    <div>
-                      <p class="text-sm font-medium text-slate-500">
-                        Your Answer:
-                      </p>
-                      <p class="text-slate-700 mt-0.5 text-base">
-                        {{ result.user_answer | default : "(No answer)" }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="text-sm font-medium text-slate-500">
-                        Correct Answer:
-                      </p>
-                      <p class="text-slate-800 font-semibold mt-0.5 text-base">
-                        {{ result.correct_answer }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {% empty %}
-                <div
-                  class="bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-center text-yellow-800"
-                >
-                  No responses were found for this test.
-                </div>
-                {% endfor %}
-              </div>
-            </section>
+          <div class="flex items-center space-x-4">
+            <span class="text-sm font-medium text-gray-600 hidden sm:inline">
+              Duration: {{ paper.duration }} min
+            </span>
+            <div
+              class="bg-red-600 text-white font-extrabold py-2 px-4 rounded-full shadow-lg text-lg sm:text-xl"
+              id="timer"
+            >
+              Loading Time...
+            </div>
           </div>
-        </main>
+        </div>
+      </header>
+
+      <main class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <form
+          method="post"
+          action="{% url 'test:user_test' link_id=link_id %}"
+          class="space-y-8"
+          id="assessment-form"
+        >
+          {% csrf_token %} {% for section in sections_list %}
+          <div
+            class="section-block p-5 bg-white rounded-xl shadow-lg border-t-4 border-theme-primary/70"
+          >
+            <h2 class="text-2xl font-bold text-theme-dark mb-5 border-b pb-2">
+              {{ section.title }}
+            </h2>
+
+            <div class="space-y-5">
+              {% for q in section.questions %}
+              <div
+                class="question-card p-3 border border-gray-200 rounded-lg bg-gray-50/50"
+              >
+                <p class="font-semibold text-lg mb-3">
+                  Q{{ forloop.counter }}: **{{ q.text }}**
+                  <span class="text-xs font-normal text-theme-primary"
+                    >[{{ q.type }}]</span
+                  >
+                </p>
+
+                {% if q.type == 'MCQ' %}
+                <div class="space-y-2 mt-3">
+                  {% for option in q.options %}
+                  <label class="flex items-center text-gray-700">
+                    <input
+                      type="radio"
+                      name="question_{{ q.id }}"
+                      value="{{ option }}"
+                      class="h-4 w-4 text-theme-dark border-gray-300 focus:ring-theme-dark"
+                    />
+                    <span class="ml-3 text-sm">{{ option }}</span>
+                  </label>
+                  {% endfor %}
+                </div>
+                {% elif q.type == 'CODE' %}
+                <p class="text-sm text-gray-600 mb-2 mt-3">
+                  Write, run and submit your code below:
+                </p>
+
+                <div
+                  id="editor-{{ q.id }}"
+                  class="code-editor mt-3"
+                  data-language="python"
+                ></div>
+
+                <textarea
+                  name="question_{{ q.id }}"
+                  id="textarea-{{ q.id }}"
+                  class="hidden"
+                ></textarea>
+
+                <div
+                  id="output-{{ q.id }}"
+                  class="hidden mt-3 p-3 text-sm rounded-lg whitespace-pre-wrap font-mono"
+                ></div>
+
+                <div class="mt-3 flex space-x-3">
+                  <button
+                    type="button"
+                    id="run-btn-{{ q.id }}"
+                    onclick="runCode({{ q.id }})"
+                    class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    <i class="fas fa-play mr-1"></i> Run Code (Browser)
+                  </button>
+                </div>
+
+                {% else %}
+                <textarea
+                  name="question_{{ q.id }}"
+                  rows="6"
+                  placeholder="Type your detailed answer here..."
+                  class="answer-input resize-y mt-3"
+                ></textarea>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <div class="h-16 sm:h-20"></div>
+        </form>
+      </main>
+
+      <div
+        id="fixed-footer"
+        class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-2xl z-20"
+      >
+        <div class="max-w-5xl mx-auto flex justify-end">
+          <button
+            type="submit"
+            form="assessment-form"
+            class="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-lg hover:bg-green-700 transition-colors shadow-lg focus:outline-none"
+          >
+            Submit Final Assessment
+          </button>
+        </div>
       </div>
     </div>
 
     <script>
-      function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-          const cookies = document.cookie.split(";");
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + "=")) {
-              cookieValue = decodeURIComponent(
-                cookie.substring(name.length + 1)
-              );
-              break;
-            }
-          }
-        }
-        return cookieValue;
+      // --- NEW BACKEND-CONTROLLED TIMER LOGIC VARIABLES ---
+      let totalSeconds = -1; // Server से प्राप्त होने वाला कुल शेष समय
+      const POLLING_RATE_SECONDS = 15; // हर 15 सेकंड में सर्वर से समय सिंक करें
+      // pollingInterval और submissionLocked globals अब window scope में हैं।
+      window.pollingInterval = null;
+
+      // --- TIMER DISPLAY HELPER FUNCTIONS ---
+      function formatTime(seconds) {
+        if (seconds < 0) seconds = 0;
+        let minutes = parseInt(seconds / 60, 10);
+        let secs = parseInt(seconds % 60, 10);
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        secs = secs < 10 ? "0" + secs : secs;
+
+        return minutes + ":" + secs;
       }
 
-      document.addEventListener("DOMContentLoaded", function () {
-        // --- Existing Sidebar and User Menu Logic ---
-        const sidebar = document.getElementById("sidebar");
-        const toggleButton = document.getElementById("sidebar-toggle");
-        const sidebarLogo = document.getElementById("sidebar-logo");
-        const sidebarTexts = document.querySelectorAll(".sidebar-text");
-        const sidebarHeader = document.getElementById("sidebar-header");
+      function updateTimerDisplay(seconds) {
+        let timerElement = document.getElementById("timer");
+        if (!timerElement) return;
 
-        if (toggleButton) {
-          toggleButton.addEventListener("click", () => {
-            sidebar.classList.toggle("w-64");
-            sidebar.classList.toggle("w-20");
-            sidebarLogo.classList.toggle("hidden");
-            sidebarHeader.classList.toggle("justify-between");
-            sidebarHeader.classList.toggle("justify-center");
-            sidebarTexts.forEach((text) => {
-              text.classList.toggle("hidden");
-            });
-          });
+        timerElement.textContent = formatTime(seconds);
+
+        // Update color based on remaining time
+        timerElement.classList.remove(
+          "bg-yellow-500",
+          "text-gray-800",
+          "bg-red-700",
+          "bg-red-800",
+          "text-white",
+          "bg-red-600"
+        );
+
+        if (seconds <= 60) {
+          timerElement.classList.add("bg-red-700", "text-white");
+        } else if (seconds <= 300) {
+          // 5 minutes
+          timerElement.classList.add("bg-yellow-500", "text-gray-800");
+        } else {
+          timerElement.classList.add("bg-red-600", "text-white");
         }
+      }
 
-        const userMenuButton = document.getElementById("user-menu-button");
-        const userMenu = document.getElementById("user-menu");
+      // --- POLLING LOGIC ---
+      function pollTimeRemaining(linkId, formId) {
+        // Django's URL template tag का उपयोग करें
+        const timeUrl =
+          "{% url 'test:get_time_remaining_api' link_id=link_id %}";
+        let timerElement = document.getElementById("timer");
 
-        if (userMenuButton) {
-          userMenuButton.addEventListener("click", (event) => {
-            userMenu.classList.toggle("hidden");
-            event.stopPropagation();
+        // सर्वर से समय प्राप्त करने के लिए API कॉल
+        fetch(timeUrl, {
+          method: "GET",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Server Time API response not ok");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.error) {
+              console.error("Server Time Error:", data.error);
+              if (window.pollingInterval) clearInterval(window.pollingInterval);
+              if (timerElement) timerElement.textContent = "Error";
+              return;
+            }
+
+            // सर्वर से प्राप्त सटीक समय को सेट करें
+            totalSeconds = data.remaining_seconds;
+
+            if (data.time_up || totalSeconds <= 0) {
+              // अगर सर्वर ने 'time_up' भेज दिया है, तो पोलिंग रोकें और सबमिट करें
+              if (window.pollingInterval) clearInterval(window.pollingInterval);
+              lockAndAutoSubmit("time_up");
+            } else {
+              updateTimerDisplay(totalSeconds);
+            }
+          })
+          .catch((error) => {
+            console.error("Fetch Error:", error);
+            if (timerElement) timerElement.textContent = "Sync Error";
           });
-        }
+      }
 
-        document.addEventListener("click", (event) => {
-          if (
-            userMenu &&
-            !userMenu.classList.contains("hidden") &&
-            userMenuButton &&
-            !userMenuButton.contains(event.target)
-          ) {
-            userMenu.classList.add("hidden");
-          }
+      // --- SKULPT PYTHON EXECUTION LOGIC (Remains Unchanged) ---
+      function outf(text, questionId) {
+        const outputElement = document.getElementById(`output-${questionId}`);
+        outputElement.textContent += text;
+        outputElement.classList.remove("hidden", "bg-red-900", "text-red-300");
+        outputElement.classList.add("bg-gray-800", "text-green-300");
+      }
+
+      function builtinRead(x) {
+        if (
+          Sk.builtinFiles === undefined ||
+          Sk.builtinFiles["files"][x] === undefined
+        )
+          throw "File not found: '" + x + "'";
+        return Sk.builtinFiles["files"][x];
+      }
+
+      function runCode(questionId) {
+        const editor = editorInstances[questionId];
+        if (!editor) {
+          alert("Error: Code editor not initialized.");
+          return;
+        }
+        const code = editor.getValue();
+        const outputElement = document.getElementById(`output-${questionId}`);
+        const runButton = document.getElementById(`run-btn-${questionId}`);
+
+        outputElement.textContent = "Running...";
+        outputElement.classList.remove(
+          "hidden",
+          "bg-red-900",
+          "text-green-300"
+        );
+        outputElement.classList.add("bg-gray-700", "text-white");
+        runButton.disabled = true;
+        runButton.innerHTML =
+          '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
+
+        Sk.pre = "output-" + questionId;
+
+        Sk.configure({
+          output: (text) => outf(text, questionId),
+          read: builtinRead,
+          execLimit: 5000,
         });
 
-        // --- START: NEW SHORTLIST CHECKBOX LOGIC ---
-        const shortlistCheckbox = document.getElementById("shortlist-checkbox");
-        const shortlistStatusText = document.getElementById("shortlist-status");
+        Sk.misceval
+          .asyncToPromise(function () {
+            return Sk.importMainWithBody("<stdin>", false, code, true);
+          })
+          .then(
+            function (mod) {
+              runButton.innerHTML =
+                '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+            },
+            function (err) {
+              outputElement.textContent = "Error:\n" + err.toString();
+              outputElement.classList.remove("bg-gray-700", "text-white");
+              outputElement.classList.add("bg-red-900", "text-red-300");
+              runButton.innerHTML =
+                '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+            }
+          )
+          .finally(() => {
+            runButton.disabled = false;
+          });
+      }
 
-        if (shortlistCheckbox) {
-          shortlistCheckbox.addEventListener("change", function () {
-            const registrationId = this.dataset.registrationId;
-            const url = `/registration/${registrationId}/toggle-shortlist/`;
-            const csrftoken = getCookie("csrftoken");
+      // --- MONACO EDITOR & INIT LOGIC ---
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- START TIMER INIT: POLLING & LOCAL TICKER ---
+        const linkIdFromDjango = "{{ link_id }}";
+        const formId = "assessment-form";
 
-            fetch(url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrftoken,
-              },
-            })
-              .then((response) => response.json())
-              .then((data) => {
-                if (data.status === "success") {
-                  if (data.is_shortlisted) {
-                    shortlistStatusText.textContent = "Shortlisted";
-                    shortlistStatusText.classList.remove("text-slate-500");
-                    shortlistStatusText.classList.add("text-green-600");
-                  } else {
-                    shortlistStatusText.textContent = "Not Shortlisted";
-                    shortlistStatusText.classList.remove("text-green-600");
-                    shortlistStatusText.classList.add("text-slate-500");
-                  }
-                } else {
-                  console.error("Failed to update status:", data.message);
-                  // On failure, revert the checkbox to its previous state
-                  this.checked = !this.checked;
+        // 1. Local Ticker: हर 1 सेकंड में UI को अपडेट करें
+        setInterval(() => {
+          if (totalSeconds > 0 && !submissionLocked) {
+            totalSeconds--;
+            updateTimerDisplay(totalSeconds);
+          }
+          // अगर 0 पर पहुंच गया तो auto-submit logic चलाओ (safety के लिए)
+          if (totalSeconds <= 0 && !submissionLocked) {
+            if (window.pollingInterval) clearInterval(window.pollingInterval);
+            lockAndAutoSubmit("time_up");
+          }
+        }, 1000);
+
+        // 2. Server Polling: हर 15 सेकंड में सर्वर से सटीक समय प्राप्त करें
+        window.pollingInterval = setInterval(() => {
+          // Only poll if not already locked
+          if (!submissionLocked) {
+            pollTimeRemaining(linkIdFromDjango, formId);
+          } else {
+            clearInterval(window.pollingInterval);
+          }
+        }, POLLING_RATE_SECONDS * 1000);
+
+        // 3. पेज लोड पर तुरंत एक बार कॉल करें (Initial Time प्राप्त करने के लिए)
+        pollTimeRemaining(linkIdFromDjango, formId);
+
+        // Monaco Editor Initialization
+        require.config({
+          paths: {
+            vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
+          },
+        });
+
+        // **UPDATED MONACO INITIALIZATION BLOCK**
+        require(["vs/editor/editor.main"], function () {
+          console.log("Monaco Editor: Loader script finished loading.");
+          document
+            .querySelectorAll(".code-editor")
+            .forEach((editorContainer) => {
+              const questionId = editorContainer.id.replace("editor-", "");
+              const textarea = document.getElementById(
+                `textarea-${questionId}`
+              );
+
+              // Check if both elements are found
+              if (!textarea) {
+                console.error(
+                  "Monaco Init Error: Hidden textarea not found for ID:",
+                  questionId
+                );
+                return;
+              }
+
+              if (editorContainer.hasAttribute("data-monaco-initialized"))
+                return;
+              editorContainer.setAttribute("data-monaco-initialized", "true");
+
+              try {
+                const editor = monaco.editor.create(editorContainer, {
+                  value: textarea.value || "",
+                  language: "python",
+                  theme: "vs-light",
+                  minimap: { enabled: false },
+                  automaticLayout: true,
+                  tabSize: 4,
+                });
+
+                editorInstances[questionId] = editor;
+                console.log(`Monaco Editor: Initialized editor-${questionId}`);
+
+                // Update hidden textarea when editor content changes
+                editor.onDidChangeModelContent(() => {
+                  textarea.value = editor.getValue();
+                });
+              } catch (e) {
+                console.error(
+                  `Monaco Editor: Failed to create editor-${questionId}`,
+                  e
+                );
+                editorContainer.textContent =
+                  "Error: Editor failed to load. Check your network or browser console.";
+              }
+            });
+        }, function (err) {
+          console.error("Monaco Editor: Main script failed to load.", err);
+        });
+        // **END UPDATED MONACO INITIALIZATION BLOCK**
+
+        // Final submission handler (Saves all code before submission)
+        document
+          .getElementById("assessment-form")
+          .addEventListener("submit", function () {
+            if (window.pollingInterval) clearInterval(window.pollingInterval); // Stop polling on manual submit
+
+            document
+              .querySelectorAll(".code-editor")
+              .forEach((editorContainer) => {
+                const questionId = editorContainer.id.replace("editor-", "");
+                const textarea = document.getElementById(
+                  `textarea-${questionId}`
+                );
+                const editor = editorInstances[questionId];
+
+                if (editor) {
+                  // Final save of editor content to the hidden textarea
+                  textarea.value = editor.getValue();
                 }
-              })
-              .catch((error) => {
-                console.error("Error:", error);
-                this.checked = !this.checked;
               });
           });
-        }
-        // --- END: NEW SHORTLIST CHECKBOX LOGIC ---
       });
     </script>
   </body>
