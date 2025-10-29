@@ -4,9 +4,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Assessment: {{ paper.title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,7 +16,6 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
-
 
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
@@ -47,41 +43,7 @@
               screen.availHeight +
               ",resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no"
           );
-      /*
-       * DEDICATED WINDOW LOGIC:
-       * Opens test in a new window and tries to close the original window immediately.
-       */
-      (function () {
-        const windowName = "dedicatedAssessmentWindow";
 
-        // Check if the window is already the dedicated one and not a temporary opener.
-        if (window.name !== windowName && !window.opener) {
-          const url = window.location.href;
-
-          // Open a new, dedicated window.
-          const newWindow = window.open(
-            url,
-            windowName,
-            "width=" +
-              screen.availWidth +
-              ",height=" +
-              screen.availHeight +
-              ",resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no"
-          );
-
-          if (newWindow) {
-            // Try to close the original window immediately.
-            // Note: window.close() often fails if the window was not opened by script.
-            setTimeout(function () {
-              window.close();
-            }, 50);
-
-            // Prevent further execution in the original tab (safer approach)
-            document.body.style.display = "none";
-            return;
-          }
-        }
-      })();
           if (newWindow) {
             // Try to close the original window immediately.
             // Note: window.close() often fails if the window was not opened by script.
@@ -102,27 +64,12 @@
       function noBack() {
         window.history.forward();
       }
-      /* This is the aggressive back button blocker using history.forward(). */
-
-      function noBack() {
-        window.history.forward();
-      }
 
       window.history.forward();
 
       // **Global variable to track if a popstate (back/forward) event occurred.**
       let isNavigating = false;
-      window.history.forward();
 
-      // **Global variable to track if a popstate (back/forward) event occurred.**
-      let isNavigating = false;
-
-      document.addEventListener("DOMContentLoaded", function () {
-        window.addEventListener("popstate", function (event) {
-          // **WARNING:** Show a warning when back/forward is attempted
-          alert(
-            "⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission."
-          );
       document.addEventListener("DOMContentLoaded", function () {
         window.addEventListener("popstate", function (event) {
           // **WARNING:** Show a warning when back/forward is attempted
@@ -142,7 +89,6 @@
       });
     </script>
 
-
     <script>
       /* * Tab Change & Submission Lock Logic */
 
@@ -161,18 +107,10 @@
 
         // Ensure title is reset/locked on submission
         document.title = "Assessment Submitted!"; // <-- Title locked
-        // Ensure title is reset/locked on submission
-        document.title = "Assessment Submitted!"; // <-- Title locked
 
         const form = document.getElementById("assessment-form");
         const submitButton = form.querySelector('button[type="submit"]');
-        const form = document.getElementById("assessment-form");
-        const submitButton = form.querySelector('button[type="submit"]');
 
-        const message =
-          reason === "time_up"
-            ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
-            : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
         const message =
           reason === "time_up"
             ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
@@ -197,45 +135,10 @@
           );
           timerElement.classList.add("bg-red-800", "text-white");
         }
-        // 1. Disable and update the Submit button (UI feedback)
-        if (submitButton) {
-          submitButton.disabled = true;
-          submitButton.textContent = "Auto-Submitting... 🚫";
-          submitButton.classList.remove("bg-green-600", "hover:bg-green-700");
-          submitButton.classList.add("bg-red-800", "cursor-not-allowed");
-        }
-
-        // Update Timer Display for Time Up reason
-        const timerElement = document.getElementById("timer");
-        if (timerElement) {
-          timerElement.textContent = "TIME UP";
-          timerElement.classList.remove(
-            "bg-red-600",
-            "bg-yellow-500",
-            "text-gray-800"
-          );
-          timerElement.classList.add("bg-red-800", "text-white");
-        }
 
         // 2. Final alert to the user before submission
         alert(message);
-        // 2. Final alert to the user before submission
-        alert(message);
 
-        // 3. Force submission of the form
-        // Save code editor content before submission
-        document.querySelectorAll(".code-editor").forEach((editorContainer) => {
-          const questionId = editorContainer.id.replace("editor-", "");
-          const textarea = document.getElementById(`textarea-${questionId}`);
-          const editor = editorInstances[questionId];
-          if (editor) {
-            textarea.value = editor.getValue();
-          }
-        });
-
-        // Force the form submission
-        form.submit();
-      }
         // 3. Force submission of the form
         // Save code editor content before submission
         document.querySelectorAll(".code-editor").forEach((editorContainer) => {
@@ -258,18 +161,7 @@
         }
 
         const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
-      function handleVisibilityChange() {
-        // Ignore if navigation is in progress or already submitted.
-        if (window.isNavigating || submissionLocked) {
-          return;
-        }
 
-        const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
-
-        // Check if the document is hidden (user switched tabs or minimized)
-        if (document.hidden) {
-          // **🚨 UI CHANGE: Update title on blur/hide**
-          document.title = "Breakup";
         // Check if the document is hidden (user switched tabs or minimized)
         if (document.hidden) {
           // **🚨 UI CHANGE: Update title on blur/hide**
@@ -298,32 +190,7 @@
           }, 1000);
         }
       }
-          tabChangeCount++;
 
-          if (tabChangeCount <= MAX_TAB_CHANGES) {
-            // --- WARNING STATE ---
-            alert(
-              `⚠️ WARNING! Tab Switched. You have ${
-                MAX_TAB_CHANGES - tabChangeCount
-              } warnings remaining.`
-            );
-          } else {
-            // --- LOCK & AUTO-SUBMIT STATE (Trigger auto-submit function) ---
-            lockAndAutoSubmit("tab_switch");
-          }
-        } else {
-          // **🚨 UI CHANGE: Update title on focus/visible**
-          document.title = "Patch Up"; // Temporarily show "Patch Up"
-          setTimeout(() => {
-            if (!submissionLocked) {
-              document.title = originalTitle; // Revert to original title after a short delay
-            }
-          }, 1000);
-        }
-      }
-
-      // Attach the event listener to the document
-      document.addEventListener("visibilitychange", handleVisibilityChange);
       // Attach the event listener to the document
       document.addEventListener("visibilitychange", handleVisibilityChange);
     </script>
@@ -542,7 +409,7 @@
                 class="question-card p-3 border border-gray-200 rounded-lg bg-gray-50/50"
               >
                 <p class="font-semibold text-lg mb-3">
-                  Q{{ forloop.counter }}: {{ q.text }}
+                  Q{{ forloop.counter }}: **{{ q.text }}**
                   <span class="text-xs font-normal text-theme-primary"
                     >[{{ q.type }}]</span
                   >
@@ -685,24 +552,15 @@
         // सर्वर से समय प्राप्त करने के लिए API कॉल
         fetch(timeUrl, {
           method: "GET",
-          method: "GET",
         })
           .then((response) => {
-          .then((response) => {
             if (!response.ok) {
-              throw new Error("Server Time API response not ok");
               throw new Error("Server Time API response not ok");
             }
             return response.json();
           })
           .then((data) => {
-          })
-          .then((data) => {
             if (data.error) {
-              console.error("Server Time Error:", data.error);
-              if (window.pollingInterval) clearInterval(window.pollingInterval);
-              if (timerElement) timerElement.textContent = "Error";
-              return;
               console.error("Server Time Error:", data.error);
               if (window.pollingInterval) clearInterval(window.pollingInterval);
               if (timerElement) timerElement.textContent = "Error";
