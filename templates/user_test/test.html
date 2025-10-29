@@ -4,6 +4,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Assessment: {{ paper.title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -17,11 +20,33 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
 
+
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
 
     <script>
+      /*
+       * DEDICATED WINDOW LOGIC:
+       * Opens test in a new window and tries to close the original window immediately.
+       */
+      (function () {
+        const windowName = "dedicatedAssessmentWindow";
+
+        // Check if the window is already the dedicated one and not a temporary opener.
+        if (window.name !== windowName && !window.opener) {
+          const url = window.location.href;
+
+          // Open a new, dedicated window.
+          const newWindow = window.open(
+            url,
+            windowName,
+            "width=" +
+              screen.availWidth +
+              ",height=" +
+              screen.availHeight +
+              ",resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no"
+          );
       /*
        * DEDICATED WINDOW LOGIC:
        * Opens test in a new window and tries to close the original window immediately.
@@ -57,8 +82,26 @@
           }
         }
       })();
+          if (newWindow) {
+            // Try to close the original window immediately.
+            // Note: window.close() often fails if the window was not opened by script.
+            setTimeout(function () {
+              window.close();
+            }, 50);
+
+            // Prevent further execution in the original tab (safer approach)
+            document.body.style.display = "none";
+            return;
+          }
+        }
+      })();
     </script>
     <script>
+      /* This is the aggressive back button blocker using history.forward(). */
+
+      function noBack() {
+        window.history.forward();
+      }
       /* This is the aggressive back button blocker using history.forward(). */
 
       function noBack() {
@@ -69,7 +112,17 @@
 
       // **Global variable to track if a popstate (back/forward) event occurred.**
       let isNavigating = false;
+      window.history.forward();
 
+      // **Global variable to track if a popstate (back/forward) event occurred.**
+      let isNavigating = false;
+
+      document.addEventListener("DOMContentLoaded", function () {
+        window.addEventListener("popstate", function (event) {
+          // **WARNING:** Show a warning when back/forward is attempted
+          alert(
+            "⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission."
+          );
       document.addEventListener("DOMContentLoaded", function () {
         window.addEventListener("popstate", function (event) {
           // **WARNING:** Show a warning when back/forward is attempted
@@ -89,12 +142,13 @@
       });
     </script>
 
+
     <script>
       /* * Tab Change & Submission Lock Logic */
 
       let editorInstances = {}; // Defined here for global access
       let tabChangeCount = 0;
-      const MAX_TAB_CHANGES = 10; // Allow 10 warnings before auto-submitting
+      const MAX_TAB_CHANGES = 3; // Allow 10 warnings before auto-submitting
       let submissionLocked = false;
 
       // यह function अब Tab Change Logic और Time Up Logic दोनों जगह इस्तेमाल होगा
@@ -107,10 +161,18 @@
 
         // Ensure title is reset/locked on submission
         document.title = "Assessment Submitted!"; // <-- Title locked
+        // Ensure title is reset/locked on submission
+        document.title = "Assessment Submitted!"; // <-- Title locked
 
         const form = document.getElementById("assessment-form");
         const submitButton = form.querySelector('button[type="submit"]');
+        const form = document.getElementById("assessment-form");
+        const submitButton = form.querySelector('button[type="submit"]');
 
+        const message =
+          reason === "time_up"
+            ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
+            : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
         const message =
           reason === "time_up"
             ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
@@ -135,10 +197,45 @@
           );
           timerElement.classList.add("bg-red-800", "text-white");
         }
+        // 1. Disable and update the Submit button (UI feedback)
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = "Auto-Submitting... 🚫";
+          submitButton.classList.remove("bg-green-600", "hover:bg-green-700");
+          submitButton.classList.add("bg-red-800", "cursor-not-allowed");
+        }
+
+        // Update Timer Display for Time Up reason
+        const timerElement = document.getElementById("timer");
+        if (timerElement) {
+          timerElement.textContent = "TIME UP";
+          timerElement.classList.remove(
+            "bg-red-600",
+            "bg-yellow-500",
+            "text-gray-800"
+          );
+          timerElement.classList.add("bg-red-800", "text-white");
+        }
 
         // 2. Final alert to the user before submission
         alert(message);
+        // 2. Final alert to the user before submission
+        alert(message);
 
+        // 3. Force submission of the form
+        // Save code editor content before submission
+        document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+          const questionId = editorContainer.id.replace("editor-", "");
+          const textarea = document.getElementById(`textarea-${questionId}`);
+          const editor = editorInstances[questionId];
+          if (editor) {
+            textarea.value = editor.getValue();
+          }
+        });
+
+        // Force the form submission
+        form.submit();
+      }
         // 3. Force submission of the form
         // Save code editor content before submission
         document.querySelectorAll(".code-editor").forEach((editorContainer) => {
@@ -161,7 +258,18 @@
         }
 
         const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
+      function handleVisibilityChange() {
+        // Ignore if navigation is in progress or already submitted.
+        if (window.isNavigating || submissionLocked) {
+          return;
+        }
 
+        const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
+
+        // Check if the document is hidden (user switched tabs or minimized)
+        if (document.hidden) {
+          // **🚨 UI CHANGE: Update title on blur/hide**
+          document.title = "Breakup";
         // Check if the document is hidden (user switched tabs or minimized)
         if (document.hidden) {
           // **🚨 UI CHANGE: Update title on blur/hide**
@@ -190,7 +298,32 @@
           }, 1000);
         }
       }
+          tabChangeCount++;
 
+          if (tabChangeCount <= MAX_TAB_CHANGES) {
+            // --- WARNING STATE ---
+            alert(
+              `⚠️ WARNING! Tab Switched. You have ${
+                MAX_TAB_CHANGES - tabChangeCount
+              } warnings remaining.`
+            );
+          } else {
+            // --- LOCK & AUTO-SUBMIT STATE (Trigger auto-submit function) ---
+            lockAndAutoSubmit("tab_switch");
+          }
+        } else {
+          // **🚨 UI CHANGE: Update title on focus/visible**
+          document.title = "Patch Up"; // Temporarily show "Patch Up"
+          setTimeout(() => {
+            if (!submissionLocked) {
+              document.title = originalTitle; // Revert to original title after a short delay
+            }
+          }, 1000);
+        }
+      }
+
+      // Attach the event listener to the document
+      document.addEventListener("visibilitychange", handleVisibilityChange);
       // Attach the event listener to the document
       document.addEventListener("visibilitychange", handleVisibilityChange);
     </script>
@@ -259,20 +392,25 @@
         font-family: "Inter", sans-serif;
         background-color: #f4f7f9;
       }
+
       .question-card {
         transition: box-shadow 0.2s;
       }
+
       .question-card:hover {
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
       }
+
       .answer-input {
         @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary;
       }
+
       .code-editor {
         min-height: 250px;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
       }
+
       /* Reduced padding from 50px to 30px for compaction */
       #fixed-footer {
         z-index: 100;
@@ -280,11 +418,58 @@
       }
     </style>
   </head>
+
   <body
     class="text-gray-800"
     onload="noBack()"
     onpageshow="if (event.persisted) noBack();"
   >
+    <div
+      id="start-overlay"
+      class="fixed inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-50 text-center"
+    >
+      <h1 class="text-white text-3xl font-bold mb-4">
+        Ready to Begin Your Test?
+      </h1>
+      <p class="text-gray-300 mb-6">
+        Click below to start in fullscreen mode. Please do not close or minimize
+        this window once started.
+      </p>
+      <button
+        id="start-btn"
+        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-lg"
+      >
+        Start Test
+      </button>
+    </div>
+
+    <script>
+      document
+        .getElementById("start-btn")
+        .addEventListener("click", async function () {
+          try {
+            // Request fullscreen on current window
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) {
+              await docEl.requestFullscreen();
+            } else if (docEl.webkitRequestFullscreen) {
+              await docEl.webkitRequestFullscreen();
+            }
+
+            // Hide overlay after fullscreen starts
+            document.getElementById("start-overlay").style.display = "none";
+
+            // Optional: lock screen orientation (for mobile)
+            if (screen.orientation && screen.orientation.lock) {
+              screen.orientation.lock("landscape").catch(() => {});
+            }
+          } catch (err) {
+            alert("Fullscreen failed: " + err.message);
+          }
+        });
+    </script>
+
+    <!-- ✅ END OF ADDED BLOCK -->
     <div
       id="offline-dialogue"
       class="fixed inset-0 z-50 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden"
@@ -380,9 +565,20 @@
 
                 {% elif q.type == 'CODE' %}
                 <p class="text-sm text-gray-600 mb-2 mt-3">
-                  Write your code below (Python):
+                  Write, run and submit your code below:
                 </p>
-                <div id="editor-{{ q.id }}" class="code-editor mt-2"></div>
+
+                <div
+                  class="mt-3 border border-gray-300 rounded-lg overflow-hidden"
+                >
+                  <iframe
+                    id="oc-editor-{{ q.id }}"
+                    frameborder="0"
+                    height="450px"
+                    width="100%"
+                    src="https://onecompiler.com/embed/"
+                  ></iframe>
+                </div>
 
                 <textarea
                   name="question_{{ q.id }}"
@@ -393,18 +589,12 @@
                 <div class="mt-3 flex space-x-3">
                   <button
                     type="button"
-                    onclick="runCode({{ q.id }})"
-                    id="run-btn-{{ q.id }}"
-                    class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    onclick="submitCode({{ q.id }})"
+                    class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm"
                   >
-                    <i class="fas fa-play mr-1"></i> Run Code (Browser)
+                    <i class="fas fa-check mr-1"></i> Submit Code
                   </button>
                 </div>
-
-                <div
-                  id="output-{{ q.id }}"
-                  class="mt-3 p-3 text-xs bg-gray-800 text-green-300 rounded-lg whitespace-pre-wrap hidden"
-                ></div>
 
                 {% else %}
                 <textarea
@@ -495,15 +685,24 @@
         // सर्वर से समय प्राप्त करने के लिए API कॉल
         fetch(timeUrl, {
           method: "GET",
+          method: "GET",
         })
           .then((response) => {
+          .then((response) => {
             if (!response.ok) {
+              throw new Error("Server Time API response not ok");
               throw new Error("Server Time API response not ok");
             }
             return response.json();
           })
           .then((data) => {
+          })
+          .then((data) => {
             if (data.error) {
+              console.error("Server Time Error:", data.error);
+              if (window.pollingInterval) clearInterval(window.pollingInterval);
+              if (timerElement) timerElement.textContent = "Error";
+              return;
               console.error("Server Time Error:", data.error);
               if (window.pollingInterval) clearInterval(window.pollingInterval);
               if (timerElement) timerElement.textContent = "Error";

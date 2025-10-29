@@ -77,6 +77,9 @@ class QuestionPaper(models.Model):
     Represents a complete, saved question paper.
     """
 
+    cutoff_score = models.PositiveIntegerField(
+        default=20, help_text="Minimum percentage to pass (e.g., 70)"
+    )
     title = models.CharField(max_length=255)
     job_title = models.CharField(max_length=200)
     department_name = models.CharField(max_length=100, default="Unassigned")
@@ -156,6 +159,8 @@ class TestRegistration(models.Model):
     start_time = models.DateTimeField()
     is_completed = models.BooleanField(default=False)
     question_paper = models.ForeignKey(QuestionPaper, on_delete=models.CASCADE)
+    score = models.FloatField(null=True, blank=True)
+    is_shortlisted = models.BooleanField(default=False)
 
     class Meta:
         db_table = "app_testregistration"

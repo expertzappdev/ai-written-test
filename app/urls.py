@@ -76,4 +76,15 @@ urlpatterns = [
     path("profile/<int:pk>/", views.user_profile_view, name="user_profile"),
     path("test-report/<int:registration_id>/", views.test_result, name="test_report"),
     path("regenerate-question/", views.regenerate_question, name="regenerate_question"),
+    path(
+        "paper/<int:paper_id>/export-participants/",
+        views.export_participants_csv,
+        name="export_participants_csv",
+    ),
+    path("submit-test/<int:registration_id>/", views.submit_test, name="submit_test"),
+    path(
+        "registration/<int:registration_id>/toggle-shortlist/",
+        views.toggle_shortlist,
+        name="toggle_shortlist",
+    ),
 ]

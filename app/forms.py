@@ -165,7 +165,6 @@ class UserProfileRegistrationForm(forms.ModelForm):
 
 
 # class DepartmentForm(forms.ModelForm):
-#     # This part remains the same
 #     sections = forms.ModelMultipleChoiceField(
 #         queryset=Section.objects.all(),
 #         widget=forms.CheckboxSelectMultiple,
@@ -179,29 +178,42 @@ class UserProfileRegistrationForm(forms.ModelForm):
 #         model = Department
 #         fields = ["name", "sections"]
 
-#     # ▼▼▼ ADD THIS VALIDATION METHOD ▼▼▼
 #     def clean_name(self):
 #         """
-#         Custom validation to check for case-insensitive duplicate department names.
+#         Custom validation to prevent duplicate or similar department names.
+#         Blocks:
+#         - Exact duplicates (case-insensitive)
+#         - Partial matches like 'Market' if 'Marketing' exists, or vice versa
 #         """
-#         # Get the name submitted by the user
-#         name = self.cleaned_data.get("name")
+#         name = self.cleaned_data.get("name", "").strip()
 
-#         # Query the database for an existing department with the same name (ignoring case)
-#         # We exclude the current department instance itself if we are editing it
-#         if (
-#             Department.objects.filter(name__iexact=name)
-#             .exclude(pk=self.instance.pk)
-#             .exists()
-#         ):
-#             # If a match is found, raise a validation error with your custom message
-#             raise forms.ValidationError(
-#                 "A department with this name already exists. Please use a different name."
-#             )
+#         # Get all other department names (ignore current one if editing)
+#         existing_departments = Department.objects.exclude(
+#             pk=self.instance.pk
+#         ).values_list("name", flat=True)
 
+#         # Check against each department name
+#         for dept_name in existing_departments:
+#             dept_name_clean = dept_name.strip().lower()
+#             name_clean = name.lower()
 
-#         # If the name is unique, return the cleaned name
+#             # Block if the new name is contained in existing one, or vice versa
+#             if (
+#                 name_clean == dept_name_clean
+#                 or name_clean in dept_name_clean
+#                 or dept_name_clean in name_clean
+#             ):
+#                 raise forms.ValidationError(
+#                     f"A department with a similar name already exists ('{dept_name}'). Please use a different name."
+#                 )
+
 #         return name
+# app/forms.py
+
+from django import forms
+from .models import Department, Section
+
+
 class DepartmentForm(forms.ModelForm):
     sections = forms.ModelMultipleChoiceField(
         queryset=Section.objects.all(),
@@ -218,32 +230,23 @@ class DepartmentForm(forms.ModelForm):
 
     def clean_name(self):
         """
-        Custom validation to prevent duplicate or similar department names.
-        Blocks:
-        - Exact duplicates (case-insensitive)
-        - Partial matches like 'Market' if 'Marketing' exists, or vice versa
+        Custom validation to prevent ONLY exact duplicate department names (case-insensitive).
         """
         name = self.cleaned_data.get("name", "").strip()
 
-        # Get all other department names (ignore current one if editing)
-        existing_departments = Department.objects.exclude(
-            pk=self.instance.pk
-        ).values_list("name", flat=True)
+        # ✨ YEH NAYA AUR BEHTAR LOGIC HAI ✨
+        # __iexact ka matlab hai: case-insensitive (chote/bade letters se farak nahi padta) EXACT match.
+        query = Department.objects.filter(name__iexact=name)
 
-        # Check against each department name
-        for dept_name in existing_departments:
-            dept_name_clean = dept_name.strip().lower()
-            name_clean = name.lower()
+        # Agar form edit ho raha hai, toh khud ko check na karein
+        if self.instance.pk:
+            query = query.exclude(pk=self.instance.pk)
 
-            # Block if the new name is contained in existing one, or vice versa
-            if (
-                name_clean == dept_name_clean
-                or name_clean in dept_name_clean
-                or dept_name_clean in name_clean
-            ):
-                raise forms.ValidationError(
-                    f"A department with a similar name already exists ('{dept_name}'). Please use a different name."
-                )
+        # Agar is naam ka koi department pehle se hai, toh error dein
+        if query.exists():
+            raise forms.ValidationError(
+                "A department with this exact name already exists. Please use a different name."
+            )
 
         return name
 
@@ -405,6 +408,7 @@ class QuestionPaperEditForm(forms.ModelForm):
             "min_exp",
             "max_exp",
             "skills_list",
+            "cutoff_score",
         ]
         widgets = {
             "job_title": forms.TextInput(attrs={"class": text_input_class}),
