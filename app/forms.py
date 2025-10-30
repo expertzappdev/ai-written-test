@@ -43,14 +43,27 @@ class LoginForm(AuthenticationForm):
         ),
     )
 
+    # def clean_username(self):
+    #     username = self.cleaned_data.get("username")
+    #     if username and not username.strip():
+    #         raise ValidationError(
+    #             "This field cannot be blank or contain only whitespace.",
+    #             code="whitespace_username",
+    #         )
+    #     return username.strip()
     def clean_username(self):
-        username = self.cleaned_data.get("username")
-        if username and not username.strip():
-            raise ValidationError(
-                "This field cannot be blank or contain only whitespace.",
-                code="whitespace_username",
-            )
-        return username.strip()
+        username = self.cleaned_data.get("username", "").strip()
+
+        # Find user case-insensitive
+        try:
+            user = User.objects.get(username__iexact=username)
+        except User.DoesNotExist:
+            raise ValidationError("This email is not registered.", code="invalid")
+
+        # replace with actual stored username casing
+        self.cleaned_data["username"] = user.username
+
+        return user.username
 
     def clean_password(self):
         """
@@ -164,52 +177,6 @@ class UserProfileRegistrationForm(forms.ModelForm):
         fields = ("phone_number", "address")
 
 
-# class DepartmentForm(forms.ModelForm):
-#     sections = forms.ModelMultipleChoiceField(
-#         queryset=Section.objects.all(),
-#         widget=forms.CheckboxSelectMultiple,
-#         required=True,
-#         error_messages={
-#             "required": "Please select at least one section for the department."
-#         },
-#     )
-
-#     class Meta:
-#         model = Department
-#         fields = ["name", "sections"]
-
-#     def clean_name(self):
-#         """
-#         Custom validation to prevent duplicate or similar department names.
-#         Blocks:
-#         - Exact duplicates (case-insensitive)
-#         - Partial matches like 'Market' if 'Marketing' exists, or vice versa
-#         """
-#         name = self.cleaned_data.get("name", "").strip()
-
-#         # Get all other department names (ignore current one if editing)
-#         existing_departments = Department.objects.exclude(
-#             pk=self.instance.pk
-#         ).values_list("name", flat=True)
-
-#         # Check against each department name
-#         for dept_name in existing_departments:
-#             dept_name_clean = dept_name.strip().lower()
-#             name_clean = name.lower()
-
-#             # Block if the new name is contained in existing one, or vice versa
-#             if (
-#                 name_clean == dept_name_clean
-#                 or name_clean in dept_name_clean
-#                 or dept_name_clean in name_clean
-#             ):
-#                 raise forms.ValidationError(
-#                     f"A department with a similar name already exists ('{dept_name}'). Please use a different name."
-#                 )
-
-#         return name
-# app/forms.py
-
 from django import forms
 from .models import Department, Section
 
@@ -260,40 +227,6 @@ class SkillForm(forms.ModelForm):
 text_input_class = "w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
 
 
-# class QuestionPaperEditForm(forms.ModelForm):
-#     class Meta:
-#         model = QuestionPaper
-#         job_title = forms.CharField(
-#             min_length=3,
-#             max_length=40,
-#             widget=forms.TextInput(attrs={"class": text_input_class}),
-#         )
-#         fields = [
-#             "job_title",
-#             "title",
-#             "department_name",
-#             "duration",
-#             "min_exp",
-#             "max_exp",
-#             "skills_list",
-#         ]
-#         widgets = {
-#             "job_title": forms.TextInput(attrs={"class": text_input_class}),
-#             "title": forms.TextInput(attrs={"class": text_input_class}),
-#             "department_name": forms.TextInput(attrs={"class": text_input_class}),
-#             "duration": forms.NumberInput(attrs={"class": text_input_class}),
-#             "min_exp": forms.NumberInput(attrs={"class": text_input_class}),
-#             "max_exp": forms.NumberInput(attrs={"class": text_input_class}),
-#             "skills_list": forms.TextInput(
-#                 attrs={
-#                     "class": text_input_class,
-#                     "placeholder": "e.g., Python, Django, JavaScript",
-#                 }
-#             ),
-#         }
-
-# app/forms.py
-
 from django import forms
 from django.contrib.auth.forms import UserCreationForm as BaseUserCreationForm
 from django.contrib.auth import get_user_model
@@ -311,82 +244,6 @@ from django.core.exceptions import ValidationError
 
 
 text_input_class = "w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
-
-
-# class QuestionPaperEditForm(forms.ModelForm):
-#     # ✨ REQUIREMENT 1: Job Title Validation ✨
-#     # We define the field here to add specific length validations.
-#     job_title = forms.CharField(
-#         min_length=3,
-#         max_length=40,
-#         widget=forms.TextInput(attrs={"class": text_input_class}),
-#     )
-
-#     class Meta:
-#         model = QuestionPaper
-#         fields = [
-#             "job_title",
-#             "title",
-#             "department_name",
-#             "duration",
-#             "min_exp",
-#             "max_exp",
-#             "skills_list",
-#         ]
-#         widgets = {
-#             # 'job_title' is now defined above, so it's removed from here.
-#             "job_title": forms.TextInput(attrs={"class": text_input_class}),
-#             # "title": forms.TextInput(attrs={"class": text_input_class}),
-#             "department_name": forms.TextInput(attrs={"class": text_input_class}),
-#             # ✨ REQUIREMENT 2: Min/Max Experience Counter (Backend) ✨
-#             # The backend widget remains a NumberInput. The counter UI is a frontend enhancement.
-#             # We add a 'min' attribute for basic browser-side validation.
-#             "duration": forms.NumberInput(
-#                 attrs={"class": text_input_class, "min": "1"}
-#             ),
-#             "min_exp": forms.NumberInput(
-#                 attrs={"class": text_input_class, "id": "min_exp_input", "min": "0"}
-#             ),
-#             "max_exp": forms.NumberInput(
-#                 attrs={"class": text_input_class, "id": "max_exp_input", "min": "0"}
-#             ),
-#             # ✨ REQUIREMENT 3: Skills Auto-suggestion (Backend) ✨
-#             # We add a unique class to this input to target it with JavaScript.
-#             "skills_list": forms.TextInput(
-#                 attrs={
-#                     "class": f"{text_input_class} skill-autocomplete-input",  # Added new class
-#                     "placeholder": "e.g., Python, Django, JavaScript",
-#                     "autocomplete": "off",  # Important for custom suggestions
-#                 }
-#             ),
-#         }
-
-#     # === START: ADDED VALIDATION FOR JOB TITLE ===
-#     def clean_job_title(self):
-#         """
-#         Adds custom validation for the job_title field.
-#         Ensures the job title is a string with a length between 3 and 40 characters.
-#         """
-#         job_title = self.cleaned_data.get("job_title", "").strip()
-
-#         # Check 1: Minimum length
-#         if len(job_title) < 3:
-#             raise forms.ValidationError("Job title must be at least 3 characters long.")
-
-#         # Check 2: Maximum length
-#         if len(job_title) > 40:
-#             raise forms.ValidationError(
-#                 "Job title cannot be longer than 40 characters."
-#             )
-
-#         # Check 3: Ensure it contains letters (not just numbers or symbols)
-#         if not re.search(r"[a-zA-Z]", job_title):
-#             raise forms.ValidationError("Job title must contain letters.")
-
-#         return job_title
-
-
-#     # === END: ADDED VALIDATION ===
 
 
 class QuestionPaperEditForm(forms.ModelForm):

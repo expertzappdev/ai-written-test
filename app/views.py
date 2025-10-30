@@ -133,97 +133,6 @@ def dashboard(request):
     return render(request, "dashboard.html", context)
 
 
-# @login_required
-# def generate_questions(request):
-#     if request.method == "POST":
-#         try:
-#             data = json.loads(request.body)
-#             job_title = data.get("job_title")
-#             min_exp = data.get("min_exp")
-#             max_exp = data.get("max_exp")
-#             skills_raw = data.get("skills")
-#             sections_data = data.get("sections", {})
-#             total_questions = sum(sections_data.values())
-
-#             seniority = "Junior"
-#             if int(max_exp) > 5:
-#                 seniority = "Senior"
-#             elif int(max_exp) > 2:
-#                 seniority = "Mid-Level"
-
-#             # --- KEY CHANGES START HERE ---
-
-#             prompt = f"""
-#             Act as a seasoned technical assessment creator and principal engineer. Your primary goal is to build a well-balanced and experience-appropriate technical test. The entire response MUST be a single, valid JSON object without any markdown.
-
-#             ## Core Specifications
-#             1.  **Job Role**: {job_title}
-#             2.  **Experience Level**: {min_exp} to {max_exp} years ({seniority}-level).
-#             3.  **Core Skills**: {skills_raw}
-#             4.  **Paper Sections**: {json.dumps(sections_data)}
-
-#             ## Guiding Principles: Think Like an Assessor
-#             You must follow these hierarchical rules precisely.
-
-#             1.  **Overall Difficulty**: The complexity of every single question must align with the **{seniority}** level.
-
-#             2.  **Situational Questions**: For non-technical sections like 'Aptitude', provide realistic, job-related scenarios.
-
-#             3.  **⭐ Intelligent Generation for Programming/Coding Sections ⭐**: This is your most important directive. For any section with a title containing 'Programming', 'Coding', or 'Algorithm', you must create an **intelligent mix of question types (`MCQ`, `SA`, `CODE`)** that reflects the candidate's seniority. Do NOT just generate one type of question.
-
-#                 * **If `{seniority}` is Junior (0-2 yrs)**: The focus is on fundamentals. The section mix should be mostly `MCQ` and `SA` questions about syntax, core concepts, and predicting output. You may include **one** simple, introductory `CODE` problem (e.g., fizzbuzz, reverse a string).
-
-#                 * **If `{seniority}` is Mid-Level (3-5 yrs)**: The balance must shift to practical application. The mix should contain fewer basic MCQs. Include `SA` questions about best practices and design choices. The **majority** of the questions should be `CODE` problems of medium complexity (e.g., interacting with data, implementing common algorithms).
-
-#                 * **If `{seniority}` is Senior (6+ yrs)**: The focus is on depth, design, and complex problem-solving. This section must be **dominated by challenging `CODE` problems** (e.g., involving performance optimization, concurrency, or architectural patterns). Any `MCQ` or `SA` questions must be highly advanced, focusing on architectural trade-offs or subtle language features, not basics.
-
-#             4.  **Answer Formatting**: The format of the question and answer depends strictly on its `type`.
-#                 * For **`MCQ` and `SA`** questions: The `answer` must be concise (a word, phrase, or single line of code).
-#                 * For **`CODE`** questions: The `text` must be a full problem description (task, input, expected output). The `answer` must be a complete, multi-line code solution, formatted as a single JSON string with `\\n` for newlines.
-
-#             ## Output Structure (Strict)
-#             - Root JSON object: 'title' (string), 'sections' (array).
-#             - Section object: 'title' (string), 'questions' (array).
-#             - Question object: 'text', 'answer', 'type'. `MCQ` types must also have an 'options' array.
-
-#             Generate the {seniority}-level assessment now, creating the perfect, balanced mix of questions for each section as instructed.
-#             """
-
-#             # --- KEY CHANGES END HERE ---
-
-#             genai.configure(api_key=settings.GEMINI_API_KEY)
-#             # Using a powerful model is key for understanding these nuanced instructions
-#             model = genai.GenerativeModel("gemini-2.5-pro")
-#             response = model.generate_content(prompt)
-
-#             json_text = response.text.strip()
-#             if json_text.startswith("```json"):
-#                 json_text = json_text[7:]
-#             if json_text.endswith("```"):
-#                 json_text = json_text[:-3]
-
-#             generated_paper = json.loads(json_text)
-
-#             return JsonResponse(generated_paper)
-#         except json.JSONDecodeError as e:
-#             print(f"JSON Decode Error: {e}")
-#             print(f"Received text from AI: {response.text}")
-#             return JsonResponse(
-#                 {
-#                     "error": "Failed to decode the AI's response. The format was invalid."
-#                 },
-#                 status=500,
-#             )
-#         except Exception as e:
-#             print(f"An unexpected error occurred: {str(e)}")
-#             return JsonResponse(
-#                 {"error": f"An unexpected error occurred: {str(e)}"}, status=500
-#             )
-
-
-#     departments = Department.objects.all()
-#     context = {"departments": departments}
-#     return render(request, "question_generator/generator.html", context)
 @login_required
 def generate_questions(request):
     if request.method == "POST":
@@ -301,8 +210,7 @@ def generate_questions(request):
 
             return JsonResponse(generated_paper)
         except json.JSONDecodeError as e:
-            print(f"JSON Decode Error: {e}")
-            print(f"Received text from AI: {response.text}")
+
             return JsonResponse(
                 {
                     "error": "Failed to decode the AI's response. The format was invalid."
@@ -413,158 +321,8 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import QuestionPaper, TestRegistration
 
-# ... (rest of your imports)
-
-
-# @login_required
-# def paper_detail_view(request, paper_id):
-#     """
-#     Displays the details of a single question paper, including all its
-#     sections, questions, and filtered participants with their status.
-#     Now includes filtering by both test status and shortlist status.
-#     """
-#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
-
-#     # Get filter values from the URL query parameters
-#     status_filter = request.GET.get("status", "all")
-#     shortlist_filter = request.GET.get(
-#         "shortlist_status", "all"
-#     )  # <-- NEW: Get shortlist filter
-
-#     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
-
-#     # 1. Fetch all participants related to this paper
-#     all_participants = list(
-#         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
-#     )
-
-#     # 2. Determine the 'pass', 'fail', or 'pending' status for each participant in Python
-#     for p in all_participants:
-#         if p.is_completed:
-#             if p.score is not None and paper.cutoff_score is not None:
-#                 if p.score >= paper.cutoff_score:
-#                     p.status = "pass"
-#                 else:
-#                     p.status = "fail"
-#             else:
-#                 # If cutoff isn't set, any completed test is considered 'fail' for status purposes
-#                 p.status = "fail"
-#         else:
-#             p.status = "pending"
-
-#     # 3. Apply the first filter (test status)
-#     if status_filter != "all":
-#         # Start with a list of participants filtered by pass/fail/pending
-#         filtered_participants = [
-#             p for p in all_participants if p.status == status_filter
-#         ]
-#     else:
-#         # If the filter is 'all', start with the full list
-#         filtered_participants = all_participants
-
-#     # 4. Apply the second filter (shortlist status) on the *already filtered* list
-#     if shortlist_filter == "shortlisted":
-#         final_participants = [p for p in filtered_participants if p.is_shortlisted]
-#     elif shortlist_filter == "not_shortlisted":
-#         final_participants = [p for p in filtered_participants if not p.is_shortlisted]
-#     else:  # 'all'
-#         final_participants = filtered_participants
-
-#     context = {
-#         "paper": paper,
-#         "skills": skills,
-#         "participants": final_participants,  # <-- Pass the final, double-filtered list
-#         "title": f"Details for {paper.title}",
-#         "selected_status": status_filter,
-#         "selected_shortlist_status": shortlist_filter,  # <-- NEW: Pass shortlist status to template
-#     }
-#     return render(request, "question_generator/paper_detail.html", context)
 
 from .models import UserResponse
-
-
-# @login_required
-# def paper_detail_view(request, paper_id):
-#     """
-#     Displays the details of a single question paper.
-#     This version RE-CALCULATES the score for each participant to ensure
-#     consistency with the test report, even if answers have been edited.
-#     """
-#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
-#     status_filter = request.GET.get("status", "all")
-#     shortlist_filter = request.GET.get("shortlist_status", "all")
-
-#     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
-
-#     all_participants = list(
-#         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
-#     )
-
-#     # ▼▼▼ THE FINAL, CORRECTED LOGIC IS HERE ▼▼▼
-#     for p in all_participants:
-#         if p.is_completed:
-#             # 1. Fetch all responses for this participant
-#             user_responses = UserResponse.objects.filter(registration=p)
-
-#             # 2. Recalculate the number of correct answers
-#             correct_answers_count = 0
-#             for response in user_responses:
-#                 # Ensure we handle cases where a question or its answer might be missing
-#                 if response.question and response.question.answer:
-#                     if (
-#                         response.user_answer.strip().lower()
-#                         == response.question.answer.strip().lower()
-#                     ):
-#                         correct_answers_count += 1
-
-#             # 3. Calculate the percentage score live
-#             total_questions = p.question_paper.total_questions
-#             live_percentage = 0
-#             if total_questions > 0:
-#                 live_percentage = round((correct_answers_count / total_questions) * 100)
-
-#             # 4. Use this live percentage for the status check
-#             cutoff = p.question_paper.cutoff_score
-#             if cutoff is not None:
-#                 if live_percentage >= cutoff:
-#                     p.status = "pass"
-#                 else:
-#                     p.status = "fail"
-#             else:
-#                 # If no cutoff is set, any completed test is considered a "pass"
-#                 p.status = "pass"
-#         else:
-#             p.status = "pending"
-#     # ▲▲▲ END OF CORRECTED LOGIC ▲▲▲
-
-#     # --- The filtering logic remains the same ---
-#     if status_filter != "all":
-#         filtered_participants = [
-#             p for p in all_participants if p.status == status_filter
-#         ]
-#     else:
-#         filtered_participants = all_participants
-
-#     if shortlist_filter == "shortlisted":
-#         final_participants = [p for p in filtered_participants if p.is_shortlisted]
-#     elif shortlist_filter == "not_shortlisted":
-#         final_participants = [p for p in filtered_participants if not p.is_shortlisted]
-#     else:
-#         final_participants = filtered_participants
-
-#     context = {
-#         "paper": paper,
-#         "skills": skills,
-#         "participants": final_participants,
-#         "title": f"Details for {paper.title}",
-#         "selected_status": status_filter,
-#         "selected_shortlist_status": shortlist_filter,
-#     }
-#     return render(request, "question_generator/paper_detail.html", context)
-
-# app/views.py
-
-# ... (imports and other views) ...
 
 
 @login_required
@@ -673,114 +431,6 @@ def paper_detail_view(request, paper_id):
         "selected_shortlist_status": shortlist_filter,
     }
     return render(request, "question_generator/paper_detail.html", context)
-
-
-# ... (the rest of your views.py file)
-
-# @login_required
-# def paper_detail_view(request, paper_id):
-#     """
-#     Displays the details of a single question paper, including all its
-#     sections, questions, and filtered participants with their status.
-#     """
-#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
-#     status_filter = request.GET.get("status", "all")
-
-#     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
-
-#     # 1. Sabse pehle, paper se jude saare participants ko fetch kar lein.
-#     all_participants = list(
-#         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
-#     )
-
-#     # 2. Ab har participant ka status set karein (aapka original logic bilkul sahi hai)
-#     for p in all_participants:
-#         if p.is_completed:
-#             if p.score is not None and paper.cutoff_score is not None:
-#                 if p.score >= paper.cutoff_score:
-#                     p.status = "pass"
-#                 else:
-#                     p.status = "fail"
-#             else:
-#                 # Agar cutoff nahi hai, to completed test 'fail' mana jayega
-#                 p.status = "fail"
-#         else:
-#             # Agar test complete nahi hua to 'pending'
-#             p.status = "pending"
-
-#     # 3. Ab jab sabka status set ho chuka hai, to Python mein filter karein
-#     if status_filter != "all":
-#         # List comprehension se final list banayein jo filter se match kare
-#         participants = [p for p in all_participants if p.status == status_filter]
-#     else:
-#         # Agar filter 'all' hai, to poori list dikhayein
-#         participants = all_participants
-
-#     context = {
-#         "paper": paper,
-#         "skills": skills,
-#         "participants": participants,  # Yahaan filtered list bhej rahe hain
-#         "title": f"Details for {paper.title}",
-#         "selected_status": status_filter,
-#     }
-#     return render(request, "question_generator/paper_detail.html", context)
-
-
-# def test_result(request, registration_id):
-#     """
-#     Calculates and displays the detailed test result, including a clear
-#     Pass/Fail status based on the cutoff score.
-#     """
-#     registration = get_object_or_404(TestRegistration, pk=registration_id)
-#     user_responses = UserResponse.objects.filter(
-#         registration=registration
-#     ).select_related("question")
-
-#     paper = registration.question_paper
-#     total_questions = paper.total_questions
-#     cutoff_score = paper.cutoff_score  # Get the cutoff score
-
-#     score = 0
-#     results_data = []
-
-#     for response in user_responses:
-#         is_correct = (
-#             response.user_answer.strip().lower()
-#             == response.question.answer.strip().lower()
-#         )
-#         if is_correct:
-#             score += 1
-#         results_data.append(
-#             {
-#                 "question_text": response.question.text,
-#                 "user_answer": response.user_answer,
-#                 "correct_answer": response.question.answer,
-#                 "is_correct": is_correct,
-#             }
-#         )
-
-#     incorrect_answers = total_questions - score
-#     percentage = round((score / total_questions) * 100) if total_questions > 0 else 0
-
-#     # --- NEW: Determine the final status ---
-#     status = "Fail"
-#     if percentage >= cutoff_score:
-#         status = "Pass"
-#     # --- END NEW ---
-
-#     context = {
-#         "registration": registration,
-#         "results": results_data,
-#         "score": score,
-#         "total_questions": total_questions,
-#         "incorrect_answers": incorrect_answers,
-#         "percentage": percentage,
-#         "title": f"Test Report for {registration.email}",
-#         "status": status,  # Pass the status to the template
-#         "cutoff_score": cutoff_score,  # Pass the cutoff score
-#     }
-
-#     return render(request, "partials/users/test_report.html", context)
 
 
 @login_required
@@ -1017,76 +667,6 @@ def toggle_paper_public_status(request, paper_id):
         )
 
 
-# def test_result(request, registration_id):
-#     registration = get_object_or_404(TestRegistration, pk=registration_id)
-#     user_responses = UserResponse.objects.filter(
-#         registration=registration
-#     ).select_related("question")
-
-#     # Get the related question paper to access its properties
-#     paper = registration.question_paper
-
-#     total_questions = paper.total_questions
-
-#     score = 0
-#     results_data = []
-
-#     # ▼▼▼ ISSE ISME BADALNA HAI (CHANGE THIS) ▼▼▼
-#     for response in user_responses:
-#         question = response.question
-#         user_answer = response.user_answer.strip()
-#         is_correct = False  # Assume incorrect by default
-
-#         # Rule 1: For MCQs, do a simple, direct text comparison.
-#         if question.question_type == "MCQ":
-#             model_answer = question.answer.strip()
-#             if user_answer.lower() == model_answer.lower():
-#                 is_correct = True
-
-#         # Rule 2: For any other type (SA, CODE), use the smart AI to evaluate.
-#         else:
-#             is_correct = evaluate_answer_with_ai(
-#                 question_text=question.text,
-#                 user_answer=user_answer,
-#                 model_answer=question.answer.strip(),
-#             )
-
-#         if is_correct:
-#             score += 1
-
-#         results_data.append(
-#             {
-#                 "question_text": response.question.text,
-#                 "user_answer": response.user_answer,
-#                 "correct_answer": response.question.answer,
-#                 "is_correct": is_correct,  # Now this value is from the correct logic
-#             }
-#         )
-#     # ▲▲▲ YAHAN TAK BADLAV KIYA GAYA HAI (CHANGES END HERE) ▲▲▲
-
-#     incorrect_answers = total_questions - score
-#     percentage = round((score / total_questions) * 100) if total_questions > 0 else 0
-
-#     status = "Fail"
-#     if percentage >= cutoff_score:
-#         status = "Pass"
-
-#     context = {
-#         "registration": registration,
-#         "results": results_data,
-#         "score": score,
-#         "total_questions": total_questions,
-#         "incorrect_answers": incorrect_answers,
-#         "percentage": percentage,
-#         "title": f"Test Report for {registration.email}",
-#         "status": status,
-#         "cutoff_score": cutoff_score,
-#     }
-
-#     return render(request, "partials/users/test_report.html", context)
-
-
-# app/views.py
 def test_result(request, registration_id):
     """
     Displays test results with clear indication of unattempted questions.
@@ -1177,79 +757,6 @@ def test_result(request, registration_id):
     }
 
     return render(request, "partials/users/test_report.html", context)
-
-
-# def test_result(request, registration_id):
-#     """
-#     Calculates and displays the detailed test result.
-#     This version uses the SAME evaluation logic as submit_test to ensure
-#     the report is always consistent with the score.
-#     """
-#     registration = get_object_or_404(TestRegistration, pk=registration_id)
-#     user_responses = UserResponse.objects.filter(
-#         registration=registration
-#     ).select_related("question")
-
-#     paper = registration.question_paper
-#     total_questions = paper.total_questions
-#     cutoff_score = paper.cutoff_score
-
-#     score = 0
-#     results_data = []
-
-#     # ▼▼▼ ISSE ISME BADALNA HAI (CHANGE THIS) ▼▼▼
-#     for response in user_responses:
-#         question = response.question
-#         user_answer = response.user_answer.strip()
-#         is_correct = False  # Assume incorrect by default
-
-#         # Rule 1: For MCQs, do a simple, direct text comparison.
-#         if question.question_type == "MCQ":
-#             model_answer = question.answer.strip()
-#             if user_answer.lower() == model_answer.lower():
-#                 is_correct = True
-
-#         # Rule 2: For any other type (SA, CODE), use the smart AI to evaluate.
-#         else:
-#             is_correct = evaluate_answer_with_ai(
-#                 question_text=question.text,
-#                 user_answer=user_answer,
-#                 model_answer=question.answer.strip(),
-#             )
-
-#         if is_correct:
-#             score += 1
-
-#         results_data.append(
-#             {
-#                 "question_text": response.question.text,
-#                 "user_answer": response.user_answer,
-#                 "correct_answer": response.question.answer,
-#                 "is_correct": is_correct,  # Now this value is from the correct logic
-#             }
-#         )
-#     # ▲▲▲ YAHAN TAK BADLAV KIYA GAYA HAI (CHANGES END HERE) ▲▲▲
-
-#     incorrect_answers = total_questions - score
-#     percentage = round((score / total_questions) * 100) if total_questions > 0 else 0
-
-#     status = "Fail"
-#     if percentage >= cutoff_score:
-#         status = "Pass"
-
-#     context = {
-#         "registration": registration,
-#         "results": results_data,
-#         "score": score,
-#         "total_questions": total_questions,
-#         "incorrect_answers": incorrect_answers,
-#         "percentage": percentage,
-#         "title": f"Test Report for {registration.email}",
-#         "status": status,
-#         "cutoff_score": cutoff_score,
-#     }
-
-#     return render(request, "partials/users/test_report.html", context)
 
 
 @csrf_exempt
@@ -1438,46 +945,6 @@ def export_participants_csv(request, paper_id):
 from django.utils import timezone
 
 
-# @require_POST
-# def submit_test(request, registration_id):
-#     """
-#     Test submit hone par yeh view call hoga.
-#     Yeh score calculate karke TestRegistration mein save karega.
-#     """
-#     registration = get_object_or_404(TestRegistration, pk=registration_id)
-
-#     # Pehle se completed test ko dobara submit na hone dein
-#     if registration.is_completed:
-#         return redirect("test_result", registration_id=registration.id)
-
-#     # Saare user responses fetch karein
-#     user_responses = UserResponse.objects.filter(registration=registration)
-#     total_questions = registration.question_paper.total_questions
-
-#     correct_answers_count = 0
-#     for response in user_responses:
-#         # Case-insensitive aur extra space hata kar answer check karein
-#         if (
-#             response.user_answer.strip().lower()
-#             == response.question.answer.strip().lower()
-#         ):
-#             correct_answers_count += 1
-
-#     # Percentage score calculate karein
-#     percentage_score = 0
-#     if total_questions > 0:
-#         percentage_score = round((correct_answers_count / total_questions) * 100, 2)
-
-#     # Registration object ko update aur save karein
-#     registration.is_completed = True
-#     registration.end_time = timezone.now()
-#     registration.score = percentage_score  # Score save karein
-#     registration.save(update_fields=["is_completed", "end_time", "score"])
-
-#     # User ko result page par redirect karein
-#     return redirect("test_result", registration_id=registration.id)
-
-
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -1577,21 +1044,11 @@ def evaluate_answer_with_ai(
 
         result = json.loads(cleaned_text)
 
-        # Log for debugging
-        print(f"\n{'='*60}")
-        print(f"Question Type: {question_type}")
-        print(f"Question: {question_text[:80]}...")
-        print(f"User Answer: {user_answer[:100]}...")
-        print(f"Model Answer: {model_answer[:100]}...")
-        print(f"AI Result: {result}")
-        print(f"{'='*60}\n")
-
         is_correct = result.get("is_correct", False)
         return is_correct, result
 
     except json.JSONDecodeError as e:
-        print(f"JSON Parse Error: {e}")
-        print(f"Raw AI response: {cleaned_text[:200]}...")
+
         return _fallback_evaluation(user_answer, model_answer, question_type)
 
     except Exception as e:
@@ -1957,139 +1414,6 @@ def evaluate_answer_simple(
     return is_correct
 
 
-# def evaluate_answer_with_ai(question_text, user_answer, model_answer):
-#     """
-#     Uses Gemini AI to evaluate if a user's answer is conceptually correct.
-#     Returns True if answer is at least 50% correct conceptually.
-#     """
-#     if not user_answer or not user_answer.strip():
-#         return False
-
-#     try:
-#         genai.configure(api_key=settings.GEMINI_API_KEY)
-#         model = genai.GenerativeModel("gemini-2.0-flash-exp")  # Updated model
-
-#         prompt = f"""
-#         You are an expert technical evaluator. Your job is to check if a user's answer demonstrates understanding of the concept.
-
-#         **Question:**
-#         {question_text}
-
-#         **Model Answer (Reference):**
-#         {model_answer}
-
-#         **User's Answer:**
-#         {user_answer}
-
-#         **Evaluation Rules:**
-#         1. Check if the user's answer conveys the CORE CONCEPT correctly
-#         2. Accept answers that are at least 50% conceptually correct
-#         3. Ignore minor grammar mistakes, typos, or extra words
-#         4. Accept synonyms and alternative explanations if they're correct
-#         5. Focus on understanding, not exact word matching
-
-#         **Examples of what to accept:**
-#         - If model answer is "Lists are mutable, tuples are immutable"
-#         - Accept: "You can change lists but not tuples"
-#         - Accept: "Lists can be modified, tuples cannot be modified"
-#         - Accept: "Tuples are read-only, lists are not"
-
-#         Respond with ONLY a JSON object:
-#         {{
-#             "is_correct": true/false,
-#             "confidence": 0-100,
-#             "reason": "brief explanation"
-#         }}
-#         """
-
-#         response = model.generate_content(prompt)
-#         cleaned_text = response.text.strip()
-
-#         # Remove markdown if present
-#         if cleaned_text.startswith("```json"):
-#             cleaned_text = cleaned_text[7:]
-#         if cleaned_text.endswith("```"):
-#             cleaned_text = cleaned_text[:-3]
-#         cleaned_text = cleaned_text.strip()
-
-#         result = json.loads(cleaned_text)
-
-#         # Log for debugging
-#         print(f"AI Evaluation - Question: {question_text[:50]}...")
-#         print(f"User Answer: {user_answer}")
-#         print(f"AI Result: {result}")
-
-#         return result.get("is_correct", False)
-
-#     except Exception as e:
-#         print(f"AI Evaluation Error: {e}")
-#         # Fallback: do basic string matching
-#         return user_answer.lower().strip() in model_answer.lower()
-
-
-# @require_POST
-# def submit_test(request, registration_id):
-#     """
-#     Evaluates test submission with improved AI evaluation for subjective answers.
-#     """
-#     registration = get_object_or_404(TestRegistration, pk=registration_id)
-
-#     if registration.is_completed:
-#         return redirect("test_result", registration_id=registration.id)
-
-#     user_responses = UserResponse.objects.filter(
-#         registration=registration
-#     ).select_related("question")
-
-#     total_questions = registration.question_paper.total_questions
-#     correct_answers_count = 0
-
-#     # ✅ Detailed evaluation with logging
-#     for response in user_responses:
-#         question = response.question
-#         user_answer = response.user_answer.strip()
-#         is_correct = False
-
-#         # MCQ: Direct string comparison
-#         if question.question_type == "MCQ":
-#             model_answer = question.answer.strip()
-#             is_correct = user_answer.lower() == model_answer.lower()
-#             print(
-#                 f"MCQ Check - Q: {question.text[:30]}... | User: {user_answer} | Model: {model_answer} | Correct: {is_correct}"
-#             )
-
-#         # SA/CODE: AI Evaluation
-#         else:
-#             if user_answer:  # Only evaluate if user provided an answer
-#                 is_correct = evaluate_answer_with_ai(
-#                     question_text=question.text,
-#                     user_answer=user_answer,
-#                     model_answer=question.answer.strip(),
-#                 )
-#             else:
-#                 print(f"Skipping empty answer for: {question.text[:30]}")
-
-#         if is_correct:
-#             correct_answers_count += 1
-
-#     # Calculate score
-#     percentage_score = 0
-#     if total_questions > 0:
-#         percentage_score = round((correct_answers_count / total_questions) * 100, 2)
-
-#     # Save results
-#     registration.is_completed = True
-#     registration.end_time = timezone.now()
-#     registration.score = percentage_score
-#     registration.save(update_fields=["is_completed", "end_time", "score"])
-
-#     print(
-#         f"Final Score: {correct_answers_count}/{total_questions} = {percentage_score}%"
-#     )
-
-#     return redirect("test_result", registration_id=registration.id)
-
-
 @require_POST
 def submit_test(request, registration_id):
     """
@@ -2154,57 +1478,53 @@ def submit_test(request, registration_id):
     return redirect("test_result", registration_id=registration.id)
 
 
-# @require_POST
-# def submit_test(request, registration_id):
-#     """
-#     Test submit hone par yeh view call hoga.
-#     Yeh score calculate karke TestRegistration mein save karega.
-#     Objective questions (MCQ) are checked directly.
-#     Subjective questions (SA, CODE) are evaluated by AI.
-#     """
-#     registration = get_object_or_404(TestRegistration, pk=registration_id)
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth import views as auth_views
+from django.shortcuts import render
 
-#     if registration.is_completed:
-#         return redirect("test_result", registration_id=registration.id)
+# Assuming User is fetched somewhere, if not, add:
+User = get_user_model()
 
-#     # Use select_related to efficiently fetch the related question
-#     user_responses = UserResponse.objects.filter(
-#         registration=registration
-#     ).select_related("question")
-#     total_questions = registration.question_paper.total_questions
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth import views as auth_views
+from django.shortcuts import render
 
-#     correct_answers_count = 0
-#     for response in user_responses:
-#         question = response.question
-#         user_answer = response.user_answer.strip()
-#         model_answer = question.answer.strip()
-#         is_correct = False
+User = get_user_model()
 
-#         # ▼▼▼ KEY CHANGE IS HERE ▼▼▼
-#         # If the question is a multiple-choice question, check it directly.
-#         if question.question_type == "MCQ":
-#             if user_answer.lower() == model_answer.lower():
-#                 is_correct = True
-#         # For any other type (SA, CODE, etc.), use the AI to evaluate.
-#         else:
-#             is_correct = evaluate_answer_with_ai(
-#                 question_text=question.text,
-#                 model_answer=model_answer,
-#                 user_answer=user_answer,
-#             )
-#         # ▲▲▲ END OF KEY CHANGE ▲▲▲
 
-#         if is_correct:
-#             correct_answers_count += 1
+def password_reset_request(request):
+    """
+    Custom view jo email ko DB mein check karta hai aur agar milta hai,
+    to Django ke default reset process ko aage badhata hai.
+    """
+    template_name = "registration/password_reset_form.html"
 
-#     # The rest of the function remains the same
-#     percentage_score = 0
-#     if total_questions > 0:
-#         percentage_score = round((correct_answers_count / total_questions) * 100, 2)
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
 
-#     registration.is_completed = True
-#     registration.end_time = timezone.now()
-#     registration.score = percentage_score
-#     registration.save(update_fields=["is_completed", "end_time", "score"])
+        # 1. Database existence check
+        try:
+            # Check if a user with this email exists (case-insensitive) and is active
+            User.objects.get(email__iexact=email, is_active=True)
 
-#     return redirect("test_result", registration_id=registration.id)
+        except User.DoesNotExist:
+            # 2. Agar user nahi mila, to error message set karein.
+            # Security ke liye, yeh message thoda vague (vague) hona chahiye,
+            # par user requirement ke anusaar hum yahaan specific error de rahe hain.
+            messages.error(
+                request,
+                "The email address you entered is not associated with any active account. Please check it and try again. 🧐",
+            )
+            # Re-render the form page with the error
+            return render(request, template_name, {})
+
+        # 3. Agar user mil gaya, to Django ke default PasswordResetView ko call karein
+        # Taki mail send ho sake.
+        return auth_views.PasswordResetView.as_view(template_name=template_name)(
+            request
+        )
+
+    # GET request ke liye (page load hone par)
+    return auth_views.PasswordResetView.as_view(template_name=template_name)(request)

@@ -16,11 +16,16 @@ urlpatterns = [
     path("register/", views.user_register, name="register"),
     path(
         "password_reset/",
-        auth_views.PasswordResetView.as_view(
-            template_name="registration/password_reset_form.html"
-        ),
+        views.password_reset_request,  # <-- Yeh apka naya view hai
         name="password_reset",
     ),
+    # path(
+    #     "password_reset/",
+    #     auth_views.PasswordResetView.as_view(
+    #         template_name="registration/password_reset_form.html"
+    #     ),
+    #     name="password_reset",
+    # ),
     path(
         "password_reset/done/",
         auth_views.PasswordResetDoneView.as_view(
