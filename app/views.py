@@ -135,97 +135,176 @@ def dashboard(request):
 
 @login_required
 def generate_questions(request):
+    """
+    Generates a fixed, hardcoded technical assessment paper in JSON format
+    on POST request, or renders the page on GET request.
+
+    This function has been modified to strictly return the user-provided
+    question set to ensure a consistent test paper.
+    """
+
+    # --- 1. Handle POST Request (Generate/Return Paper) ---
     if request.method == "POST":
         try:
+            # Load input data (kept for original function structure, though not used for generation)
             data = json.loads(request.body)
-            job_title = data.get("job_title")
-            min_exp = data.get("min_exp")
-            max_exp = data.get("max_exp")
-            skills_raw = data.get("skills")
-            sections_data = data.get("sections", {})
-            total_questions = sum(sections_data.values())
+            job_title = data.get("job_title", "Software Engineer")
+            max_exp = data.get("max_exp", "5")
 
-            seniority = "Junior"
+            seniority = "Mid-Level"
             if int(max_exp) > 5:
                 seniority = "Senior"
-            elif int(max_exp) > 2:
-                seniority = "Mid-Level"
+            elif int(max_exp) <= 2:
+                seniority = "Junior"
 
-            # --- UPDATED PROMPT START HERE ---
+            # --- Fixed, Hardcoded Paper Content (STRICT OUTPUT) ---
+            fixed_paper_json = {
+                "title": f"Technical Assessment ({seniority} - {job_title})",
+                "sections": [
+                    {
+                        "title": "Aptitude",
+                        "questions": [
+                            {
+                                "text": "A background job processes tasks from a queue. It processes 5 tasks in the first minute, 8 tasks in the second minute, 11 in the third, and so on, increasing its throughput by 3 tasks each minute. How many total tasks will have been processed after 5 minutes?",
+                                "answer": "65",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "A machine produces 6 items in the first hour, 10 items in the second hour, 14 items in the third hour, and continues increasing by 4 items every hour. How many total items will it produce in 5 hours?",
+                                "answer": "70",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "Pointing to a photograph, Ramesh said, “He is the son of my grandfather’s only son.” How is the person in the photograph related to Ramesh?",
+                                "answer": "He is Ramesh’s brother.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "A man walks 4 km towards the North. Then he turns right and walks 3 km. Again, he turns right and walks 2 km. Finally, he turns left and walks 1 km. In which direction is he facing now, and how far is he from the starting point?",
+                                "answer": "Facing East, and 2√5 km (≈ 4.47 km) from the starting point.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "In a certain code, “BIRD” is written as “CJSE”. Using the same code, how is “FARM” written?",
+                                "answer": "GBSN",
+                                "type": "SA",
+                            },
+                        ],
+                    },
+                    {
+                        "title": "Programming",
+                        "questions": [
+                            {
+                                "text": "Write a JavaScript function called `sumPositiveNumbers` that takes an array of numbers as an argument. The function should return the sum of all the positive numbers in the array. Negative numbers and zero should be ignored. Example Input: [1, -4, 7, 12, -9, 0] Expected Output: 20",
+                                "answer": "function sumPositiveNumbers(arr) { let sum = 0; for (let i = 0; i < arr.length; i++) { if (arr[i] > 0) { sum += arr[i]; } } return sum; }",
+                                "type": "CODE",
+                            },
+                            {
+                                "text": "Reverse a list without using built-in reverse functions/methods. (Use Python as the language for the answer).",
+                                "answer": "lst = [1, 2, 3, 4, 5]\\nreversed_list = lst[::-1]\\nprint(reversed_list)",
+                                "type": "CODE",
+                            },
+                            {
+                                "text": "In MongoDB, which index type supports searching inside arrays of embedded documents?",
+                                "answer": "Multikey Index",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "Write a function to rotate an array to the right by K elements. (Use Python as the language for the answer).",
+                                "answer": "def rotate(arr, k):\\n    k = k % len(arr)\\n    return arr[-k:] + arr[:-k]",
+                                "type": "CODE",
+                            },
+                            {
+                                "text": "Write an SQL query to display the customer name along with their highest order amount.",
+                                "answer": "SELECT c.customer_name, MAX(o.total_amount) AS highest_order\\nFROM customers c\\nJOIN orders o ON c.customer_id = o.customer_id\\nGROUP BY c.customer_name;",
+                                "type": "CODE",
+                            },
+                            {
+                                "text": "Merge two unsorted arrays and return the sorted result. (Use Python as the language for the answer).",
+                                "answer": "def merge_and_sort(a, b):\\n    return sorted(a + b)",
+                                "type": "CODE",
+                            },
+                            {
+                                "text": "In a REST API, what is the main difference between PUT and PATCH?",
+                                "answer": "PUT updates entire resource, PATCH updates part of it",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "Write a function to move all zeros in a list to the end, maintaining the order of the non-zero elements. (Use Python as the language for the answer).",
+                                "answer": "def move_zeros(lst):\\n    return [x for x in lst if x != 0] + [0] * lst.count(0)",
+                                "type": "CODE",
+                            },
+                        ],
+                    },
+                    {
+                        "title": "Situation_Based",
+                        "questions": [
+                            {
+                                "text": "You are working on a feature and discover a small, unrelated bug in a piece of code written by a senior engineer. The bug doesn't affect your current task, but it could cause issues later. What is the most appropriate first step?",
+                                "answer": "Create a new ticket in the project management system, detailing the bug, how to reproduce it, and assign it to the senior engineer.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "Your code works on your machine but fails on the production server. What will you do?",
+                                "answer": "I’ll start by reproducing the issue in a controlled test environment. Then I’ll check differences between my local and production environments — like OS, dependencies, versions, or configuration files. I’ll use logs or debug prints to trace the issue. Once identified, I’ll fix the root cause and document it to prevent recurrence.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "You are stuck on a bug for hours and the deadline is near. What will you do?",
+                                "answer": "I’ll take a short break, recheck the logic with a fresh mind, and then simplify or isolate the problem. If still stuck, I’ll clearly explain what I’ve tried and seek help from a teammate or senior — focusing on collaboration rather than wasting time alone. I’ll also inform my lead about the delay early.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "You are working on two important tasks and both have tight deadlines. How will you manage?",
+                                "answer": "I’ll prioritize tasks based on urgency and business impact. Then I’ll communicate with my lead to set realistic expectations. I’ll plan a schedule, maybe splitting time between both tasks, ensuring transparency and quality in delivery.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "You made a change that caused a production issue. What will you do?",
+                                "answer": "I’ll take responsibility immediately and inform my lead. I’ll roll back or patch the issue quickly to minimize impact, then analyze what went wrong — whether it was lack of testing or configuration mistake. I’ll document the lesson and add preventive checks to avoid it in the future.",
+                                "type": "SA",
+                            },
+                            {
+                                "text": "A company wants to automate its customer support process. They design a system that: Reads customer complaints from emails, Identifies product issues using AI, Automatically issues refunds for verified cases, and Escalates complex cases to a human agent. Which type of system best represents this automation approach?",
+                                "answer": "Cognitive Automation (AI system that learns and makes decisions)",
+                                "type": "SA",
+                            },
+                        ],
+                    },
+                ],
+            }
 
-            prompt = f"""
-            Act as a seasoned technical assessment creator and principal engineer. Your primary goal is to build a well-balanced and experience-appropriate technical test. The entire response MUST be a single, valid JSON object without any markdown.
+            # SUCCESS: Directly return the fixed JSON response
+            return JsonResponse(fixed_paper_json)
 
-            ## Core Specifications
-            1.  **Job Role**: {job_title}
-            2.  **Experience Level**: {min_exp} to {max_exp} years ({seniority}-level).
-            3.  **Core Skills**: {skills_raw}
-            4.  **Paper Sections**: {json.dumps(sections_data)}
-
-            ## Guiding Principles: Think Like an Assessor
-            You must follow these hierarchical rules precisely.
-
-            1.  **Overall Difficulty**: The complexity of every single question must align with the **{seniority}** level.
-
-            2.  **Question Uniqueness (CRITICAL)**: **ABSOLUTELY NO DUPLICATE QUESTIONS.** Ensure every question generated, across all sections, is unique. If this function is run multiple times, the generated questions must be new and diverse, not a repeat of previously generated content.
-
-            3.  **Situational & Communication Questions**:
-                * For non-technical sections like 'Aptitude', provide realistic, job-related scenarios.
-                * **For 'Communication' sections, the focus MUST be on evaluating English grammar, syntax, sentence structure, and vocabulary proficiency, NOT general soft skills.** Design questions (MCQ/SA) that test language correctness.
-
-            4.  **⭐ Intelligent Generation for Programming/Coding Sections ⭐**: This is your most important directive. For any section with a title containing 'Programming', 'Coding', or 'Algorithm', you must create an **intelligent mix of question types (`MCQ`, `SA`, `CODE`)** that reflects the candidate's seniority. Do NOT just generate one type of question.
-
-                * **If `{seniority}` is Junior (0-2 yrs)**: The focus is on fundamentals. The **primary quantity and focus MUST be on `CODE` questions**. These `CODE` problems must be simple, foundational problems, equivalent to **LeetCode Easy** level (e.g., array manipulations, string reversals, FizzBuzz, basic data structure implementation). The number of `CODE` questions should be at least **50% of the total** questions in this section, with the remainder being `MCQ` and `SA` on core concepts and predicting output.
-                
-                * **If `{seniority}` is Mid-Level (3-5 yrs)**: The mix must contain fewer basic MCQs and SAs. The **primary focus and highest quantity of questions MUST be `CODE` problems** of medium complexity (e.g., interacting with data, implementing common algorithms, simple API design). The number of `CODE` questions should **significantly outweigh the sum of `MCQ` and `SA` questions** in this section.
-                
-                * **If `{seniority}` is Senior (6+ yrs)**: The focus is on depth, design, and complex problem-solving. This section **MUST be overwhelmingly dominated by challenging `CODE` problems**. The number of `CODE` questions must constitute the **vast majority** of the section's total, with any remaining `MCQ` or `SA` questions being highly advanced, focusing on architectural trade-offs or subtle language features, not basics.
-
-            5.  **Answer Formatting**: The format of the question and answer depends strictly on its `type`.
-                * For **`MCQ` and `SA`** questions: The `answer` must be concise (a word, phrase, or single line of code).
-                * For **`CODE`** questions: The `text` must be a full problem description (task, input, expected output). The `answer` must be a complete, multi-line code solution, formatted as a single JSON string with `\\n` for newlines.
-
-            ## Output Structure (Strict)
-            - Root JSON object: 'title' (string), 'sections' (array).
-            - Section object: 'title' (string), 'questions' (array).
-            - Question object: 'text', 'answer', 'type'. `MCQ` types must also have an 'options' array.
-
-            Generate the {seniority}-level assessment now, creating the perfect, balanced mix of questions for each section as instructed.
-            """
-
-            # --- UPDATED PROMPT END HERE ---
-
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            # Using a powerful model is key for understanding these nuanced instructions
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            response = model.generate_content(prompt)
-
-            json_text = response.text.strip()
-            if json_text.startswith("```json"):
-                json_text = json_text[7:]
-            if json_text.endswith("```"):
-                json_text = json_text[:-3]
-
-            generated_paper = json.loads(json_text)
-
-            return JsonResponse(generated_paper)
         except json.JSONDecodeError as e:
-
+            # Handle error if the input JSON from the request body is invalid
             return JsonResponse(
-                {
-                    "error": "Failed to decode the AI's response. The format was invalid."
-                },
-                status=500,
+                {"error": "Failed to decode the input JSON from the request body."},
+                status=400,
             )
         except Exception as e:
+            # Handle any other unexpected errors during POST
             print(f"An unexpected error occurred: {str(e)}")
             return JsonResponse(
-                {"error": f"An unexpected error occurred: {str(e)}"}, status=500
+                {"error": f"An unexpected error occurred during POST: {str(e)}"},
+                status=500,
             )
 
-    departments = Department.objects.all()
-    context = {"departments": departments}
-    return render(request, "question_generator/generator.html", context)
+    # --- 2. Handle GET Request (Render Page) ---
+    # This block executes if the request method is not POST (e.g., GET, which was causing the error)
+    # It MUST return an HttpResponse object (like render) to fix the ValueError.
+    else:
+        # Context preparation (replace 'Department.objects.all()' with actual logic if needed)
+        try:
+            # Uncomment the lines below if 'Department' model and its imports are correctly set up
+            departments = Department.objects.all()
+            context = {"departments": departments}
+        # Use an empty context if the Department model is not immediately needed
+        except NameError:
+            context = {}  # Fallback if Department is not imported
+
+        return render(request, "question_generator/generator.html", context)
 
 
 # ... (keep all other views as they are) ...
