@@ -1,6 +1,7 @@
 # app/views.py
 
 import json
+import re
 import google.generativeai as genai
 from django.contrib.auth import login, logout
 from django.views.decorators.http import require_POST
@@ -325,12 +326,119 @@ from .models import QuestionPaper, TestRegistration
 from .models import UserResponse
 
 
+# @login_required
+# def paper_detail_view(request, paper_id):
+#     """
+#     Displays the details of a single question paper.
+#     This version RE-CALCULATES the score for each participant to ensure
+#     consistency with the test report. (FIXED LOGIC BELOW)
+#     """
+#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
+#     status_filter = request.GET.get("status", "all")
+#     shortlist_filter = request.GET.get("shortlist_status", "all")
+
+#     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
+
+#     all_participants = list(
+#         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
+#     )
+
+#     # ▼▼▼ THE FINAL, CORRECTED LOGIC IS HERE ▼▼▼
+#     for p in all_participants:
+#         if p.is_completed:
+#             user_responses = UserResponse.objects.filter(registration=p)
+#             correct_answers_count = 0
+
+#             for response in user_responses:
+#                 question = response.question
+#                 user_answer = response.user_answer.strip()
+#                 is_correct = False
+
+#                 if not user_answer:
+#                     # Unattempted answers are always incorrect (score-wise)
+#                     is_correct = False
+#                 elif question and question.answer:
+#                     # 1. MCQ: Direct comparison
+#                     if question.question_type == "MCQ":
+#                         is_correct = (
+#                             user_answer.lower() == question.answer.strip().lower()
+#                         )
+#                     # 2. SA/CODE/TF: AI Evaluation
+#                     else:
+#                         # Map internal question type to evaluator type
+#                         qtype = question.question_type.upper()
+#                         if qtype in ("CODE", "CODING"):
+#                             evaluator_type = "coding"
+#                         elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
+#                             evaluator_type = "short"
+#                         elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
+#                             evaluator_type = "true_false"
+#                         else:
+#                             evaluator_type = "short"
+
+#                         # Use the smart AI evaluation
+#                         is_correct, _ = evaluate_answer_with_ai(
+#                             question_text=question.text,
+#                             user_answer=user_answer,
+#                             model_answer=question.answer.strip(),
+#                             question_type=evaluator_type,
+#                         )
+
+#                 if is_correct:
+#                     correct_answers_count += 1
+
+#             # 3. Calculate the percentage score live
+#             total_questions = p.question_paper.total_questions
+#             live_percentage = 0
+#             if total_questions > 0:
+#                 live_percentage = round((correct_answers_count / total_questions) * 100)
+
+#             # 4. Use this live percentage for the status check
+#             cutoff = p.question_paper.cutoff_score
+#             p.score = live_percentage  # Attach live score for comparison/display
+
+#             if cutoff is not None:
+#                 if live_percentage >= cutoff:
+#                     p.status = "pass"
+#                 else:
+#                     p.status = "fail"
+#             else:
+#                 p.status = "pass"  # No cutoff means any completed test is a pass
+#         else:
+#             p.status = "pending"
+#     # ▲▲▲ END OF CORRECTED LOGIC ▲▲▲
+
+#     # --- The filtering logic remains the same ---ƒ
+#     if status_filter != "all":
+#         filtered_participants = [
+#             p for p in all_participants if p.status == status_filter
+#         ]
+#     else:
+#         filtered_participants = all_participants
+
+#     if shortlist_filter == "shortlisted":
+#         final_participants = [p for p in filtered_participants if p.is_shortlisted]
+#     elif shortlist_filter == "not_shortlisted":
+#         final_participants = [p for p in filtered_participants if not p.is_shortlisted]
+#     else:
+#         final_participants = filtered_participants
+
+#     context = {
+#         "paper": paper,
+#         "skills": skills,
+#         "participants": final_participants,
+#         "title": f"Details for {paper.title}",
+#         "selected_status": status_filter,
+#         "selected_shortlist_status": shortlist_filter,
+#     }
+#     return render(request, "question_generator/paper_detail.html", context)
+# app/views.py - Add this updated function
+
+
 @login_required
 def paper_detail_view(request, paper_id):
     """
-    Displays the details of a single question paper.
-    This version RE-CALCULATES the score for each participant to ensure
-    consistency with the test report. (FIXED LOGIC BELOW)
+    Displays the details of a single question paper with FIXED MCQ matching.
     """
     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
     status_filter = request.GET.get("status", "all")
@@ -338,11 +446,13 @@ def paper_detail_view(request, paper_id):
 
     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
 
+    # Note: Template filters (striptags, lower) will handle normalization
+
     all_participants = list(
         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
     )
 
-    # ▼▼▼ THE FINAL, CORRECTED LOGIC IS HERE ▼▼▼
+    # ▼▼▼ THE FINAL, CORRECTED SCORING LOGIC ▼▼▼
     for p in all_participants:
         if p.is_completed:
             user_responses = UserResponse.objects.filter(registration=p)
@@ -354,17 +464,16 @@ def paper_detail_view(request, paper_id):
                 is_correct = False
 
                 if not user_answer:
-                    # Unattempted answers are always incorrect (score-wise)
                     is_correct = False
                 elif question and question.answer:
-                    # 1. MCQ: Direct comparison
                     if question.question_type == "MCQ":
-                        is_correct = (
-                            user_answer.lower() == question.answer.strip().lower()
-                        )
-                    # 2. SA/CODE/TF: AI Evaluation
+                        import re
+
+                        cleaned_answer = re.sub(r"<[^>]+>", "", question.answer).strip()
+                        is_correct = user_answer.lower() == cleaned_answer.lower()
+                        # cleaned_answer = re.sub(r"<[^>]+>", "", question.answer).strip()
+                        # is_correct = user_answer.lower() == cleaned_answer.lower()
                     else:
-                        # Map internal question type to evaluator type
                         qtype = question.question_type.upper()
                         if qtype in ("CODE", "CODING"):
                             evaluator_type = "coding"
@@ -375,7 +484,6 @@ def paper_detail_view(request, paper_id):
                         else:
                             evaluator_type = "short"
 
-                        # Use the smart AI evaluation
                         is_correct, _ = evaluate_answer_with_ai(
                             question_text=question.text,
                             user_answer=user_answer,
@@ -386,15 +494,13 @@ def paper_detail_view(request, paper_id):
                 if is_correct:
                     correct_answers_count += 1
 
-            # 3. Calculate the percentage score live
             total_questions = p.question_paper.total_questions
             live_percentage = 0
             if total_questions > 0:
                 live_percentage = round((correct_answers_count / total_questions) * 100)
 
-            # 4. Use this live percentage for the status check
+            p.score = live_percentage
             cutoff = p.question_paper.cutoff_score
-            p.score = live_percentage  # Attach live score for comparison/display
 
             if cutoff is not None:
                 if live_percentage >= cutoff:
@@ -402,12 +508,11 @@ def paper_detail_view(request, paper_id):
                 else:
                     p.status = "fail"
             else:
-                p.status = "pass"  # No cutoff means any completed test is a pass
+                p.status = "pass"
         else:
             p.status = "pending"
     # ▲▲▲ END OF CORRECTED LOGIC ▲▲▲
 
-    # --- The filtering logic remains the same ---
     if status_filter != "all":
         filtered_participants = [
             p for p in all_participants if p.status == status_filter
@@ -433,41 +538,197 @@ def paper_detail_view(request, paper_id):
     return render(request, "question_generator/paper_detail.html", context)
 
 
+# @login_required
+# @transaction.atomic
+# def paper_edit_view(request, paper_id):
+#     """
+#     Handles editing of a question paper's metadata and its questions.
+#     """
+
+#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
+
+#     if request.method == "POST":
+#         form = QuestionPaperEditForm(request.POST, instance=paper)
+
+#         if form.is_valid():
+#             form.save()
+
+#             for section in paper.paper_sections.all():
+#                 for question in section.questions.all():
+#                     question_text_name = f"question-text-{question.id}"
+#                     question_answer_name = f"question-answer-{question.id}"
+
+#                     if question_text_name in request.POST:
+#                         question.text = request.POST[question_text_name]
+#                     if question_answer_name in request.POST:
+#                         question.answer = request.POST[question_answer_name]
+
+#                     question.save()
+#                     # **NEW: Add the success message here**
+#             messages.success(request, "Paper updated successfully!")
+#             return redirect("/dashboard/")
+
+#     else:
+#         form = QuestionPaperEditForm(instance=paper)
+
+#     context = {"form": form, "paper": paper, "title": f"Edit {paper.title}"}
+#     return render(request, "question_generator/paper_edit.html", context)
+
+# app/views.py (Assuming this is where paper_edit_view is located)
+
+
 @login_required
 @transaction.atomic
 def paper_edit_view(request, paper_id):
     """
     Handles editing of a question paper's metadata and its questions.
+    NOW ALSO SAVES MCQ OPTIONS!
     """
-
     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
 
     if request.method == "POST":
         form = QuestionPaperEditForm(request.POST, instance=paper)
 
         if form.is_valid():
-            form.save()
+            # 1. Paper metadata save karo (job_title, duration, skills, etc.)
+            updated_paper = form.save()
 
+            # 2. Track total questions for recalculation
+            total_questions_count = 0
+
+            # 3. Questions and answers update karo
             for section in paper.paper_sections.all():
                 for question in section.questions.all():
                     question_text_name = f"question-text-{question.id}"
                     question_answer_name = f"question-answer-{question.id}"
 
+                    # Check if fields are in POST data
                     if question_text_name in request.POST:
-                        question.text = request.POST[question_text_name]
-                    if question_answer_name in request.POST:
-                        question.answer = request.POST[question_answer_name]
+                        new_text = request.POST[question_text_name].strip()
+                        if new_text:  # Empty na ho
+                            question.text = new_text
 
+                    if question_answer_name in request.POST:
+                        new_answer = request.POST[question_answer_name].strip()
+                        if new_answer:  # Empty na ho
+                            question.answer = new_answer
+                        # paper_edit_view function in views.py (यह हिस्सा पहले से मौजूद है और सही है)
+                        if question.question_type == "MCQ":
+                            options = []
+                            for opt_num in range(1, 11):  # Up to 10 options
+                                option_key = f"option-{question.id}-{opt_num}"
+                                if option_key in request.POST:
+                                    option_value = request.POST[option_key].strip()
+                                    if option_value:
+                                        options.append(option_value)
+                            if options:
+                                question.options = options
+
+                        # Save individual question
+                        question.save()
+                    # if question.question_type == "MCQ":
+                    #     options = []
+                    #     for opt_num in range(1, 11):  # Up to 10 options
+                    #         option_key = f"option-{question.id}-{opt_num}"
+                    #         if option_key in request.POST:
+                    #             option_value = request.POST[option_key].strip()
+                    #             if option_value:
+                    #                 options.append(option_value)
+                    #     if options:
+                    #         question.options = options
+                    # # Save individual question
                     question.save()
-                    # **NEW: Add the success message here**
-            messages.success(request, "Paper updated successfully!")
-            return redirect("/dashboard/")
+                    total_questions_count += 1
+
+            # 4. Update total questions count in paper
+            updated_paper.total_questions = total_questions_count
+            updated_paper.save(update_fields=["total_questions"])
+
+            messages.success(
+                request,
+                f"✅ Paper '{updated_paper.title}' successfully updated with {total_questions_count} questions!",
+            )
+            return redirect("paper_detail", paper_id=paper.id)
+
+        else:
+            # Form validation fail hua
+            messages.error(
+                request,
+                "❌ There were errors in your submission. Please check the form.",
+            )
 
     else:
+        # GET request: Form with existing data show karo
         form = QuestionPaperEditForm(instance=paper)
 
     context = {"form": form, "paper": paper, "title": f"Edit {paper.title}"}
+
     return render(request, "question_generator/paper_edit.html", context)
+
+
+# @login_required
+# @transaction.atomic
+# def paper_edit_view(request, paper_id):
+#     """
+#     Handles editing of a question paper's metadata and its questions.
+#     Database mein bhi changes save honge.
+#     """
+#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
+
+#     if request.method == "POST":
+#         form = QuestionPaperEditForm(request.POST, instance=paper)
+
+#         if form.is_valid():
+#             # 1. Paper metadata save karo (job_title, duration, skills, etc.)
+#             updated_paper = form.save()
+
+#             # 2. Track total questions for recalculation
+#             total_questions_count = 0
+
+#             # 3. Questions and answers update karo
+#             for section in paper.paper_sections.all():
+#                 for question in section.questions.all():
+#                     question_text_name = f"question-text-{question.id}"
+#                     question_answer_name = f"question-answer-{question.id}"
+
+#                     # Check if fields are in POST data
+#                     if question_text_name in request.POST:
+#                         new_text = request.POST[question_text_name].strip()
+#                         if new_text:  # Empty na ho
+#                             question.text = new_text
+
+#                     if question_answer_name in request.POST:
+#                         new_answer = request.POST[question_answer_name].strip()
+#                         if new_answer:  # Empty na ho
+#                             question.answer = new_answer
+
+#                     # Save individual question
+#                     question.save()
+#                     total_questions_count += 1
+
+#             # 4. Update total questions count in paper
+#             updated_paper.total_questions = total_questions_count
+#             updated_paper.save(update_fields=["total_questions"])
+
+#             messages.success(
+#                 request,
+#                 f"✅ Paper '{updated_paper.title}' successfully updated with {total_questions_count} questions!",
+#             )
+#             return redirect("paper_detail", paper_id=paper.id)
+
+#         else:
+#             # Form validation fail hua
+#             messages.error(
+#                 request,
+#                 "❌ There were errors in your submission. Please check the form.",
+#             )
+
+#     else:
+#         # GET request: Form with existing data show karo
+#         form = QuestionPaperEditForm(instance=paper)
+
+#     context = {"form": form, "paper": paper, "title": f"Edit {paper.title}"}
+#     return render(request, "question_generator/paper_edit.html", context)
 
 
 import logging
@@ -1110,7 +1371,10 @@ Respond with ONLY a valid JSON object (no markdown, no extra text):
 
 
 def _get_coding_prompt(question_text: str, user_code: str, model_code: str) -> str:
-    """Generate prompt for coding evaluation with stricter criteria."""
+    """
+    Generate prompt for coding evaluation with cross-language flexibility criteria.
+    (MODIFIED FOR LANGUAGE FLEXIBILITY - FOR DIRECT PASTE)
+    """
     return f"""You are an expert programming instructor. Evaluate if the user's code correctly solves the problem.
 
 **Question:**
@@ -1128,28 +1392,28 @@ def _get_coding_prompt(question_text: str, user_code: str, model_code: str) -> s
 
 **Evaluation Criteria:**
 1. **CRITICAL: The user's code MUST solve the specific problem described in the Question.**
-2. **If the question specifies a language (e.g., 'Write a JavaScript function...'), a solution in a different, incompatible language (e.g., Python for a JavaScript-specific task) should result in is_correct: false.** If the logic is sound and easily translatable, you may be lenient, but prioritize the requested language.
+
+2. **⭐ Cross-Language Tolerance (FLEXIBLE LOGIC) ⭐:**
+    * **If the QUESTION text DOES NOT explicitly name a programming language** (e.g., "Write a function...", "Solve this problem..."), **then ACCEPT the solution, even if the language of the User's Code differs from the Reference Solution, provided the core logic is sound.** The goal is to check technical skill, not language specific adherence, unless requested.
+    * If the **QUESTION text EXPLICITLY specifies a language** (e.g., "Write a JavaScript function...", "Implement this in Python"), then **code in a different language should result in is_correct: false**, regardless of the logic.
+
 3. The core logic must be sound, even if the implementation style differs.
 4. Accept different approaches: loops vs. comprehensions, recursion vs. iteration.
 5. Accept different but correct algorithms.
 6. Ignore minor syntax variations: spacing, indentation, bracket styles.
 7. Accept more efficient or optimized solutions.
-8. Accept solutions with additional features (error handling, edge cases).
 
 **What to REJECT (This must result in is_correct: false):**
 - **Code that solves a COMPLETELY DIFFERENT PROBLEM than the one asked.**
-- **Code that is in a different language when the question explicitly requires a specific one.**
 - Logic errors that produce incorrect output.
 - Missing critical functionality.
-- Code that would crash or throw errors on valid inputs.
+- **Code in a different language when the question explicitly mandated a specific one.**
 
 **Scoring Guide:**
 - is_correct: true if code would work and solve the problem (50%+ functionality)
 - is_correct: false if code has fundamental logic errors or solves the wrong problem
 - confidence: 90-100% for perfect or near-perfect solutions
 - confidence: 70-89% for working solutions with minor issues
-- confidence: 50-69% for solutions that mostly work
-- confidence: below 50% for non-working code or solutions to the wrong problem
 
 Respond with ONLY valid JSON (no markdown, no extra text):
 {{
