@@ -240,18 +240,16 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
 
 
-# ... (LoginForm, UserRegistrationForm, etc. remain unchanged) ...
 
 
 text_input_class = "w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
 
 
 class QuestionPaperEditForm(forms.ModelForm):
-    # ✨ REQUIREMENT 1: Job Title Validation (UPDATED) ✨
-    # The max_length has been changed from 40 to 30.
+    
     job_title = forms.CharField(
         min_length=3,
-        max_length=30,  # <-- CHANGED
+        max_length=30,  
         widget=forms.TextInput(attrs={"class": text_input_class}),
     )
 
@@ -282,14 +280,14 @@ class QuestionPaperEditForm(forms.ModelForm):
             ),
             "skills_list": forms.TextInput(
                 attrs={
-                    "class": f"{text_input_class} skill-autocomplete-input",  # Added new class
+                    "class": f"{text_input_class} skill-autocomplete-input",  
                     "placeholder": "e.g., Python, Django, JavaScript",
-                    "autocomplete": "off",  # Important for custom suggestions
+                    "autocomplete": "off",  
                 }
             ),
         }
 
-    # === START: ADDED VALIDATION FOR JOB TITLE (UPDATED) ===
+  
     def clean_job_title(self):
         """
         Adds custom validation for the job_title field.
@@ -297,17 +295,14 @@ class QuestionPaperEditForm(forms.ModelForm):
         """
         job_title = self.cleaned_data.get("job_title", "").strip()
 
-        # Check 1: Minimum length
         if len(job_title) < 3:
             raise forms.ValidationError("Job title must be at least 3 characters long.")
 
-        # Check 2: Maximum length (UPDATED)
-        if len(job_title) > 30:  # <-- CHANGED
+        if len(job_title) > 30:  
             raise forms.ValidationError(
-                "Job title cannot be longer than 30 characters."  # <-- CHANGED
+                "Job title cannot be longer than 30 characters."  
             )
 
-        # Check 3: Ensure it contains letters (not just numbers or symbols)
         if not re.search(r"[a-zA-Z]", job_title):
             raise forms.ValidationError("Job title must contain letters.")
 
@@ -392,4 +387,33 @@ class ForgotPasswordForm(forms.Form):
             raise forms.ValidationError(
                 "Email domain not allowed. Please use your real email."
             )
+        return email
+
+from django.core.exceptions import ValidationError
+
+class InviteCandidateForm(forms.Form):
+    """
+    Form for inviting a candidate via email.
+    """
+
+    email = forms.EmailField(
+        label="Candidate Email",
+        required=True,
+        widget=forms.EmailInput(
+            attrs={
+                "placeholder": "Enter candidate's email address",
+                "class": INPUT_CLASSES, 
+            }
+        ),
+        error_messages={
+            "required": "The candidate's email address is required.",
+            "invalid": "Please enter a valid email address.",
+        },
+    )
+
+    paper_id = forms.IntegerField(widget=forms.HiddenInput(), required=True)
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        
         return email

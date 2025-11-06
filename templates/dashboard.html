@@ -142,8 +142,12 @@
                     Participants: {{ paper.participant_count }}
                   </p>
                 </a>
-
-                <div class="flex items-center space-x-1 z-10 relative flex-shrink-0">
+<div class="flex items-center space-x-1 z-10 relative flex-shrink-0">
+                  <button data-paper-title="{{ paper.title }}" data-paper-id="{{ paper.id }}"
+                    title="Invite Candidate"
+                    class="invite-button p-2 text-gray-500 rounded-full hover:bg-theme-light hover:text-green-500 focus:outline-none">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
                   <button data-paper-title="{{ paper.title }}" data-share-link="{% url 'take_paper' paper.id %}"
                     data-is-public="{{ paper.is_public_active|yesno:'true,false' }}" data-paper-id="{{ paper.id }}"
                     title="Share Paper"
@@ -156,6 +160,19 @@
                     <i class="fas fa-trash-alt"></i>
                   </button>
                 </div>
+                <!-- <div class="flex items-center space-x-1 z-10 relative flex-shrink-0">
+                  <button data-paper-title="{{ paper.title }}" data-share-link="{% url 'take_paper' paper.id %}"
+                    data-is-public="{{ paper.is_public_active|yesno:'true,false' }}" data-paper-id="{{ paper.id }}"
+                    title="Share Paper"
+                    class="share-button p-2 text-gray-500 rounded-full hover:bg-theme-light hover:text-theme-primary focus:outline-none">
+                    <i class="fas fa-share-alt"></i>
+                  </button>
+                  
+                  <button data-paper-id="{{ paper.id }}" data-paper-title="{{ paper.title }}" title="Deactivate Paper"
+                    class="deactivate-paper-button p-2 text-gray-500 rounded-full hover:bg-red-100 hover:text-red-600 focus:outline-none">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div> -->
               </div>
             </div>
             {% empty %}
@@ -297,6 +314,47 @@
           Confirm
         </button>
       </div>
+    </div>
+  </div>
+<div id="invite-modal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden z-50 flex justify-center items-center p-4">
+    <div id="invite-modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-auto">
+      <div class="flex justify-between items-center p-5 border-b border-gray-200">
+        <h3 class="text-xl font-bold text-gray-800">Invite Candidate</h3>
+        <button id="close-invite-modal-top" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times fa-lg"></i>
+        </button>
+      </div>
+      <form id="invite-form" onsubmit="return false;">
+        {% csrf_token %}
+        <div class="p-6 space-y-5">
+          <p class="text-sm text-gray-text font-medium">
+            Send a direct invitation email for "<strong id="invite-modal-paper-title"></strong>".
+          </p>
+
+          <div class="form-group">
+            <label for="invite-email-input" class="block text-sm font-semibold text-gray-700 mb-0.5">
+              Candidate Email
+            </label>
+            <input type="email" name="email" id="invite-email-input" required
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-theme-primary focus:border-theme-primary sm:text-sm"
+              placeholder="e.g., candidate@example.com" />
+            <div id="invite-email-error" class="error-text hidden"></div>
+          </div>
+          
+          <input type="hidden" name="paper_id" id="invite-paper-id-input" value="">
+        </div>
+        <div class="px-5 py-4 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
+          <button id="close-invite-modal-footer" type="button"
+            class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">
+            Cancel
+          </button>
+          <button type="submit" id="send-invite-button"
+            class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
+            <i class="fas fa-paper-plane mr-2"></i>Send Invitation
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -583,6 +641,127 @@
           );
         });
       });
+  // ... inside the main <script> tag ...
+
+    // --- Invite Modal Logic Variables ---
+    const inviteModal = document.getElementById("invite-modal");
+    const inviteForm = document.getElementById("invite-form");
+    const inviteEmailInput = document.getElementById("invite-email-input");
+    const invitePaperIdInput = document.getElementById("invite-paper-id-input");
+    const inviteEmailError = document.getElementById("invite-email-error");
+    const sendInviteButton = document.getElementById("send-invite-button");
+    const closeInviteModalButtons = document.querySelectorAll(
+      "#close-invite-modal-top, #close-invite-modal-footer"
+    );
+
+    const closeInviteModal = () => {
+      inviteModal.classList.add("hidden");
+      inviteEmailError.classList.add("hidden");
+      inviteEmailInput.classList.remove("invalid");
+      inviteEmailInput.value = ""; // Clear the email field
+      sendInviteButton.textContent = 'Send Invitation'; // Reset button text
+      sendInviteButton.disabled = false; // Enable button
+    };
+
+    // --- Open Invite Modal ---
+    document.querySelectorAll(".invite-button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const paperId = button.dataset.paperId;
+        const paperTitle = button.dataset.paperTitle;
+
+        document.getElementById("invite-modal-paper-title").textContent = paperTitle;
+        invitePaperIdInput.value = paperId;
+
+        inviteModal.classList.remove("hidden");
+        inviteEmailInput.focus();
+      });
+    });
+
+    // --- Close Invite Modal ---
+    closeInviteModalButtons.forEach((btn) =>
+      btn.addEventListener("click", closeInviteModal)
+    );
+    
+    // --- Invite Form Submission (AJAX) ---
+    inviteForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      
+      let email = inviteEmailInput.value.trim();
+      let paper_id = invitePaperIdInput.value;
+      
+      // Basic client-side email format validation
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        inviteEmailInput.classList.add("invalid");
+        inviteEmailError.textContent = "Please enter a valid email address.";
+        inviteEmailError.classList.remove("hidden");
+        return;
+      }
+
+      inviteEmailInput.classList.remove("invalid");
+      inviteEmailError.classList.add("hidden");
+
+      sendInviteButton.disabled = true;
+      sendInviteButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending...';
+
+      const inviteUrl = "{% url 'invite_candidate' %}"; 
+
+      fetch(inviteUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email, paper_id: paper_id }),
+      })
+      .then((res) => {
+        if (res.status === 400) {
+          // Handle validation errors from the backend
+          return res.json().then(data => {
+            if (data.errors && data.errors.email) {
+              inviteEmailInput.classList.add("invalid");
+              inviteEmailError.textContent = data.errors.email[0];
+              inviteEmailError.classList.remove("hidden");
+            } else {
+               showToast(data.message || "Invitation failed due to validation error.", "error");
+            }
+            throw new Error("Validation Failed"); // Break the chain
+          });
+        }
+        if (!res.ok) {
+           throw new Error("Server error occurred.");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data.status === "success") {
+          showToast(data.message, "success");
+          closeInviteModal();
+          
+          // CRITICAL: Update the dashboard status dot if the public status changed
+          const statusDot = document.getElementById(`status-dot-${paper_id}`);
+          if (statusDot) {
+             statusDot.classList.toggle("bg-green-500", data.is_public_active);
+             statusDot.classList.toggle("bg-gray-400", !data.is_public_active);
+          }
+          
+        } else {
+          showToast(data.message || "Invitation failed.", "error");
+        }
+      })
+      .catch((error) => {
+        if (error.message !== "Validation Failed") { // Ignore validation-only errors
+            console.error("Invite Error:", error);
+            showToast("An unexpected error occurred. Please try again.", "error");
+        }
+      })
+      .finally(() => {
+        sendInviteButton.disabled = false;
+        sendInviteButton.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Send Invitation';
+      });
+    });
+    // ... rest of the script ...
   </script>
 </body>
 

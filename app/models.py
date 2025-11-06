@@ -97,9 +97,9 @@ class QuestionPaper(models.Model):
     )
     total_questions = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_public_active = models.BooleanField(null=True, blank=True)
-
+    is_private_link_active = models.BooleanField(default=False) # <--- ADD default=False
     def __str__(self):
         return f"{self.title} for {self.job_title}"
 

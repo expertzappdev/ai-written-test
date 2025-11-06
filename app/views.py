@@ -23,7 +23,7 @@ from .forms import (
     DepartmentForm,
     SkillForm,
 )
-import csv  # <-- ADD THIS LINE
+import csv  
 from .models import QuestionPaper, PaperSection, Question, Department, Skill
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from .models import (
@@ -152,7 +152,6 @@ def generate_questions(request):
             elif int(max_exp) > 2:
                 seniority = "Mid-Level"
 
-            # --- UPDATED PROMPT START HERE ---
 
             prompt = f"""
             Act as a seasoned technical assessment creator and principal engineer. Your primary goal is to build a well-balanced and experience-appropriate technical test. The entire response MUST be a single, valid JSON object without any markdown.
@@ -194,10 +193,8 @@ def generate_questions(request):
             Generate the {seniority}-level assessment now, creating the perfect, balanced mix of questions for each section as instructed.
             """
 
-            # --- UPDATED PROMPT END HERE ---
 
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            # Using a powerful model is key for understanding these nuanced instructions
             model = genai.GenerativeModel("gemini-2.5-pro")
             response = model.generate_content(prompt)
 
@@ -229,7 +226,6 @@ def generate_questions(request):
     return render(request, "question_generator/generator.html", context)
 
 
-# ... (keep all other views as they are) ...
 @login_required
 @require_POST
 @transaction.atomic
@@ -252,6 +248,7 @@ def save_paper(request):
             is_active=True,
             duration=data.get("duration"),
             is_public_active=False,
+            is_private_link_active=False,  
             skills_list=(
                 ", ".join(data.get("skills", []))
                 if isinstance(data.get("skills"), list)
@@ -297,26 +294,34 @@ def list_papers(request):
     return render(request, "question_generator/list_papers.html", {"papers": papers})
 
 
+
+
 def take_paper(request, paper_id):
     """
-    Handles the request for a public user to take a question paper.
+    Handles the request for a public or invited user to take a question paper.
     """
     paper = get_object_or_404(QuestionPaper, pk=paper_id)
 
     if not paper.is_public_active:
         return render(request, "link_deactivated.html", status=403)
 
-    context = {
-        "paper": paper,
-    }
-    return redirect("test:user_register_link", link_id=str(paper.id))
+    invited_email = request.GET.get("email")
 
+    redirect_url = reverse("test:user_register_link", kwargs={"link_id": str(paper.id)})
+
+    if invited_email:
+        return redirect(f"{redirect_url}?email={invited_email}")
+
+    return redirect(redirect_url)
+
+
+from django.urls import reverse  
+from urllib.parse import urlencode  
 
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import QuestionPaper, TestRegistration
 
-# app/views.py
 
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -324,115 +329,6 @@ from .models import QuestionPaper, TestRegistration
 
 
 from .models import UserResponse
-
-
-# @login_required
-# def paper_detail_view(request, paper_id):
-#     """
-#     Displays the details of a single question paper.
-#     This version RE-CALCULATES the score for each participant to ensure
-#     consistency with the test report. (FIXED LOGIC BELOW)
-#     """
-#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
-#     status_filter = request.GET.get("status", "all")
-#     shortlist_filter = request.GET.get("shortlist_status", "all")
-
-#     skills = [skill.strip() for skill in paper.skills_list.split(",") if skill.strip()]
-
-#     all_participants = list(
-#         TestRegistration.objects.filter(question_paper=paper).order_by("-start_time")
-#     )
-
-#     # ▼▼▼ THE FINAL, CORRECTED LOGIC IS HERE ▼▼▼
-#     for p in all_participants:
-#         if p.is_completed:
-#             user_responses = UserResponse.objects.filter(registration=p)
-#             correct_answers_count = 0
-
-#             for response in user_responses:
-#                 question = response.question
-#                 user_answer = response.user_answer.strip()
-#                 is_correct = False
-
-#                 if not user_answer:
-#                     # Unattempted answers are always incorrect (score-wise)
-#                     is_correct = False
-#                 elif question and question.answer:
-#                     # 1. MCQ: Direct comparison
-#                     if question.question_type == "MCQ":
-#                         is_correct = (
-#                             user_answer.lower() == question.answer.strip().lower()
-#                         )
-#                     # 2. SA/CODE/TF: AI Evaluation
-#                     else:
-#                         # Map internal question type to evaluator type
-#                         qtype = question.question_type.upper()
-#                         if qtype in ("CODE", "CODING"):
-#                             evaluator_type = "coding"
-#                         elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
-#                             evaluator_type = "short"
-#                         elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
-#                             evaluator_type = "true_false"
-#                         else:
-#                             evaluator_type = "short"
-
-#                         # Use the smart AI evaluation
-#                         is_correct, _ = evaluate_answer_with_ai(
-#                             question_text=question.text,
-#                             user_answer=user_answer,
-#                             model_answer=question.answer.strip(),
-#                             question_type=evaluator_type,
-#                         )
-
-#                 if is_correct:
-#                     correct_answers_count += 1
-
-#             # 3. Calculate the percentage score live
-#             total_questions = p.question_paper.total_questions
-#             live_percentage = 0
-#             if total_questions > 0:
-#                 live_percentage = round((correct_answers_count / total_questions) * 100)
-
-#             # 4. Use this live percentage for the status check
-#             cutoff = p.question_paper.cutoff_score
-#             p.score = live_percentage  # Attach live score for comparison/display
-
-#             if cutoff is not None:
-#                 if live_percentage >= cutoff:
-#                     p.status = "pass"
-#                 else:
-#                     p.status = "fail"
-#             else:
-#                 p.status = "pass"  # No cutoff means any completed test is a pass
-#         else:
-#             p.status = "pending"
-#     # ▲▲▲ END OF CORRECTED LOGIC ▲▲▲
-
-#     # --- The filtering logic remains the same ---ƒ
-#     if status_filter != "all":
-#         filtered_participants = [
-#             p for p in all_participants if p.status == status_filter
-#         ]
-#     else:
-#         filtered_participants = all_participants
-
-#     if shortlist_filter == "shortlisted":
-#         final_participants = [p for p in filtered_participants if p.is_shortlisted]
-#     elif shortlist_filter == "not_shortlisted":
-#         final_participants = [p for p in filtered_participants if not p.is_shortlisted]
-#     else:
-#         final_participants = filtered_participants
-
-#     context = {
-#         "paper": paper,
-#         "skills": skills,
-#         "participants": final_participants,
-#         "title": f"Details for {paper.title}",
-#         "selected_status": status_filter,
-#         "selected_shortlist_status": shortlist_filter,
-#     }
-#     return render(request, "question_generator/paper_detail.html", context)
-# app/views.py - Add this updated function
 
 
 @login_required
@@ -467,7 +363,6 @@ def paper_detail_view(request, paper_id):
                     is_correct = False
                 elif question and question.answer:
                     if question.question_type == "MCQ":
-                        import re
 
                         cleaned_answer = re.sub(r"<[^>]+>", "", question.answer).strip()
                         is_correct = user_answer.lower() == cleaned_answer.lower()
@@ -538,43 +433,6 @@ def paper_detail_view(request, paper_id):
     return render(request, "question_generator/paper_detail.html", context)
 
 
-# @login_required
-# @transaction.atomic
-# def paper_edit_view(request, paper_id):
-#     """
-#     Handles editing of a question paper's metadata and its questions.
-#     """
-
-#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
-
-#     if request.method == "POST":
-#         form = QuestionPaperEditForm(request.POST, instance=paper)
-
-#         if form.is_valid():
-#             form.save()
-
-#             for section in paper.paper_sections.all():
-#                 for question in section.questions.all():
-#                     question_text_name = f"question-text-{question.id}"
-#                     question_answer_name = f"question-answer-{question.id}"
-
-#                     if question_text_name in request.POST:
-#                         question.text = request.POST[question_text_name]
-#                     if question_answer_name in request.POST:
-#                         question.answer = request.POST[question_answer_name]
-
-#                     question.save()
-#                     # **NEW: Add the success message here**
-#             messages.success(request, "Paper updated successfully!")
-#             return redirect("/dashboard/")
-
-#     else:
-#         form = QuestionPaperEditForm(instance=paper)
-
-#     context = {"form": form, "paper": paper, "title": f"Edit {paper.title}"}
-#     return render(request, "question_generator/paper_edit.html", context)
-
-# app/views.py (Assuming this is where paper_edit_view is located)
 
 
 @login_required
@@ -590,32 +448,27 @@ def paper_edit_view(request, paper_id):
         form = QuestionPaperEditForm(request.POST, instance=paper)
 
         if form.is_valid():
-            # 1. Paper metadata save karo (job_title, duration, skills, etc.)
             updated_paper = form.save()
 
-            # 2. Track total questions for recalculation
             total_questions_count = 0
 
-            # 3. Questions and answers update karo
             for section in paper.paper_sections.all():
                 for question in section.questions.all():
                     question_text_name = f"question-text-{question.id}"
                     question_answer_name = f"question-answer-{question.id}"
 
-                    # Check if fields are in POST data
                     if question_text_name in request.POST:
                         new_text = request.POST[question_text_name].strip()
-                        if new_text:  # Empty na ho
+                        if new_text:  
                             question.text = new_text
 
                     if question_answer_name in request.POST:
                         new_answer = request.POST[question_answer_name].strip()
-                        if new_answer:  # Empty na ho
+                        if new_answer:  
                             question.answer = new_answer
-                        # paper_edit_view function in views.py (यह हिस्सा पहले से मौजूद है और सही है)
                         if question.question_type == "MCQ":
                             options = []
-                            for opt_num in range(1, 11):  # Up to 10 options
+                            for opt_num in range(1, 11):  
                                 option_key = f"option-{question.id}-{opt_num}"
                                 if option_key in request.POST:
                                     option_value = request.POST[option_key].strip()
@@ -624,23 +477,10 @@ def paper_edit_view(request, paper_id):
                             if options:
                                 question.options = options
 
-                        # Save individual question
                         question.save()
-                    # if question.question_type == "MCQ":
-                    #     options = []
-                    #     for opt_num in range(1, 11):  # Up to 10 options
-                    #         option_key = f"option-{question.id}-{opt_num}"
-                    #         if option_key in request.POST:
-                    #             option_value = request.POST[option_key].strip()
-                    #             if option_value:
-                    #                 options.append(option_value)
-                    #     if options:
-                    #         question.options = options
-                    # # Save individual question
-                    question.save()
+                   
                     total_questions_count += 1
 
-            # 4. Update total questions count in paper
             updated_paper.total_questions = total_questions_count
             updated_paper.save(update_fields=["total_questions"])
 
@@ -651,84 +491,17 @@ def paper_edit_view(request, paper_id):
             return redirect("paper_detail", paper_id=paper.id)
 
         else:
-            # Form validation fail hua
             messages.error(
                 request,
                 "❌ There were errors in your submission. Please check the form.",
             )
 
     else:
-        # GET request: Form with existing data show karo
         form = QuestionPaperEditForm(instance=paper)
 
     context = {"form": form, "paper": paper, "title": f"Edit {paper.title}"}
 
     return render(request, "question_generator/paper_edit.html", context)
-
-
-# @login_required
-# @transaction.atomic
-# def paper_edit_view(request, paper_id):
-#     """
-#     Handles editing of a question paper's metadata and its questions.
-#     Database mein bhi changes save honge.
-#     """
-#     paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
-
-#     if request.method == "POST":
-#         form = QuestionPaperEditForm(request.POST, instance=paper)
-
-#         if form.is_valid():
-#             # 1. Paper metadata save karo (job_title, duration, skills, etc.)
-#             updated_paper = form.save()
-
-#             # 2. Track total questions for recalculation
-#             total_questions_count = 0
-
-#             # 3. Questions and answers update karo
-#             for section in paper.paper_sections.all():
-#                 for question in section.questions.all():
-#                     question_text_name = f"question-text-{question.id}"
-#                     question_answer_name = f"question-answer-{question.id}"
-
-#                     # Check if fields are in POST data
-#                     if question_text_name in request.POST:
-#                         new_text = request.POST[question_text_name].strip()
-#                         if new_text:  # Empty na ho
-#                             question.text = new_text
-
-#                     if question_answer_name in request.POST:
-#                         new_answer = request.POST[question_answer_name].strip()
-#                         if new_answer:  # Empty na ho
-#                             question.answer = new_answer
-
-#                     # Save individual question
-#                     question.save()
-#                     total_questions_count += 1
-
-#             # 4. Update total questions count in paper
-#             updated_paper.total_questions = total_questions_count
-#             updated_paper.save(update_fields=["total_questions"])
-
-#             messages.success(
-#                 request,
-#                 f"✅ Paper '{updated_paper.title}' successfully updated with {total_questions_count} questions!",
-#             )
-#             return redirect("paper_detail", paper_id=paper.id)
-
-#         else:
-#             # Form validation fail hua
-#             messages.error(
-#                 request,
-#                 "❌ There were errors in your submission. Please check the form.",
-#             )
-
-#     else:
-#         # GET request: Form with existing data show karo
-#         form = QuestionPaperEditForm(instance=paper)
-
-#     context = {"form": form, "paper": paper, "title": f"Edit {paper.title}"}
-#     return render(request, "question_generator/paper_edit.html", context)
 
 
 import logging
@@ -1700,7 +1473,6 @@ def submit_test(request, registration_id):
         user_answer = response.user_answer.strip()
         is_correct = False
 
-        # ✅ Only evaluate if user provided an answer
         if user_answer:
             if question.question_type == "MCQ":
                 model_answer = question.answer.strip()
@@ -1747,13 +1519,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import views as auth_views
 from django.shortcuts import render
 
-# Assuming User is fetched somewhere, if not, add:
 User = get_user_model()
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth import views as auth_views
 from django.shortcuts import render
+from django.urls import reverse  #
 
 User = get_user_model()
 
@@ -1768,27 +1540,128 @@ def password_reset_request(request):
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
 
-        # 1. Database existence check
         try:
-            # Check if a user with this email exists (case-insensitive) and is active
             User.objects.get(email__iexact=email, is_active=True)
 
         except User.DoesNotExist:
-            # 2. Agar user nahi mila, to error message set karein.
-            # Security ke liye, yeh message thoda vague (vague) hona chahiye,
-            # par user requirement ke anusaar hum yahaan specific error de rahe hain.
             messages.error(
                 request,
                 "The email address you entered is not associated with any active account. Please check it and try again. 🧐",
             )
-            # Re-render the form page with the error
             return render(request, template_name, {})
 
-        # 3. Agar user mil gaya, to Django ke default PasswordResetView ko call karein
-        # Taki mail send ho sake.
+      
         return auth_views.PasswordResetView.as_view(template_name=template_name)(
             request
         )
 
-    # GET request ke liye (page load hone par)
     return auth_views.PasswordResetView.as_view(template_name=template_name)(request)
+
+
+from django.core.mail import send_mail  
+from django.template.loader import render_to_string 
+from django.utils.html import strip_tags  
+from .forms import (
+   
+    SkillForm,
+    InviteCandidateForm,  
+)
+
+
+from django.urls import reverse
+from urllib.parse import urlencode  
+
+
+@login_required
+@require_POST
+def invite_candidate(request):
+    """
+    Handles the AJAX request to invite a candidate via email.
+    FIXED: Now adds email parameter to the link.
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"status": "error", "message": "Invalid JSON data."}, status=400
+        )
+
+    form = InviteCandidateForm(data)
+
+    if form.is_valid():
+        candidate_email = form.cleaned_data["email"]
+        paper_id = form.cleaned_data["paper_id"]
+
+        try:
+            paper = QuestionPaper.objects.get(pk=paper_id, created_by=request.user)
+        except QuestionPaper.DoesNotExist:
+            return JsonResponse(
+                {"status": "error", "message": "Paper not found or unauthorized."},
+                status=404,
+            )
+
+        if not paper.is_public_active:
+            paper.is_public_active = True
+            paper.save(update_fields=["is_public_active"])
+            messages.info(
+                request, f"Public link for '{paper.title}' was automatically activated."
+            )
+
+        registration_url = reverse(
+            "test:user_register_link", kwargs={"link_id": str(paper.id)}
+        )
+
+        query_string = urlencode({"email": candidate_email})
+        test_link = request.build_absolute_uri(f"{registration_url}?{query_string}")
+
+        context = {
+            "paper_title": paper.title,
+            "job_title": paper.job_title,
+            "recruiter_name": request.user.get_full_name() or request.user.username,
+            "test_link": test_link,  
+            "duration": paper.duration,
+            "total_questions": paper.total_questions,
+            "skills_list": paper.skills_list.split(","),
+        }
+
+       
+        html_message = render_to_string("emails/candidate_invite.html", context)
+        plain_message = strip_tags(html_message)
+
+        try:
+            send_mail(
+                subject=f"Invitation to Take Assessment: {paper.title} for {paper.job_title}",
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[candidate_email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": f"Invitation sent successfully to {candidate_email}!",
+                    "is_public_active": paper.is_public_active,
+                },
+                status=200,
+            )
+
+        except Exception as e:
+            logger.error(f"Error sending email to {candidate_email}: {e}")
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "Email sending failed. Please check server logs.",
+                },
+                status=500,
+            )
+    else:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Form validation failed.",
+                "errors": form.errors,
+            },
+            status=400,
+        )
+
