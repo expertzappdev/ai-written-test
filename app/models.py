@@ -30,14 +30,6 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
 
-
-class Section(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Skill(models.Model):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
@@ -62,6 +54,12 @@ class Skill(models.Model):
 
     class Meta:
         ordering = ["name"]
+
+class Section(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Department(models.Model):
@@ -174,7 +172,7 @@ class UserResponse(models.Model):
     user_answer = models.TextField()
     question = models.ForeignKey(Question, on_delete=models.DO_NOTHING)
     registration = models.ForeignKey(TestRegistration, on_delete=models.DO_NOTHING)
-
+    is_correct = models.BooleanField(null=True, blank=True)
     class Meta:
         db_table = "user_tests_userresponse"
         managed = False

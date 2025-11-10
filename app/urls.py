@@ -89,4 +89,11 @@ urlpatterns = [
     path(
         "invite-candidate/", views.invite_candidate, name="invite_candidate"
     ), 
+    path(
+    "sections/create/",
+    views.create_section_ajax,
+    name="create_section_ajax"
+),
+path('api/skills/search/', views.search_skills_with_suggestions, name='search_skills_suggestions'),
+
 ]

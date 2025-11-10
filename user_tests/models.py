@@ -58,7 +58,7 @@ class UserResponse(models.Model):
     
     # User ne kya answer diya (MCQ ho ya subjective)
     user_answer = models.TextField(blank=True, null=True)
-    
+    is_correct = models.BooleanField(null=True, blank=True)
     class Meta:
         # Ek user ek test mein ek question ka sirf ek hi answer de sakta hai
         unique_together = ('registration', 'question')

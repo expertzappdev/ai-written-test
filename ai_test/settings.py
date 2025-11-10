@@ -311,12 +311,15 @@ AUTH_PASSWORD_VALIDATORS = [
 
 env = environ.Env(
     # Set casting default for API key (e.g., read as a string)
-    GEMINI_API_KEY=(str, "")
+    GEMINI_API_KEY=(str, ""),
+    OPENAI_API_KEY=(str, "")
 )
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
+# settings.py
 GEMINI_API_KEY = env("GEMINI_API_KEY")
-
+OPENAI_API_KEY = env("OPENAI_API_KEY")
+print(f"DEBUG: OpenAI Key Loaded: {'Yes' if OPENAI_API_KEY else 'No'}") # DO NOT PRINT THE ACTUAL KEY FOR SECURITY
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 

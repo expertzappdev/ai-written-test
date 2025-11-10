@@ -417,3 +417,23 @@ class InviteCandidateForm(forms.Form):
         email = self.cleaned_data["email"].strip().lower()
         
         return email
+
+
+class SectionForm(forms.ModelForm):
+    """Form to create new sections."""
+    class Meta:
+        model = Section
+        fields = ["name"]
+        widgets = {
+            "name": forms.TextInput(attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-theme-button",
+                "placeholder": "Enter section name",
+            })
+        }
+    
+    def clean_name(self):
+        """Validate that section name doesn't already exist."""
+        name = self.cleaned_data.get("name", "").strip()
+        if Section.objects.filter(name__iexact=name).exists():
+            raise forms.ValidationError("This section already exists.")
+        return name

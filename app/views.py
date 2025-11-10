@@ -1,6 +1,7 @@
 # app/views.py
 
 import json
+from openai import OpenAI  # Import OpenAI instead of google.generativeai
 import re
 import google.generativeai as genai
 from django.contrib.auth import login, logout
@@ -194,11 +195,25 @@ def generate_questions(request):
             """
 
 
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            response = model.generate_content(prompt)
+            # genai.configure(api_key=settings.GEMINI_API_KEY)
+            # model = genai.GenerativeModel("gemini-2.5-pro")
+            # response = model.generate_content(prompt)
 
-            json_text = response.text.strip()
+            # json_text = response.text.strip()
+            # --- PASTE THIS NEW BLOCK ---
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that generates technical assessments in strictly valid JSON format."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                response_format={"type": "json_object"}
+            )
+
+            json_text = response.choices[0].message.content.strip()
+            # ----------------------------
             if json_text.startswith("```json"):
                 json_text = json_text[7:]
             if json_text.endswith("```"):
@@ -509,34 +524,62 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# def department_create_view(request):
+#     if request.method == "POST":
+#         form = DepartmentForm(request.POST)
+#         if form.is_valid():
+#             try:
+#                 form.save()
+
+#                 messages.success(request, "Department created successfully!")
+#                 return redirect("dashboard")
+#             except Exception as e:
+
+#                 logger.error(f"Error creating department: {e}", exc_info=True)
+
+#                 messages.error(
+#                     request,
+#                     "Could not create the department. Please try again or contact support.",
+#                 )
+
+#                 return redirect("department_create")
+#         else:
+
+#             messages.warning(request, "Please correct the errors below.")
+#     else:
+#         form = DepartmentForm()
+
+#     context = {"form": form}
+#     return render(request, "partials/department/department_create.html", context)
+# app/views.py
+
+@login_required
 def department_create_view(request):
     if request.method == "POST":
         form = DepartmentForm(request.POST)
         if form.is_valid():
             try:
-                form.save()
+                # ✨ CHANGE 1: Pehle Department instance banayein par abhi database main pura commit na karein
+                department = form.save(commit=False)
+                # Department ko save karein taaki usse ek ID mil jaye
+                department.save()
+
+                # ✨ CHANGE 2: Ab explicitly Many-to-Many relations (sections) ko save karein
+                form.save_m2m()
 
                 messages.success(request, "Department created successfully!")
                 return redirect("dashboard")
             except Exception as e:
-
                 logger.error(f"Error creating department: {e}", exc_info=True)
-
-                messages.error(
-                    request,
-                    "Could not create the department. Please try again or contact support.",
-                )
-
+                messages.error(request, f"Error: {e}")
                 return redirect("department_create")
         else:
-
             messages.warning(request, "Please correct the errors below.")
     else:
         form = DepartmentForm()
 
     context = {"form": form}
     return render(request, "partials/department/department_create.html", context)
-
 
 @login_required
 def get_skills_json(request):
@@ -1016,6 +1059,88 @@ import google.generativeai as genai
 from django.conf import settings
 
 
+# def evaluate_answer_with_ai(
+#     question_text: str,
+#     user_answer: str,
+#     model_answer: str,
+#     question_type: str = "short",
+# ) -> Tuple[bool, Dict[str, Any]]:
+#     """
+#     Uses Gemini AI to evaluate if a user's answer is conceptually correct.
+
+#     Args:
+#         question_text: The question being asked
+#         user_answer: User's submitted answer
+#         model_answer: Correct/reference answer
+#         question_type: Type of question - "mcq", "short", "coding", "true_false"
+
+#     Returns:
+#         Tuple of (is_correct: bool, details: dict with confidence and reason)
+#     """
+#     # Empty answer check
+#     if not user_answer or not user_answer.strip():
+#         return False, {
+#             "is_correct": False,
+#             "confidence": 100,
+#             "reason": "Answer is empty",
+#         }
+
+#     # Normalize inputs
+#     user_answer = user_answer.strip()
+#     model_answer = model_answer.strip()
+
+#     try:
+#         # Quick checks for specific question types before AI call
+#         if question_type.lower() == "mcq":
+#             return _evaluate_mcq(user_answer, model_answer)
+
+#         elif question_type.lower() in ["true_false", "boolean"]:
+#             return _evaluate_boolean(user_answer, model_answer)
+
+#         # AI evaluation for short answer and coding
+#         genai.configure(api_key=settings.GEMINI_API_KEY)
+#         model = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+#         # Different prompts for different question types
+#         if question_type.lower() == "coding":
+#             prompt = _get_coding_prompt(question_text, user_answer, model_answer)
+#         else:
+#             prompt = _get_short_answer_prompt(question_text, user_answer, model_answer)
+
+#         response = model.generate_content(prompt)
+#         cleaned_text = response.text.strip()
+
+#         # Remove markdown code blocks if present
+#         if cleaned_text.startswith("```json"):
+#             cleaned_text = cleaned_text[7:]
+#         elif cleaned_text.startswith("```"):
+#             cleaned_text = cleaned_text[3:]
+#         if cleaned_text.endswith("```"):
+#             cleaned_text = cleaned_text[:-3]
+#         cleaned_text = cleaned_text.strip()
+
+#         result = json.loads(cleaned_text)
+
+#         is_correct = result.get("is_correct", False)
+#         return is_correct, result
+
+#     except json.JSONDecodeError as e:
+
+#         return _fallback_evaluation(user_answer, model_answer, question_type)
+
+#     except Exception as e:
+#         print(f"AI Evaluation Error: {e}")
+#         return _fallback_evaluation(user_answer, model_answer, question_type)
+
+import json
+import re
+from typing import Tuple, Dict, Any
+from django.conf import settings
+from openai import OpenAI  # Import OpenAI instead of google.generativeai
+
+# OpenAI Client initialize karein
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
 def evaluate_answer_with_ai(
     question_text: str,
     user_answer: str,
@@ -1023,16 +1148,7 @@ def evaluate_answer_with_ai(
     question_type: str = "short",
 ) -> Tuple[bool, Dict[str, Any]]:
     """
-    Uses Gemini AI to evaluate if a user's answer is conceptually correct.
-
-    Args:
-        question_text: The question being asked
-        user_answer: User's submitted answer
-        model_answer: Correct/reference answer
-        question_type: Type of question - "mcq", "short", "coding", "true_false"
-
-    Returns:
-        Tuple of (is_correct: bool, details: dict with confidence and reason)
+    Uses OpenAI GPT-4o-mini to evaluate if a user's answer is conceptually correct.
     """
     # Empty answer check
     if not user_answer or not user_answer.strip():
@@ -1054,41 +1170,42 @@ def evaluate_answer_with_ai(
         elif question_type.lower() in ["true_false", "boolean"]:
             return _evaluate_boolean(user_answer, model_answer)
 
-        # AI evaluation for short answer and coding
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        # --- AI Evaluation Section Changed Here ---
 
         # Different prompts for different question types
         if question_type.lower() == "coding":
             prompt = _get_coding_prompt(question_text, user_answer, model_answer)
+            system_instruction = "You are an expert programming instructor evaluating code. Output ONLY JSON."
         else:
             prompt = _get_short_answer_prompt(question_text, user_answer, model_answer)
+            system_instruction = "You are an expert technical evaluator. Output ONLY JSON."
 
-        response = model.generate_content(prompt)
-        cleaned_text = response.text.strip()
+        # OpenAI API Call
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,  # Lower temperature for more consistent evaluations
+            max_tokens=500,
+            response_format={"type": "json_object"}  # Forces valid JSON output
+        )
 
-        # Remove markdown code blocks if present
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]
-        elif cleaned_text.startswith("```"):
-            cleaned_text = cleaned_text[3:]
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]
-        cleaned_text = cleaned_text.strip()
-
+        # Extract content
+        cleaned_text = response.choices[0].message.content.strip()
         result = json.loads(cleaned_text)
 
         is_correct = result.get("is_correct", False)
         return is_correct, result
 
-    except json.JSONDecodeError as e:
-
+    except json.JSONDecodeError:
+        print("AI Evaluation Error: Invalid JSON received from OpenAI")
         return _fallback_evaluation(user_answer, model_answer, question_type)
 
     except Exception as e:
         print(f"AI Evaluation Error: {e}")
         return _fallback_evaluation(user_answer, model_answer, question_type)
-
 
 def _get_short_answer_prompt(
     question_text: str, user_answer: str, model_answer: str
@@ -1143,58 +1260,103 @@ Respond with ONLY a valid JSON object (no markdown, no extra text):
 }}"""
 
 
+# def _get_coding_prompt(question_text: str, user_code: str, model_code: str) -> str:
+#     """
+#     Generate prompt for coding evaluation with cross-language flexibility criteria.
+#     (MODIFIED FOR LANGUAGE FLEXIBILITY - FOR DIRECT PASTE)
+#     """
+#     return f"""You are an expert programming instructor. Evaluate if the user's code correctly solves the problem.
+
+# **Question:**
+# {question_text}
+
+# **Reference Solution (Use for context, but do not require exact matching):**
+# ```
+# {model_code}
+# ```
+
+# **User's Code:**
+# ```
+# {user_code}
+# ```
+
+# **Evaluation Criteria:**
+# 1. **CRITICAL: The user's code MUST solve the specific problem described in the Question.**
+
+# 2. **⭐ Cross-Language Tolerance (FLEXIBLE LOGIC) ⭐:**
+#     * **If the QUESTION text DOES NOT explicitly name a programming language** (e.g., "Write a function...", "Solve this problem..."), **then ACCEPT the solution, even if the language of the User's Code differs from the Reference Solution, provided the core logic is sound.** The goal is to check technical skill, not language specific adherence, unless requested.
+#     * If the **QUESTION text EXPLICITLY specifies a language** (e.g., "Write a JavaScript function...", "Implement this in Python"), then **code in a different language should result in is_correct: false**, regardless of the logic.
+
+# 3. The core logic must be sound, even if the implementation style differs.
+# 4. Accept different approaches: loops vs. comprehensions, recursion vs. iteration.
+# 5. Accept different but correct algorithms.
+# 6. Ignore minor syntax variations: spacing, indentation, bracket styles.
+# 7. Accept more efficient or optimized solutions.
+
+# **What to REJECT (This must result in is_correct: false):**
+# - **Code that solves a COMPLETELY DIFFERENT PROBLEM than the one asked.**
+# - Logic errors that produce incorrect output.
+# - Missing critical functionality.
+# - **Code in a different language when the question explicitly mandated a specific one.**
+
+# **Scoring Guide:**
+# - is_correct: true if code would work and solve the problem (50%+ functionality)
+# - is_correct: false if code has fundamental logic errors or solves the wrong problem
+# - confidence: 90-100% for perfect or near-perfect solutions
+# - confidence: 70-89% for working solutions with minor issues
+
+# Respond with ONLY valid JSON (no markdown, no extra text):
+# {{
+#     "is_correct": true/false,
+#     "confidence": 0-100,
+#     "reason": "brief explanation"
+# }}"""
 def _get_coding_prompt(question_text: str, user_code: str, model_code: str) -> str:
     """
-    Generate prompt for coding evaluation with cross-language flexibility criteria.
-    (MODIFIED FOR LANGUAGE FLEXIBILITY - FOR DIRECT PASTE)
+    Generate a highly flexible prompt that forces AI to ignore language differences
+    and boilerplate code unless specifically required by the question.
     """
-    return f"""You are an expert programming instructor. Evaluate if the user's code correctly solves the problem.
+    return f"""You are an expert multi-language code evaluator. Your ONLY job is to check if the user's logic solves the problem, regardless of the language used.
 
 **Question:**
 {question_text}
 
-**Reference Solution (Use for context, but do not require exact matching):**
-```
-{model_code}
-```
-
-**User's Code:**
+**User's Code (EVALUATE THIS LOGIC):**
 ```
 {user_code}
-```
 
-**Evaluation Criteria:**
-1. **CRITICAL: The user's code MUST solve the specific problem described in the Question.**
+**Question:**
+{question_text}
 
-2. **⭐ Cross-Language Tolerance (FLEXIBLE LOGIC) ⭐:**
-    * **If the QUESTION text DOES NOT explicitly name a programming language** (e.g., "Write a function...", "Solve this problem..."), **then ACCEPT the solution, even if the language of the User's Code differs from the Reference Solution, provided the core logic is sound.** The goal is to check technical skill, not language specific adherence, unless requested.
-    * If the **QUESTION text EXPLICITLY specifies a language** (e.g., "Write a JavaScript function...", "Implement this in Python"), then **code in a different language should result in is_correct: false**, regardless of the logic.
+**User's Code (Evaluate THIS based on its own language's syntax/logic):**
 
-3. The core logic must be sound, even if the implementation style differs.
-4. Accept different approaches: loops vs. comprehensions, recursion vs. iteration.
-5. Accept different but correct algorithms.
-6. Ignore minor syntax variations: spacing, indentation, bracket styles.
-7. Accept more efficient or optimized solutions.
+**Reference Solution (FOR CONTEXT ONLY - IGNORE LANGUAGE USED HERE):**
 
-**What to REJECT (This must result in is_correct: false):**
-- **Code that solves a COMPLETELY DIFFERENT PROBLEM than the one asked.**
-- Logic errors that produce incorrect output.
-- Missing critical functionality.
-- **Code in a different language when the question explicitly mandated a specific one.**
 
-**Scoring Guide:**
-- is_correct: true if code would work and solve the problem (50%+ functionality)
-- is_correct: false if code has fundamental logic errors or solves the wrong problem
-- confidence: 90-100% for perfect or near-perfect solutions
-- confidence: 70-89% for working solutions with minor issues
+**CRITICAL EVALUATION RULES (MUST FOLLOW):**
+1. **🚫 IGNORE LANGUAGE RESTRICTIONS (UNLESS EXPLICIT):**
+   - If the question does NOT explicitly say "Write in JavaScript" (or another specific language), you **MUST ACCEPT** solutions in **Java, Python, C++, C, SQL, or JavaScript**.
+   - The user's language DOES NOT need to match the Reference Solution's language.
 
-Respond with ONLY valid JSON (no markdown, no extra text):
+2. **🏗️ IGNORE BOILERPLATE & STRUCTURE:**
+   - In Java/C++, users often need full classes (`public class Main { ... }`) to run code. **DO NOT mark this wrong** if the question only asked for a "function".
+   - Focus ONLY on the core logic inside the function/method that solves the problem.
+
+3. **✅ LOGIC IS KING:**
+   - Does the code actually solve the problem?
+   - If it runs and produces the correct output (like "madam" -> true), it is **CORRECT**.
+   - Ignore minor syntax errors (like missing semicolons) if the logic is sound.
+
+**SCORING:**
+- `is_correct: true` -> Logic is correct in ANY standard standard programming language.
+- `is_correct: false` -> Logic is wrong, OR question EXPLICITLY forbade this language.
+
+Output strictly valid JSON:
 {{
     "is_correct": true/false,
     "confidence": 0-100,
-    "reason": "brief explanation"
+    "reason": "One sentence feedback focusing ONLY on logic."
 }}"""
-
 
 def _evaluate_mcq(user_answer: str, model_answer: str) -> Tuple[bool, Dict]:
     """Evaluate MCQ answers with flexibility for different formats"""
@@ -1562,7 +1724,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string 
 from django.utils.html import strip_tags  
 from .forms import (
-   
+   SectionForm,
     SkillForm,
     InviteCandidateForm,  
 )
@@ -1665,3 +1827,178 @@ def invite_candidate(request):
             status=400,
         )
 
+
+
+@login_required
+@require_POST
+def create_section_ajax(request):
+    """
+    AJAX endpoint to create a new section.
+    """
+    try:
+        data = json.loads(request.body)
+        form = SectionForm(data)
+        
+        if form.is_valid():
+            section = form.save()
+            return JsonResponse({
+                "status": "success",
+                "section": {
+                    "id": section.id,
+                    "name": section.name
+                }
+            }, status=201)
+        else:
+            return JsonResponse({
+                "status": "error",
+                "errors": form.errors
+            }, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "status": "error",
+            "message": "Invalid JSON"
+        }, status=400)
+
+# @login_required
+# def search_skills_with_suggestions(request):
+#     '''User type करे तो AI suggest करे'''
+#     query = request.GET.get('q', '').strip().lower()
+    
+#     if not query or len(query) < 2:
+#         return JsonResponse({'skills': [], 'suggestions': []})
+    
+#     try:
+#         # DB में खोजो
+#         db_skills = Skill.objects.filter(
+#             name__icontains=query,
+#             is_active=True
+#         ).values_list('name', flat=True)[:5]
+        
+#         db_list = list(db_skills)
+        
+#         if len(db_list) >= 3:
+#             return JsonResponse({'skills': db_list, 'suggestions': []})
+        
+#         genai.configure(api_key=settings.GEMINI_API_KEY)
+#         model = genai.GenerativeModel('gemini-2.5-pro')
+        
+#         prompt = f'Technical recruiting expert: User typed "{query}". Suggest 7-10 related tech skills. Only skill names, one per line.'
+        
+#         response = model.generate_content(prompt)
+#         ai_suggestions = [
+#             s.strip() for s in response.text.split('\n')
+#             if s.strip() and len(s.strip()) > 2
+#         ][:6]
+        
+#         return JsonResponse({
+#             'skills': db_list,
+#             'suggestions': ai_suggestions
+#         })
+    
+#     except Exception as e:
+#         return JsonResponse({'skills': [], 'suggestions': []}, status=500)
+
+
+from openai import OpenAI
+
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from .models import Skill  
+import os
+
+     
+
+import openai
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from .models import Skill 
+from thefuzz import process, fuzz
+
+@login_required
+@require_http_methods(["GET"])
+def search_skills_with_suggestions(request):
+    query = request.GET.get('q', '').strip().lower()
+    ai_provider = request.GET.get('provider', 'chatgpt').lower()
+    
+    if not query:
+        return JsonResponse({'skills': [], 'suggestions': []})
+    
+    try:
+       
+        
+        all_active_skills = list(Skill.objects.filter(is_active=True).values_list('name', flat=True))
+       
+        fuzzy_results = process.extract(query, all_active_skills, limit=50, scorer=fuzz.WRatio)
+        
+        # Sirf wahi rakhein jinka match score > 60 ho (adjust as needed)
+        # fuzzy_results format: [('SkillName', score), ...]
+        db_list = [res[0] for res in fuzzy_results if res[1] >= 65]
+
+        # --- 2. AI LOGIC ---
+        # CHANGE: 'len(query) < 3' ko 'len(query) < 2' kar diya taaki "fi" par bhi AI call ho sake
+        # agar DB results kam hain (less than 10 kar diya taaki AI zyada active rahe choti queries par)
+        if len(query) < 1 or len(db_list) >= 50:
+             return JsonResponse({'skills': db_list, 'suggestions': []})
+        
+        if ai_provider == 'gemini':
+             ai_suggestions = [] # Gemini implement hone par yahan add karein
+        else:
+            # Agar DB results bahut kam hain, tabhi AI call karein
+            ai_suggestions = get_chatgpt_suggestions(query, db_list)
+        
+        ai_suggestions = ai_suggestions[:15]
+        
+        return JsonResponse({
+            'skills': db_list,
+            'suggestions': ai_suggestions,
+            'provider': 'chatgpt'
+        })
+    
+    except Exception as e:
+        print(f"Search Error: {e}")
+        return JsonResponse({'skills': [], 'suggestions': [], 'error': str(e)})
+
+def get_chatgpt_suggestions(query, db_list):
+    """Get 15 skill suggestions using OpenAI API"""
+    try:
+        # Check if key exists
+        if not settings.OPENAI_API_KEY: return []
+
+        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        excluded = ', '.join([f'"{s}"' for s in db_list]) if db_list else 'none'
+        
+        # CHANGE HERE: Prompt mein 15 maange hain
+        system_prompt = "You are a technical recruiting expert. Output only a comma-separated list of 15 related short technical skill names. No explanations."
+        user_prompt = f'User typed: "{query}". Exclude these DB results: {excluded}. Suggest 15 related technical skills.'
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.4,
+            max_tokens=200 # Tokens badha diye kyunki 15 skills zyada space lengi
+        )
+        
+        content = response.choices[0].message.content
+        if content:
+            raw_suggestions = content.replace('\n', ',').split(',')
+            ai_suggestions = []
+            for s in raw_suggestions:
+                clean_s = s.strip().strip('.- •')
+                if clean_s and len(clean_s) > 1 and clean_s.lower() not in [x.lower() for x in db_list]:
+                    ai_suggestions.append(clean_s)
+            return ai_suggestions
+            
+        return []
+
+    except Exception as e:
+        print(f"OpenAI Error: {e}")
+        return []

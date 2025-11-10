@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Assessment: {{ paper.title }}</title>
+    <title>Online Test - {{ paper.title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,18 +22,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
 
     <script>
-      /*
-       * DEDICATED WINDOW LOGIC:
-       * Opens test in a new window and tries to close the original window immediately.
-       */
       (function () {
         const windowName = "dedicatedAssessmentWindow";
 
-        // Check if the window is already the dedicated one and not a temporary opener.
         if (window.name !== windowName && !window.opener) {
           const url = window.location.href;
 
-          // Open a new, dedicated window.
           const newWindow = window.open(
             url,
             windowName,
@@ -45,12 +39,10 @@
           );
 
           if (newWindow) {
-            // Try to close the original window immediately.
             setTimeout(function () {
               window.close();
             }, 50);
 
-            // Prevent further execution in the original tab (safer approach)
             document.body.style.display = "none";
             return;
           }
@@ -58,29 +50,23 @@
       })();
     </script>
     <script>
-      /* This is the aggressive back button blocker using history.forward(). */
-
       function noBack() {
         window.history.forward();
       }
 
       window.history.forward();
 
-      // **Global variable to track if a popstate (back/forward) event occurred.**
       let isNavigating = false;
 
       document.addEventListener("DOMContentLoaded", function () {
         window.addEventListener("popstate", function (event) {
-          // **WARNING:** Show a warning when back/forward is attempted
           alert(
             "⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission."
           );
 
-          // popstate ट्रिगर होने पर isNavigating को true सेट करें।
           isNavigating = true;
-          noBack(); // Prevent history navigation (as per your existing logic)
+          noBack();
 
-          // 500ms के बाद फ़्लैग रीसेट करें।
           setTimeout(() => {
             isNavigating = false;
           }, 500);
@@ -89,23 +75,18 @@
     </script>
 
     <script>
-      /* * Tab Change & Submission Lock Logic */
-
-      let editorInstances = {}; // Defined here for global access
+      let editorInstances = {};
       let tabChangeCount = 0;
-      const MAX_TAB_CHANGES = 3; // Allow 3 warnings before auto-submitting
+      const MAX_TAB_CHANGES = 3;
       let submissionLocked = false;
 
-      // यह function अब Tab Change Logic और Time Up Logic दोनों जगह इस्तेमाल होगा
       function lockAndAutoSubmit(reason) {
         if (submissionLocked) return;
         submissionLocked = true;
 
-        // Polling interval को रोकें
         if (window.pollingInterval) clearInterval(window.pollingInterval);
 
-        // Ensure title is reset/locked on submission
-        document.title = "Assessment Submitted!"; // <-- Title locked
+        document.title = "Assessment Submitted!";
 
         const form = document.getElementById("assessment-form");
         const submitButton = form.querySelector('button[type="submit"]');
@@ -115,7 +96,6 @@
             ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
             : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
 
-        // 1. Disable and update the Submit button (UI feedback)
         if (submitButton) {
           submitButton.disabled = true;
           submitButton.textContent = "Auto-Submitting... 🚫";
@@ -123,7 +103,6 @@
           submitButton.classList.add("bg-red-800", "cursor-not-allowed");
         }
 
-        // Update Timer Display for Time Up reason
         const timerElement = document.getElementById("timer");
         if (timerElement) {
           timerElement.textContent = "TIME UP";
@@ -135,63 +114,51 @@
           timerElement.classList.add("bg-red-800", "text-white");
         }
 
-        // 2. Final alert to the user before submission
         alert(message);
 
-        // 3. Force submission of the form
-        // Save code editor content before submission
         document.querySelectorAll(".code-editor").forEach((editorContainer) => {
           const questionId = editorContainer.id.replace("editor-", "");
           const textarea = document.getElementById(`textarea-${questionId}`);
           const editor = editorInstances[questionId];
           if (editor) {
-            // CRITICAL: Ensure the final code is captured
             textarea.value = editor.getValue();
           }
         });
 
-        // Force the form submission
         form.submit();
       }
 
       function handleVisibilityChange() {
-        // Ignore if navigation is in progress or already submitted.
         if (window.isNavigating || submissionLocked) {
           return;
         }
 
-        const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
+        const originalTitle = "Online Test - {{ paper.title }}";
 
-        // Check if the document is hidden (user switched tabs or minimized)
         if (document.hidden) {
-          // **🚨 UI CHANGE: Update title on blur/hide**
           document.title = "Breakup";
 
           tabChangeCount++;
 
           if (tabChangeCount <= MAX_TAB_CHANGES) {
-            // --- WARNING STATE ---
             alert(
               `⚠️ WARNING! Tab Switched. You have ${
                 MAX_TAB_CHANGES - tabChangeCount
               } warnings remaining.`
             );
           } else {
-            // --- LOCK & AUTO-SUBMIT STATE (Trigger auto-submit function) ---
             lockAndAutoSubmit("tab_switch");
           }
         } else {
-          // **🚨 UI CHANGE: Update title on focus/visible**
-          document.title = "Patch Up"; // Temporarily show "Patch Up"
+          document.title = "Patch Up";
           setTimeout(() => {
             if (!submissionLocked) {
-              document.title = originalTitle; // Revert to original title after a short delay
+              document.title = originalTitle;
             }
           }, 1000);
         }
       }
 
-      // Attach the event listener to the document
       document.addEventListener("visibilitychange", handleVisibilityChange);
     </script>
 
@@ -216,7 +183,6 @@
         if (navigator.onLine) {
           hideOfflineDialogue();
         } else {
-          // If button is clicked and still offline, give an alert
           alert(
             "Still offline. Please check your network cables or Wi-Fi connection."
           );
@@ -233,11 +199,9 @@
         }
       }
 
-      // Add event listeners for online/offline status changes
       window.addEventListener("online", handleOnlineStatus);
       window.addEventListener("offline", handleOnlineStatus);
 
-      // Initial check on load
       document.addEventListener("DOMContentLoaded", handleOnlineStatus);
     </script>
     <script>
@@ -273,16 +237,41 @@
       }
 
       .code-editor {
-        /* CRITICAL: Must have a defined size for Monaco */
         min-height: 250px;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
       }
 
-      /* Reduced padding from 50px to 30px for compaction */
-      #fixed-footer {
-        z-index: 100;
-        padding-bottom: 30px;
+      .question-btn {
+        @apply w-10 h-10 rounded flex items-center justify-center font-semibold text-sm cursor-pointer transition-all;
+      }
+
+      .question-answered {
+        @apply bg-green-600 text-white;
+      }
+
+      .question-current {
+        @apply bg-blue-600 text-white;
+      }
+
+      .question-not-answered {
+        @apply bg-red-600 text-white;
+      }
+
+      .question-marked {
+        @apply bg-purple-600 text-white;
+      }
+
+      .question-not-visited {
+        @apply bg-gray-200 text-gray-700;
+      }
+
+      .legend-item {
+        @apply flex items-center space-x-2 text-sm;
+      }
+
+      .legend-box {
+        @apply w-6 h-6 rounded;
       }
     </style>
   </head>
@@ -292,36 +281,6 @@
     onload="noBack()"
     onpageshow="if (event.persisted) noBack();"
   >
-    
-
-    <script>
-      // SIMPLIFIED START BUTTON LOGIC
-      document
-        .getElementById("start-btn")
-        .addEventListener("click", function () {
-          // 1. Hide the overlay immediately
-          document.getElementById("start-overlay").style.display = "none";
-
-          // 2. Request fullscreen (optional, can be commented out)
-          const docEl = document.documentElement;
-          if (docEl.requestFullscreen) {
-            docEl.requestFullscreen().catch(() => {});
-          } else if (docEl.webkitRequestFullscreen) {
-            docEl.webkitRequestFullscreen().catch(() => {});
-          }
-
-          // 3. Force Monaco Layout to render correctly after overlay is hidden
-          setTimeout(() => {
-            if (window.monaco && window.monaco.editor) {
-              Object.values(editorInstances).forEach((editor) => {
-                if (editor && editor.layout) {
-                  editor.layout();
-                }
-              });
-            }
-          }, 100);
-        });
-    </script>
     <div
       id="offline-dialogue"
       class="fixed inset-0 z-50 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden"
@@ -350,1063 +309,513 @@
         </div>
       </div>
     </div>
-    <div class="min-h-screen">
-      <header class="bg-white shadow-md sticky top-0 z-20">
-        <div
-          class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center"
-        >
-          <h1 class="text-xl font-bold text-theme-dark truncate">
-            {{ paper.title }}
+
+    <div class="min-h-screen flex flex-col">
+     
+      <header class="bg-gradient-to-r from-gray-100 to-gray-200 shadow-md">
+        <div class="max-w-full mx-auto px-6 py-4 flex justify-between items-center">
+          <h1 class="text-xl font-bold text-gray-800">
+            Online Test - {{ paper.title }}
           </h1>
 
-          <div class="flex items-center space-x-4">
-            <span class="text-sm font-medium text-gray-600 hidden sm:inline">
-              Duration: {{ paper.duration }} min
-            </span>
-            <div
-              class="bg-red-600 text-white font-extrabold py-2 px-4 rounded-full shadow-lg text-lg sm:text-xl"
-              id="timer"
-            >
-              Loading Time...
+          <div class="flex items-center space-x-6">
+            <div class="text-right">
+              <div class="text-xs text-gray-600 mb-1">Time Left</div>
+              <div
+                class="bg-white border-2 border-gray-300 text-gray-800 font-bold py-2 px-4 rounded text-lg"
+                id="timer"
+              >
+                00:00:00
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+    
+      <main class="flex-1 flex overflow-hidden">
         <form
           method="post"
           action="{% url 'test:user_test' link_id=link_id %}"
-          class="space-y-8"
           id="assessment-form"
+          class="flex-1 flex"
         >
-          {% csrf_token %} {% for section in sections_list %}
-          <div
-            class="section-block p-5 bg-white rounded-xl shadow-lg border-t-4 border-theme-primary/70"
-          >
-            <h2 class="text-2xl font-bold text-theme-dark mb-5 border-b pb-2">
-              {{ section.title }}
-            </h2>
+          {% csrf_token %}
+    
+          <div class="flex-1 bg-white overflow-y-auto p-6">
+            <div id="questions-container">
+              {% for section in sections_list %}
+                {% for q in section.questions %}
+                  <div 
+                    class="question-block" 
+                    id="question-{{ q.id }}" 
+                    data-section="{{ section.title }}"
+                    data-question-index="{{ forloop.counter }}"
+                    style="display: none;">
+                    
+                   
+                    <div class="mb-4">
+                      <h2 class="text-lg font-bold text-gray-700 mb-2">{{ section.title }}</h2>
+                      <div class="text-sm text-gray-600">Question {{ forloop.counter }}</div>
+                    </div>
 
-            <div class="space-y-5">
-              {% for q in section.questions %}
-              <div
-                class="question-card p-3 border border-gray-200 rounded-lg bg-gray-50/50"
-              >
-                <p class="font-semibold text-lg mb-3">
-                  Q{{ forloop.counter }}: {{ q.text | safe }}
-                  <span class="text-xs font-normal text-theme-primary">
-                    [{{ q.type }}]
-                  </span>
-                </p>
+                  
+                    <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6">
+                      <p class="text-base leading-relaxed text-gray-800">
+                        {{ q.text | safe }}
+                      </p>
+                    </div>
 
-                {% if q.type == 'MCQ' %}
-                <div class="space-y-2 mt-3">
-                  {% for option in q.options %}
-                  <label class="flex items-center text-gray-700">
-                    <input
-                      type="radio"
-                      name="question_{{ q.id }}"
-                      value="{{ option }}"
-                      class="h-4 w-4 text-theme-dark border-gray-300 focus:ring-theme-dark"
-                    />
-                    <span class="ml-3 text-sm">{{ option }}</span>
-                  </label>
-                  {% endfor %}
-                </div>
-                {% elif q.type == 'CODE' %}
-                <p class="text-sm text-gray-600 mb-2 mt-3">
-                  Write, run and submit your code below:
-                </p>
+                    <div class="mb-6">
+                      {% if q.type == 'MCQ' %}
+                        <div class="space-y-3">
+                          {% for option in q.options %}
+                          <label class="flex items-start p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all">
+                            <input
+                              type="radio"
+                              name="question_{{ q.id }}"
+                              value="{{ option }}"
+                              class="mt-1 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                              onchange="markQuestionAsAnswered({{ q.id }})"
+                            />
+                            <span class="ml-3 text-sm text-gray-700 flex-1">{{ option }}</span>
+                          </label>
+                          {% endfor %}
+                        </div>
+                      {% elif q.type == 'CODE' %}
+                        <p class="text-sm text-gray-600 mb-3">
+                          Write, run and submit your code below:
+                        </p>
 
-                <div class="mb-2">
-                  <label
-                    for="language-selector-{{ q.id }}"
-                    class="text-xs font-semibold text-gray-700"
-                    >Select Language:</label
-                  >
-                  <select
-                    id="language-selector-{{ q.id }}"
-                    class="p-1 border border-gray-300 rounded-md text-sm"
-                    onchange="changeLanguage({{ q.id }}, this.value)"
-                  >
-                    <option value="javascript">JavaScript</option>
-                  </select>
-                </div>
+                        <div class="mb-3">
+                          <label
+                            for="language-selector-{{ q.id }}"
+                            class="text-xs font-semibold text-gray-700 mr-2"
+                            >Select Language:</label
+                          >
+                          <select
+                            id="language-selector-{{ q.id }}"
+                            class="p-2 border border-gray-300 rounded-md text-sm"
+                            onchange="changeLanguage({{ q.id }}, this.value)"
+                          >
+                            <option value="python" selected>Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="c">C</option>
+                            <option value="sql">SQL</option>
+                          </select>
+                        </div>
+                        
+                        <div
+                          id="editor-{{ q.id }}"
+                          class="code-editor mb-3"
+                          data-language="python"
+                        ></div>
 
-                <div
-                  id="editor-{{ q.id }}"
-                  class="code-editor mt-3"
-                  data-language="python"
-                ></div>
+                        <textarea
+                          name="question_{{ q.id }}"
+                          id="textarea-{{ q.id }}"
+                          class="hidden"
+                        ></textarea>
 
-                <textarea
-                  name="question_{{ q.id }}"
-                  id="textarea-{{ q.id }}"
-                  class="hidden"
-                ></textarea>
+                        <div
+                          id="output-{{ q.id }}"
+                          class="hidden mt-3 p-3 text-sm rounded-lg whitespace-pre-wrap font-mono"
+                        ></div>
 
-                <div
-                  id="output-{{ q.id }}"
-                  class="hidden mt-3 p-3 text-sm rounded-lg whitespace-pre-wrap font-mono"
-                ></div>
+                        <div class="mt-3 flex space-x-3">
+                          <button
+                            type="button"
+                            id="run-btn-{{ q.id }}"
+                            onclick="runCode({{ q.id }})"
+                            class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            <i class="fas fa-play mr-1"></i> Run Code
+                          </button>
+                        </div>
 
-                <div class="mt-3 flex space-x-3">
-                  <button
-                    type="button"
-                    id="run-btn-{{ q.id }}"
-                    onclick="runCode({{ q.id }})"
-                    class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    <i class="fas fa-play mr-1"></i> Run Code (Browser)
-                  </button>
-                </div>
+                      {% else %}
+                        <textarea
+                          name="question_{{ q.id }}"
+                          rows="6"
+                          placeholder="Type your detailed answer here..."
+                          class="answer-input resize-y"
+                          onchange="markQuestionAsAnswered({{ q.id }})"
+                        ></textarea>
+                      {% endif %}
+                    </div>
 
-                {% else %}
-                <textarea
-                  name="question_{{ q.id }}"
-                  rows="6"
-                  placeholder="Type your detailed answer here..."
-                  class="answer-input resize-y mt-3"
-                ></textarea>
-                {% endif %}
-              </div>
+               
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onclick="markForReviewCurrent()"
+                        id="mark-review-btn-{{ q.id }}"
+                        class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        Mark for review
+                      </button>
+
+                      <div class="flex space-x-3">
+                        <button
+                          type="button"
+                          onclick="previousQuestion()"
+                          class="bg-gray-500 text-white font-medium py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          onclick="nextQuestion()"
+                          class="bg-blue-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
               {% endfor %}
             </div>
           </div>
-          {% endfor %}
 
-          <div class="h-16 sm:h-20"></div>
+     
+          <div class="w-80 bg-gray-50 border-l border-gray-200 overflow-y-auto p-6">
+            {% for section in sections_list %}
+            <div class="mb-6">
+              <h3 class="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">{{ section.title }}</h3>
+              <div class="grid grid-cols-5 gap-2 mb-4">
+                {% for q in section.questions %}
+                <div
+                  class="question-btn question-not-visited"
+                  id="palette-btn-{{ q.id }}"
+                  data-question-id="{{ q.id }}"
+                  onclick="goToQuestion({{ q.id }})"
+                >
+                  {{ forloop.counter }}
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+
+         
+            <div class="mt-6 pt-4 border-t border-gray-300">
+              <h4 class="font-bold text-gray-700 mb-4 text-sm">Question Summary</h4>
+              <div class="space-y-3 mb-4">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-green-600"></div>
+                    <span class="text-sm text-gray-700">Answered</span>
+                  </div>
+                  <span id="count-answered" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-red-600"></div>
+                    <span class="text-sm text-gray-700">Not Answered</span>
+                  </div>
+                  <span id="count-not-answered" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-gray-200 border border-gray-400"></div>
+                    <span class="text-sm text-gray-700">Not Visited</span>
+                  </div>
+                  <span id="count-not-visited" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-purple-600"></div>
+                    <span class="text-sm text-gray-700">Marked for Review</span>
+                  </div>
+                  <span id="count-marked" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-blue-600"></div>
+                    <span class="text-sm text-gray-700">Current</span>
+                  </div>
+                  <span id="count-current" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <button
+                type="submit"
+                class="w-full bg-green-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-lg"
+              >
+                Submit Test
+              </button>
+            </div>
+          </div>
         </form>
       </main>
-
-      <div
-        id="fixed-footer"
-        class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-2xl z-20"
-      >
-        <div class="max-w-5xl mx-auto flex justify-end">
-          <button
-            type="submit"
-            form="assessment-form"
-            class="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-lg hover:bg-green-700 transition-colors shadow-lg focus:outline-none"
-          >
-            Submit Final Assessment
-          </button>
-        </div>
-      </div>
     </div>
 
     <script>
-      // --- NEW BACKEND-CONTROLLED TIMER LOGIC VARIABLES ---
-      let totalSeconds = -1; // Server से प्राप्त होने वाला कुल शेष समय
-      const POLLING_RATE_SECONDS = 15; // हर 15 सेकंड में सर्वर से समय सिंक करें
-      // pollingInterval और submissionLocked globals अब window scope में हैं।
-      window.pollingInterval = null;
+      // --- LocalStorage Functions ---
+      const STORAGE_KEY = `test_states_{{ link_id }}`;
 
-      // --- TIMER DISPLAY HELPER FUNCTIONS ---
-      function formatTime(seconds) {
-        if (seconds < 0) seconds = 0;
-        let minutes = parseInt(seconds / 60, 10);
-        let secs = parseInt(seconds % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        secs = secs < 10 ? "0" + secs : secs;
-
-        return minutes + ":" + secs;
-      }
-
-      function updateTimerDisplay(seconds) {
-        let timerElement = document.getElementById("timer");
-        if (!timerElement) return;
-
-        timerElement.textContent = formatTime(seconds);
-
-        // Update color based on remaining time
-        timerElement.classList.remove(
-          "bg-yellow-500",
-          "text-gray-800",
-          "bg-red-700",
-          "bg-red-800",
-          "text-white",
-          "bg-red-600"
-        );
-
-        if (seconds <= 60) {
-          timerElement.classList.add("bg-red-700", "text-white");
-        } else if (seconds <= 300) {
-          // 5 minutes
-          timerElement.classList.add("bg-yellow-500", "text-gray-800");
-        } else {
-          timerElement.classList.add("bg-red-600", "text-white");
-        }
-      }
-
-      // --- POLLING LOGIC ---
-      function pollTimeRemaining(linkId, formId) {
-        // Django's URL template tag का उपयोग करें
-        const timeUrl =
-          "{% url 'test:get_time_remaining_api' link_id=link_id %}";
-        let timerElement = document.getElementById("timer");
-
-        // सर्वर से समय प्राप्त करने के लिए API कॉल
-        fetch(timeUrl, {
-          method: "GET",
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Server Time API response not ok");
-            }
-            return response.json();
-          })
-          .then((data) => {
-            if (data.error) {
-              console.error("Server Time Error:", data.error);
-              if (window.pollingInterval) clearInterval(window.pollingInterval);
-              if (timerElement) timerElement.textContent = "Error";
-              return;
-            }
-
-            // सर्वर से प्राप्त सटीक समय को सेट करें
-            totalSeconds = data.remaining_seconds;
-
-            if (data.time_up || totalSeconds <= 0) {
-              // अगर सर्वर ने 'time_up' भेज दिया है, तो पोलिंग रोकें और सबमिट करें
-              if (window.pollingInterval) clearInterval(window.pollingInterval);
-              lockAndAutoSubmit("time_up");
-            } else {
-              updateTimerDisplay(totalSeconds);
-            }
-          })
-          .catch((error) => {
-            console.error("Fetch Error:", error);
-            if (timerElement) timerElement.textContent = "Sync Error";
-          });
-      }
-
-      // --- SKULPT PYTHON UTILITY FUNCTION ---
-      function outf(text, questionId) {
-        const outputElement = document.getElementById(`output-${questionId}`);
-        outputElement.textContent += text;
-        outputElement.classList.remove("hidden", "bg-red-900", "text-red-300");
-        outputElement.classList.add("bg-gray-800", "text-green-300");
-      }
-
-      function builtinRead(x) {
-        if (
-          Sk.builtinFiles === undefined ||
-          Sk.builtinFiles["files"][x] === undefined
-        )
-          throw "File not found: '" + x + "'";
-        return Sk.builtinFiles["files"][x];
-      }
-
-      // --- NEW JAVASCRIPT RUNNER FUNCTION ---
-      function runJavaScript(code, questionId, outputElement, runButton) {
-        let output = "";
-        const originalConsoleLog = console.log;
-
-        // Temporarily replace console.log to capture output
-        console.log = (...args) => {
-          output += args.map(String).join(" ") + "\n";
-        };
-
+      function saveStatesToLocalStorage() {
         try {
-          // Execute the JavaScript code safely using new Function()
-          new Function(code)();
-
-          outputElement.textContent =
-            output.trim() ||
-            "Code executed successfully. No output was printed using console.log.";
-          outputElement.classList.remove(
-            "bg-gray-700",
-            "text-white",
-            "bg-red-900",
-            "text-red-300"
-          );
-          outputElement.classList.add("bg-gray-800", "text-green-300");
-        } catch (err) {
-          outputElement.textContent = "Error:\n" + err.toString();
-          outputElement.classList.remove("bg-gray-700", "text-white");
-          outputElement.classList.add("bg-red-900", "text-red-300");
-        } finally {
-          // Restore the original console.log and finalize button state
-          console.log = originalConsoleLog;
-          runButton.innerHTML =
-            '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
-          runButton.disabled = false;
-        }
-      }
-
-      // --- NEW LANGUAGE CHANGER FUNCTION ---
-      function changeLanguage(questionId, newLanguage) {
-        const editor = editorInstances[questionId];
-        const editorContainer = document.getElementById(`editor-${questionId}`);
-
-        if (editor) {
-          // 1. Change Monaco model's language
-          monaco.editor.setModelLanguage(editor.getModel(), newLanguage);
-
-          // 2. Update data-language attribute
-          editorContainer.setAttribute("data-language", newLanguage);
-
-          // 3. Set placeholder code
-          const defaultJsCode = "// Write your code here";
-          const defaultPyCode = "# Write your code here";
-
-          const newCode =
-            newLanguage === "javascript" ? defaultJsCode : defaultPyCode;
-
-          // Only update if the editor is empty or contains the old placeholder
-          if (
-            editor.getValue().trim() === "" ||
-            editor.getValue().includes("function") ||
-            editor.getValue().includes("def")
-          ) {
-            editor.setValue(newCode);
-          }
-        }
-      }
-
-      // --- UPDATED runCode FUNCTION ---
-      function runCode(questionId) {
-        const editor = editorInstances[questionId];
-        if (!editor) {
-          alert("Error: Code editor not initialized.");
-          return;
-        }
-
-        const code = editor.getValue();
-        const outputElement = document.getElementById(`output-${questionId}`);
-        const runButton = document.getElementById(`run-btn-${questionId}`);
-        const editorContainer = document.getElementById(`editor-${questionId}`);
-
-        // Determine the selected language
-        const language =
-          editorContainer.getAttribute("data-language") || "python";
-
-        // UI setup for running state
-        outputElement.textContent = "Running...";
-        outputElement.classList.remove(
-          "hidden",
-          "bg-red-900",
-          "text-green-300"
-        );
-        outputElement.classList.add("bg-gray-700", "text-white");
-        runButton.disabled = true;
-        runButton.innerHTML =
-          '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
-
-        // Dispatch based on selected language
-        if (language === "javascript") {
-          runJavaScript(code, questionId, outputElement, runButton);
-          return;
-        }
-
-        // Default or 'python' case uses Skulpt
-        Sk.pre = "output-" + questionId;
-
-        Sk.configure({
-          output: (text) => outf(text, questionId),
-          read: builtinRead,
-          execLimit: 5000,
-        });
-
-        Sk.misceval
-          .asyncToPromise(function () {
-            return Sk.importMainWithBody("<stdin>", false, code, true);
-          })
-          .then(
-            function (mod) {
-              runButton.innerHTML =
-                '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
-            },
-            function (err) {
-              outputElement.textContent = "Error:\n" + err.toString();
-              outputElement.classList.remove("bg-gray-700", "text-white");
-              outputElement.classList.add("bg-red-900", "text-red-300");
-              runButton.innerHTML =
-                '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
-            }
-          )
-          .finally(() => {
-            runButton.disabled = false;
+          const statesToSave = {};
+          allQuestionIds.forEach(qId => {
+            statesToSave[qId] = questionStates[qId];
           });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(statesToSave));
+          console.log('Question states saved to LocalStorage');
+        } catch (e) {
+          console.error('Error saving to LocalStorage:', e);
+        }
       }
 
-      // --- MONACO EDITOR & INIT LOGIC ---
-      document.addEventListener("DOMContentLoaded", function () {
-        // --- START TIMER INIT: POLLING & LOCAL TICKER ---
-        const linkIdFromDjango = "{{ link_id }}";
-        const formId = "assessment-form";
-
-        // 1. Local Ticker: हर 1 सेकंड में UI को अपडेट करें
-        setInterval(() => {
-          if (totalSeconds > 0 && !submissionLocked) {
-            totalSeconds--;
-            updateTimerDisplay(totalSeconds);
-          }
-          // अगर 0 पर पहुंच गया तो auto-submit logic चलाओ (safety के लिए)
-          if (totalSeconds <= 0 && !submissionLocked) {
-            if (window.pollingInterval) clearInterval(window.pollingInterval);
-            lockAndAutoSubmit("time_up");
-          }
-        }, 1000);
-
-        // 2. Server Polling: हर 15 सेकंड में सर्वर से सटीक समय प्राप्त करें
-        window.pollingInterval = setInterval(() => {
-          // Only poll if not already locked
-          if (!submissionLocked) {
-            pollTimeRemaining(linkIdFromDjango, formId);
-          } else {
-            clearInterval(window.pollingInterval);
-          }
-        }, POLLING_RATE_SECONDS * 1000);
-
-        // 3. पेज लोड पर तुरंत एक बार कॉल करें (Initial Time प्राप्त करने के लिए)
-        pollTimeRemaining(linkIdFromDjango, formId);
-
-        // Monaco Editor Initialization
-        require.config({
-          paths: {
-            vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
-          },
-        });
-
-        // **UPDATED MONACO INITIALIZATION BLOCK**
-        require(["vs/editor/editor.main"], function () {
-          console.log("Monaco Editor: Loader script finished loading.");
-          document
-            .querySelectorAll(".code-editor")
-            .forEach((editorContainer) => {
-              const questionId = editorContainer.id.replace("editor-", "");
-              const textarea = document.getElementById(
-                `textarea-${questionId}`
-              );
-
-              const languageSelector = document.getElementById(
-                `language-selector-${questionId}`
-              );
-              const initialLanguage = languageSelector
-                ? languageSelector.value
-                : "python";
-              editorContainer.setAttribute("data-language", initialLanguage); // Set initial language data attribute
-
-              // Check if both elements are found
-              if (!textarea) {
-                console.error(
-                  "Monaco Init Error: Hidden textarea not found for ID:",
-                  questionId
-                );
-                return;
-              }
-
-              if (editorContainer.hasAttribute("data-monaco-initialized"))
-                return;
-              editorContainer.setAttribute("data-monaco-initialized", "true");
-              // Define simple placeholders
-              const initialPlaceholder =
-                initialLanguage === "javascript"
-                  ? "// Write your code here" // <--- CHANGED
-                  : "# Write your code here"; // <--- CHANGED
-              try {
-                const editor = monaco.editor.create(editorContainer, {
-                  // Use content from textarea or default placeholder
-                  value: textarea.value || initialPlaceholder, // <--- CHANGED
-                  language: initialLanguage, // Use the language selected in the dropdown
-                  theme: "vs-light",
-                  minimap: { enabled: false },
-                  automaticLayout: true,
-                  tabSize: 4,
-                });
-
-                editorInstances[questionId] = editor;
-                console.log(
-                  `Monaco Editor: Initialized editor-${questionId} with ${initialLanguage}`
-                );
-
-                // Update hidden textarea when editor content changes
-                editor.onDidChangeModelContent(() => {
-                  textarea.value = editor.getValue();
-                });
-              } catch (e) {
-                console.error(
-                  `Monaco Editor: Failed to create editor-${questionId}`,
-                  e
-                );
-                editorContainer.textContent =
-                  "Error: Editor failed to load. Check your network or browser console.";
+      function loadStatesFromLocalStorage() {
+        try {
+          const savedStates = localStorage.getItem(STORAGE_KEY);
+          if (savedStates) {
+            const parsedStates = JSON.parse(savedStates);
+            allQuestionIds.forEach(qId => {
+              if (parsedStates[qId]) {
+                questionStates[qId] = parsedStates[qId];
               }
             });
-        }, function (err) {
-          console.error("Monaco Editor: Main script failed to load.", err);
+            console.log('Question states loaded from LocalStorage');
+            return true;
+          }
+        } catch (e) {
+          console.error('Error loading from LocalStorage:', e);
+        }
+        return false;
+      }
+
+      function clearLocalStorage() {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          console.log('LocalStorage cleared');
+        } catch (e) {
+          console.error('Error clearing LocalStorage:', e);
+        }
+      }
+
+      // --- Question Navigation State ---
+      let currentQuestionId = null;
+      let questionStates = {};
+      let allQuestionIds = [];
+
+      // Initialize question states
+      {% for section in sections_list %}
+        {% for q in section.questions %}
+          allQuestionIds.push({{ q.id }});
+          questionStates[{{ q.id }}] = {
+            answered: false,
+            marked: false,
+            visited: false
+          };
+        {% endfor %}
+      {% endfor %}
+
+      function goToQuestion(questionId) {
+        document.querySelectorAll('.question-block').forEach(block => {
+          block.style.display = 'none';
         });
-        // **END UPDATED MONACO INITIALIZATION BLOCK**
 
-        // Final submission handler (Saves all code before submission)
-        document
-          .getElementById("assessment-form")
-          .addEventListener("submit", function () {
-            if (window.pollingInterval) clearInterval(window.pollingInterval); // Stop polling on manual submit
+        const questionBlock = document.getElementById(`question-${questionId}`);
+        if (questionBlock) {
+          questionBlock.style.display = 'block';
+          currentQuestionId = questionId;
+          questionStates[questionId].visited = true;
+          saveStatesToLocalStorage();
+          updateQuestionPalette();
+          updateNavigationButtons();
+          updateQuestionSummary();
+          updateMarkReviewButton(questionId);
+        }
+      }
 
-            document
-              .querySelectorAll(".code-editor")
-              .forEach((editorContainer) => {
-                const questionId = editorContainer.id.replace("editor-", "");
-                const textarea = document.getElementById(
-                  `textarea-${questionId}`
-                );
-                const editor = editorInstances[questionId];
+      function nextQuestion() {
+        const currentIndex = allQuestionIds.indexOf(currentQuestionId);
+        if (currentIndex < allQuestionIds.length - 1) {
+          const nextId = allQuestionIds[currentIndex + 1];
+          goToQuestion(nextId);
+        }
+      }
 
-                if (editor) {
-                  // Final save of editor content to the hidden textarea
-                  textarea.value = editor.getValue();
-                }
-              });
+      function previousQuestion() {
+        const currentIndex = allQuestionIds.indexOf(currentQuestionId);
+        if (currentIndex > 0) {
+          const prevId = allQuestionIds[currentIndex - 1];
+          goToQuestion(prevId);
+        }
+      }
+
+      function updateNavigationButtons() {
+        const currentIndex = allQuestionIds.indexOf(currentQuestionId);
+        const allQuestionBlocks = document.querySelectorAll('.question-block');
+        
+        allQuestionBlocks.forEach(block => {
+          const prevButtons = block.querySelectorAll('button[onclick^="previousQuestion"]');
+          const nextButtons = block.querySelectorAll('button[onclick^="nextQuestion"]');
+          
+          prevButtons.forEach(btn => {
+            if (currentIndex === 0) {
+              btn.disabled = true;
+              btn.classList.add('opacity-50', 'cursor-not-allowed');
+              btn.classList.remove('hover:bg-gray-600');
+            } else {
+              btn.disabled = false;
+              btn.classList.remove('opacity-50', 'cursor-not-allowed');
+              btn.classList.add('hover:bg-gray-600');
+            }
           });
-      });
-    </script>
-  </body>
-</html> -->
-
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Assessment: {{ paper.title }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-    />
-
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
-
-    <script>
-      /*
-       * DEDICATED WINDOW LOGIC:
-       * Opens test in a new window and tries to close the original window immediately.
-       */
-      (function () {
-        const windowName = "dedicatedAssessmentWindow";
-
-        // Check if the window is already the dedicated one and not a temporary opener.
-        if (window.name !== windowName && !window.opener) {
-          const url = window.location.href;
-
-          // Open a new, dedicated window.
-          const newWindow = window.open(
-            url,
-            windowName,
-            "width=" +
-              screen.availWidth +
-              ",height=" +
-              screen.availHeight +
-              ",resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no"
-          );
-
-          if (newWindow) {
-            // Try to close the original window immediately.
-            setTimeout(function () {
-              window.close();
-            }, 50);
-
-            // Prevent further execution in the original tab (safer approach)
-            document.body.style.display = "none";
-            return;
-          }
-        }
-      })();
-    </script>
-    <script>
-      /* This is the aggressive back button blocker using history.forward(). */
-
-      function noBack() {
-        window.history.forward();
+          
+          nextButtons.forEach(btn => {
+            if (currentIndex === allQuestionIds.length - 1) {
+              btn.disabled = true;
+              btn.classList.add('opacity-50', 'cursor-not-allowed');
+              btn.classList.remove('hover:bg-blue-700');
+            } else {
+              btn.disabled = false;
+              btn.classList.remove('opacity-50', 'cursor-not-allowed');
+              btn.classList.add('hover:bg-blue-700');
+            }
+          });
+        });
       }
 
-      window.history.forward();
-
-      // **Global variable to track if a popstate (back/forward) event occurred.**
-      let isNavigating = false;
-
-      document.addEventListener("DOMContentLoaded", function () {
-        window.addEventListener("popstate", function (event) {
-          // **WARNING:** Show a warning when back/forward is attempted
-          alert(
-            "⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission."
-          );
-
-          // popstate ट्रिगर होने पर isNavigating को true सेट करें।
-          isNavigating = true;
-          noBack(); // Prevent history navigation (as per your existing logic)
-
-          // 500ms के बाद फ़्लैग रीसेट करें।
-          setTimeout(() => {
-            isNavigating = false;
-          }, 500);
-        });
-      });
-    </script>
-
-    <script>
-      /* * Tab Change & Submission Lock Logic */
-
-      let editorInstances = {}; // Defined here for global access
-      let tabChangeCount = 0;
-      const MAX_TAB_CHANGES = 3; // Allow 3 warnings before auto-submitting
-      let submissionLocked = false;
-
-      // यह function अब Tab Change Logic और Time Up Logic दोनों जगह इस्तेमाल होगा
-      function lockAndAutoSubmit(reason) {
-        if (submissionLocked) return;
-        submissionLocked = true;
-
-        // Polling interval को रोकें
-        if (window.pollingInterval) clearInterval(window.pollingInterval);
-
-        // Ensure title is reset/locked on submission
-        document.title = "Assessment Submitted!"; // <-- Title locked
-
-        const form = document.getElementById("assessment-form");
-        const submitButton = form.querySelector('button[type="submit"]');
-
-        const message =
-          reason === "time_up"
-            ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
-            : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
-
-        // 1. Disable and update the Submit button (UI feedback)
-        if (submitButton) {
-          submitButton.disabled = true;
-          submitButton.textContent = "Auto-Submitting... 🚫";
-          submitButton.classList.remove("bg-green-600", "hover:bg-green-700");
-          submitButton.classList.add("bg-red-800", "cursor-not-allowed");
-        }
-
-        // Update Timer Display for Time Up reason
-        const timerElement = document.getElementById("timer");
-        if (timerElement) {
-          timerElement.textContent = "TIME UP";
-          timerElement.classList.remove(
-            "bg-red-600",
-            "bg-yellow-500",
-            "text-gray-800"
-          );
-          timerElement.classList.add("bg-red-800", "text-white");
-        }
-
-        // 2. Final alert to the user before submission
-        alert(message);
-
-        // 3. Force submission of the form
-        // Save code editor content before submission
-        document.querySelectorAll(".code-editor").forEach((editorContainer) => {
-          const questionId = editorContainer.id.replace("editor-", "");
-          const textarea = document.getElementById(`textarea-${questionId}`);
-          const editor = editorInstances[questionId];
-          if (editor) {
-            // CRITICAL: Ensure the final code is captured
-            textarea.value = editor.getValue();
-          }
-        });
-
-        // Force the form submission
-        form.submit();
+      function markQuestionAsAnswered(questionId) {
+        questionStates[questionId].answered = true;
+        questionStates[questionId].marked = false;
+        saveStatesToLocalStorage();
+        updateQuestionPalette();
+        updateQuestionSummary();
       }
 
-      function handleVisibilityChange() {
-        // Ignore if navigation is in progress or already submitted.
-        if (window.isNavigating || submissionLocked) {
-          return;
+      function markForReview(questionId) {
+        questionStates[questionId].marked = !questionStates[questionId].marked;
+        console.log(`Question ${questionId} marked state:`, questionStates[questionId].marked);
+        saveStatesToLocalStorage();
+        updateQuestionPalette();
+        updateQuestionSummary();
+        updateMarkReviewButton(questionId);
+      }
+
+      function markForReviewCurrent() {
+        if (currentQuestionId) {
+          markForReview(currentQuestionId);
+        } else {
+          console.error('No current question selected');
         }
+      }
 
-        const originalTitle = "Assessment: {{ paper.title }}"; // Original Title
-
-        // Check if the document is hidden (user switched tabs or minimized)
-        if (document.hidden) {
-          // **🚨 UI CHANGE: Update title on blur/hide**
-          document.title = "Breakup";
-
-          tabChangeCount++;
-
-          if (tabChangeCount <= MAX_TAB_CHANGES) {
-            // --- WARNING STATE ---
-            alert(
-              `⚠️ WARNING! Tab Switched. You have ${
-                MAX_TAB_CHANGES - tabChangeCount
-              } warnings remaining.`
-            );
+      function updateMarkReviewButton(questionId) {
+        const btn = document.getElementById(`mark-review-btn-${questionId}`);
+        if (btn) {
+          if (questionStates[questionId].marked) {
+            btn.textContent = "Unmark Review";
+            btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+            btn.classList.add('bg-orange-600', 'hover:bg-orange-700');
           } else {
-            // --- LOCK & AUTO-SUBMIT STATE (Trigger auto-submit function) ---
-            lockAndAutoSubmit("tab_switch");
+            btn.textContent = "Mark for review";
+            btn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+            btn.classList.add('bg-purple-600', 'hover:bg-purple-700');
           }
-        } else {
-          // **🚨 UI CHANGE: Update title on focus/visible**
-          document.title = "Patch Up"; // Temporarily show "Patch Up"
-          setTimeout(() => {
-            if (!submissionLocked) {
-              document.title = originalTitle; // Revert to original title after a short delay
+        }
+      }
+
+      function updateQuestionPalette() {
+        allQuestionIds.forEach(qId => {
+          const btn = document.getElementById(`palette-btn-${qId}`);
+          if (btn) {
+            btn.classList.remove('question-answered', 'question-current', 'question-not-answered', 'question-marked', 'question-not-visited');
+            
+            if (qId === currentQuestionId) {
+              btn.classList.add('question-current');
+            } else if (questionStates[qId].marked) {
+              btn.classList.add('question-marked');
+            } else if (questionStates[qId].answered) {
+              btn.classList.add('question-answered');
+            } else if (questionStates[qId].visited) {
+              btn.classList.add('question-not-answered');
+            } else {
+              btn.classList.add('question-not-visited');
             }
-          }, 1000);
-        }
+          }
+        });
       }
 
-      // Attach the event listener to the document
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-    </script>
+      function updateQuestionSummary() {
+        let counts = {
+          answered: 0,
+          notAnswered: 0,
+          notVisited: 0,
+          marked: 0,
+          current: 0
+        };
 
-    <script>
-      const OFFLINE_DIALOGUE_ID = "offline-dialogue";
-
-      function showOfflineDialogue() {
-        const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
-        if (dialogue) {
-          dialogue.classList.remove("hidden");
-        }
-      }
-
-      function hideOfflineDialogue() {
-        const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
-        if (dialogue) {
-          dialogue.classList.add("hidden");
-        }
-      }
-
-      function checkConnectionAndHide() {
-        if (navigator.onLine) {
-          hideOfflineDialogue();
-        } else {
-          // If button is clicked and still offline, give an alert
-          alert(
-            "Still offline. Please check your network cables or Wi-Fi connection."
-          );
-        }
-      }
-
-      function handleOnlineStatus() {
-        if (navigator.onLine) {
-          hideOfflineDialogue();
-          console.log("Internet connection restored.");
-        } else {
-          showOfflineDialogue();
-          console.log("Internet connection lost!");
-        }
-      }
-
-      // Add event listeners for online/offline status changes
-      window.addEventListener("online", handleOnlineStatus);
-      window.addEventListener("offline", handleOnlineStatus);
-
-      // Initial check on load
-      document.addEventListener("DOMContentLoaded", handleOnlineStatus);
-    </script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              "theme-primary": "#736b8e",
-              "theme-dark": "#5f5778",
-              "theme-light": "#e5e3e9",
-              "gray-text": "#6B7280",
-            },
-          },
-        },
-      };
-    </script>
-    <style>
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: #f4f7f9;
-      }
-
-      .question-card {
-        transition: box-shadow 0.2s;
-      }
-
-      .question-card:hover {
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-      }
-
-      .answer-input {
-        @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary;
-      }
-
-      .code-editor {
-        /* CRITICAL: Must have a defined size for Monaco */
-        min-height: 250px;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-      }
-
-      /* Reduced padding from 50px to 30px for compaction */
-      #fixed-footer {
-        z-index: 100;
-        padding-bottom: 30px;
-      }
-    </style>
-  </head>
-
-  <body
-    class="text-gray-800"
-    onload="noBack()"
-    onpageshow="if (event.persisted) noBack();"
-  >
-    <script>
-      // SIMPLIFIED START BUTTON LOGIC
-      document.addEventListener("DOMContentLoaded", function () {
-        const startBtn = document.getElementById("start-btn");
-        if (startBtn) {
-          startBtn.addEventListener("click", function () {
-            // 1. Hide the overlay immediately
-            document.getElementById("start-overlay").style.display = "none";
-
-            // 2. Request fullscreen (optional, can be commented out)
-            const docEl = document.documentElement;
-            if (docEl.requestFullscreen) {
-              docEl.requestFullscreen().catch(() => {});
-            } else if (docEl.webkitRequestFullscreen) {
-              docEl.webkitRequestFullscreen().catch(() => {});
+        // Count each question
+        allQuestionIds.forEach(qId => {
+          if (qId === currentQuestionId) {
+            counts.current = 1;
+            if (questionStates[qId].marked) {
+              counts.marked++;
             }
+          } else if (questionStates[qId].marked) {
+            counts.marked++;
+          } else if (questionStates[qId].answered) {
+            counts.answered++;
+          } else if (questionStates[qId].visited) {
+            counts.notAnswered++;
+          } else {
+            counts.notVisited++;
+          }
+        });
 
-            // 3. Force Monaco Layout to render correctly after overlay is hidden
-            setTimeout(() => {
-              if (window.monaco && window.monaco.editor) {
-                Object.values(editorInstances).forEach((editor) => {
-                  if (editor && editor.layout) {
-                    editor.layout();
-                  }
-                });
-              }
-            }, 100);
-          });
-        }
-      });
-    </script>
-    <div
-      id="offline-dialogue"
-      class="fixed inset-0 z-50 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden"
-      role="alert"
-      aria-modal="true"
-      aria-labelledby="dialog-title"
-    >
-      <div
-        class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full transform transition-all duration-300 scale-100"
-      >
-        <div class="text-center">
-          <i class="fas fa-wifi fa-3x text-red-600 mb-4"></i>
-          <h3 id="dialog-title" class="text-2xl font-bold text-gray-900 mb-2">
-            You Are Not Connected to the Internet
-          </h3>
-          <p id="dialog-message" class="text-gray-600 mb-6">
-            Please restore your connection immediately. Assessment integrity
-            requires a stable network.
-          </p>
-          <button
-            onclick="checkConnectionAndHide()"
-            class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none"
-          >
-            Check Connection Again
-          </button>
-        </div>
-      </div>
-    </div>
-    <div class="min-h-screen">
-      <header class="bg-white shadow-md sticky top-0 z-20">
-        <div
-          class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center"
-        >
-          <h1 class="text-xl font-bold text-theme-dark truncate">
-            {{ paper.title }}
-          </h1>
+        console.log('=== QUESTION SUMMARY COUNTS ===');
+        console.log('Answered:', counts.answered);
+        console.log('Not Answered:', counts.notAnswered);
+        console.log('Not Visited:', counts.notVisited);
+        console.log('Marked for Review:', counts.marked);
+        console.log('Current:', counts.current);
+        console.log('================================');
 
-          <div class="flex items-center space-x-4">
-            <span class="text-sm font-medium text-gray-600 hidden sm:inline">
-              Duration: {{ paper.duration }} min
-            </span>
-            <div
-              class="bg-red-600 text-white font-extrabold py-2 px-4 rounded-full shadow-lg text-lg sm:text-xl"
-              id="timer"
-            >
-              Loading Time...
-            </div>
-          </div>
-        </div>
-      </header>
+        // Update DOM elements
+        const answeredEl = document.getElementById('count-answered');
+        const notAnsweredEl = document.getElementById('count-not-answered');
+        const notVisitedEl = document.getElementById('count-not-visited');
+        const markedEl = document.getElementById('count-marked');
+        const currentEl = document.getElementById('count-current');
 
-      <main class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-        <form
-          method="post"
-          action="{% url 'test:user_test' link_id=link_id %}"
-          class="space-y-8"
-          id="assessment-form"
-        >
-          {% csrf_token %} {% for section in sections_list %}
-          <div
-            class="section-block p-5 bg-white rounded-xl shadow-lg border-t-4 border-theme-primary/70"
-          >
-            <h2 class="text-2xl font-bold text-theme-dark mb-5 border-b pb-2">
-              {{ section.title }}
-            </h2>
+        if (answeredEl) answeredEl.textContent = counts.answered;
+        if (notAnsweredEl) notAnsweredEl.textContent = counts.notAnswered;
+        if (notVisitedEl) notVisitedEl.textContent = counts.notVisited;
+        if (markedEl) markedEl.textContent = counts.marked;
+        if (currentEl) currentEl.textContent = counts.current;
+      }
 
-            <div class="space-y-5">
-              {% for q in section.questions %}
-              <div
-                class="question-card p-3 border border-gray-200 rounded-lg bg-gray-50/50"
-              >
-                <p class="font-semibold text-lg mb-3">
-                  Q{{ forloop.counter }}: {{ q.text | safe }}
-                  <span class="text-xs font-normal text-theme-primary">
-                    [{{ q.type }}]
-                  </span>
-                </p>
-
-                {% if q.type == 'MCQ' %}
-                <div class="space-y-2 mt-3">
-                  {% for option in q.options %}
-                  <label class="flex items-center text-gray-700">
-                    <input
-                      type="radio"
-                      name="question_{{ q.id }}"
-                      value="{{ option }}"
-                      class="h-4 w-4 text-theme-dark border-gray-300 focus:ring-theme-dark"
-                    />
-                    <span class="ml-3 text-sm">{{ option }}</span>
-                  </label>
-                  {% endfor %}
-                </div>
-                {% elif q.type == 'CODE' %}
-                <p class="text-sm text-gray-600 mb-2 mt-3">
-                  Write, run and submit your code below:
-                </p>
-
-                <!-- <div class="mb-2">
-                  <label
-                    for="language-selector-{{ q.id }}"
-                    class="text-xs font-semibold text-gray-700"
-                    >Select Language:</label
-                  >
-                  <select
-                    id="language-selector-{{ q.id }}"
-                    class="p-1 border border-gray-300 rounded-md text-sm"
-                    onchange="changeLanguage({{ q.id }}, this.value)"
-                  >
-                    <option value="javascript">JavaScript</option>
-                    <option value="java">Java</option>
-                    <option value="cpp">C++</option>
-                    <option value="c">C</option>
-                    <option value="sql">SQL</option>
-                  </select>
-                </div> -->
-                <div class="mb-2">
-                  <label
-                    for="language-selector-{{ q.id }}"
-                    class="text-xs font-semibold text-gray-700"
-                    >Select Language:</label
-                  >
-                  <select
-                    id="language-selector-{{ q.id }}"
-                    class="p-1 border border-gray-300 rounded-md text-sm"
-                    onchange="changeLanguage({{ q.id }}, this.value)"
-                  >
-                    <option value="python" selected>Python</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="java">Java</option>
-                    <option value="cpp">C++</option>
-                    <option value="c">C</option>
-                    <option value="sql">SQL</option>
-                  </select>
-                </div>
-                <div
-                  id="editor-{{ q.id }}"
-                  class="code-editor mt-3"
-                  data-language="python"
-                ></div>
-
-                <textarea
-                  name="question_{{ q.id }}"
-                  id="textarea-{{ q.id }}"
-                  class="hidden"
-                ></textarea>
-
-                <div
-                  id="output-{{ q.id }}"
-                  class="hidden mt-3 p-3 text-sm rounded-lg whitespace-pre-wrap font-mono"
-                ></div>
-
-                <div class="mt-3 flex space-x-3">
-                  <button
-                    type="button"
-                    id="run-btn-{{ q.id }}"
-                    onclick="runCode({{ q.id }})"
-                    class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    <i class="fas fa-play mr-1"></i> Run Code (Browser)
-                  </button>
-                </div>
-
-                {% else %}
-                <textarea
-                  name="question_{{ q.id }}"
-                  rows="6"
-                  placeholder="Type your detailed answer here..."
-                  class="answer-input resize-y mt-3"
-                ></textarea>
-                {% endif %}
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          {% endfor %}
-
-          <div class="h-16 sm:h-20"></div>
-        </form>
-      </main>
-
-      <div
-        id="fixed-footer"
-        class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-2xl z-20"
-      >
-        <div class="max-w-5xl mx-auto flex justify-end">
-          <button
-            type="submit"
-            form="assessment-form"
-            class="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-lg hover:bg-green-700 transition-colors shadow-lg focus:outline-none"
-          >
-            Submit Final Assessment
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      // --- NEW BACKEND-CONTROLLED TIMER LOGIC VARIABLES ---
-      let totalSeconds = -1; // Server से प्राप्त होने वाला कुल शेष समय
-      const POLLING_RATE_SECONDS = 15; // हर 15 सेकंड में सर्वर से समय सिंक करें
-      // pollingInterval और submissionLocked globals अब window scope में हैं।
+      // --- TIMER LOGIC VARIABLES ---
+      let totalSeconds = -1;
+      const POLLING_RATE_SECONDS = 15;
       window.pollingInterval = null;
-      window.editorInstances = {}; // Global access के लिए इसे यहां परिभाषित करें
+      window.editorInstances = {};
 
-      // --- TIMER DISPLAY HELPER FUNCTIONS ---
       function formatTime(seconds) {
         if (seconds < 0) seconds = 0;
-        let minutes = parseInt(seconds / 60, 10);
+        let hours = parseInt(seconds / 3600, 10);
+        let minutes = parseInt((seconds % 3600) / 60, 10);
         let secs = parseInt(seconds % 60, 10);
 
+        hours = hours < 10 ? "0" + hours : hours;
         minutes = minutes < 10 ? "0" + minutes : minutes;
         secs = secs < 10 ? "0" + secs : secs;
 
-        return minutes + ":" + secs;
+        return hours + ":" + minutes + ":" + secs;
       }
 
       function updateTimerDisplay(seconds) {
@@ -1414,35 +823,21 @@
         if (!timerElement) return;
 
         timerElement.textContent = formatTime(seconds);
-
-        // Update color based on remaining time
-        timerElement.classList.remove(
-          "bg-yellow-500",
-          "text-gray-800",
-          "bg-red-700",
-          "bg-red-800",
-          "text-white",
-          "bg-red-600"
-        );
+        timerElement.classList.remove("text-yellow-600", "text-red-600", "text-gray-800");
 
         if (seconds <= 60) {
-          timerElement.classList.add("bg-red-700", "text-white");
+          timerElement.classList.add("text-red-600");
         } else if (seconds <= 300) {
-          // 5 minutes
-          timerElement.classList.add("bg-yellow-500", "text-gray-800");
+          timerElement.classList.add("text-yellow-600");
         } else {
-          timerElement.classList.add("bg-red-600", "text-white");
+          timerElement.classList.add("text-gray-800");
         }
       }
 
-      // --- POLLING LOGIC ---
       function pollTimeRemaining(linkId, formId) {
-        // Django's URL template tag का उपयोग करें
-        const timeUrl =
-          "{% url 'test:get_time_remaining_api' link_id=link_id %}";
+        const timeUrl = "{% url 'test:get_time_remaining_api' link_id=link_id %}";
         let timerElement = document.getElementById("timer");
 
-        // सर्वर से समय प्राप्त करने के लिए API कॉल
         fetch(timeUrl, {
           method: "GET",
         })
@@ -1460,11 +855,9 @@
               return;
             }
 
-            // सर्वर से प्राप्त सटीक समय को सेट करें
             totalSeconds = data.remaining_seconds;
 
             if (data.time_up || totalSeconds <= 0) {
-              // अगर सर्वर ने 'time_up' भेज दिया है, तो पोलिंग रोकें और सबमिट करें
               if (window.pollingInterval) clearInterval(window.pollingInterval);
               lockAndAutoSubmit("time_up");
             } else {
@@ -1477,7 +870,6 @@
           });
       }
 
-      // --- SKULPT PYTHON UTILITY FUNCTION ---
       function outf(text, questionId) {
         const outputElement = document.getElementById(`output-${questionId}`);
         outputElement.textContent += text;
@@ -1486,76 +878,50 @@
       }
 
       function builtinRead(x) {
-        if (
-          Sk.builtinFiles === undefined ||
-          Sk.builtinFiles["files"][x] === undefined
-        )
+        if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
           throw "File not found: '" + x + "'";
         return Sk.builtinFiles["files"][x];
       }
 
-      // --- JAVASCRIPT RUNNER FUNCTION (Client-Side) ---
       function runJavaScript(code, questionId, outputElement, runButton) {
         let output = "";
         const originalConsoleLog = console.log;
 
-        // Temporarily replace console.log to capture output
         console.log = (...args) => {
           output += args.map(String).join(" ") + "\n";
         };
 
         try {
-          // Execute the JavaScript code safely using new Function()
           new Function(code)();
-
-          outputElement.textContent =
-            output.trim() ||
-            "Code executed successfully. No output was printed using console.log.";
-          outputElement.classList.remove(
-            "bg-gray-700",
-            "text-white",
-            "bg-red-900",
-            "text-red-300"
-          );
+          outputElement.textContent = output.trim() || "Code executed successfully. No output was printed using console.log.";
+          outputElement.classList.remove("bg-gray-700", "text-white", "bg-red-900", "text-red-300");
           outputElement.classList.add("bg-gray-800", "text-green-300");
         } catch (err) {
           outputElement.textContent = "Error:\n" + err.toString();
           outputElement.classList.remove("bg-gray-700", "text-white");
           outputElement.classList.add("bg-red-900", "text-red-300");
         } finally {
-          // Restore the original console.log and finalize button state
           console.log = originalConsoleLog;
-          runButton.innerHTML =
-            '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+          runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
           runButton.disabled = false;
         }
       }
 
-      // --- MOCK RUNNER FUNCTION (C, Java, SQL, C++) ---
       function mockServerRunner(language, outputElement, runButton) {
         outputElement.textContent = `Execution Simulation for ${language.toUpperCase()}:\n\nNOTE: ${language.toUpperCase()} code cannot be executed directly in the browser.\nYour code is saved and will be executed/evaluated on the server upon final submission.`;
-        outputElement.classList.remove(
-          "bg-gray-700",
-          "text-white",
-          "bg-red-900",
-          "text-red-300"
-        );
-        outputElement.classList.add("bg-blue-900", "text-blue-300"); // Use a distinct color for simulation
+        outputElement.classList.remove("bg-gray-700", "text-white", "bg-red-900", "text-red-300");
+        outputElement.classList.add("bg-blue-900", "text-blue-300");
 
-        // Restore button state immediately
         setTimeout(() => {
-          runButton.innerHTML =
-            '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+          runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
           runButton.disabled = false;
         }, 500);
       }
 
-      // --- NEW LANGUAGE CHANGER FUNCTION ---
       function changeLanguage(questionId, newLanguage) {
         const editor = editorInstances[questionId];
         const editorContainer = document.getElementById(`editor-${questionId}`);
 
-        // Map requested language to Monaco's accepted language ID
         let monacoLanguage = newLanguage;
         let placeholder = "// Write your code here";
 
@@ -1573,7 +939,7 @@
             break;
           case "cpp":
           case "c":
-            monacoLanguage = "cpp"; // Monaco uses 'cpp' for both C and C++
+            monacoLanguage = "cpp";
             placeholder = "// Write your C/C++ code here";
             break;
           case "sql":
@@ -1587,29 +953,16 @@
         }
 
         if (editor) {
-          // 1. Change Monaco model's language
           monaco.editor.setModelLanguage(editor.getModel(), monacoLanguage);
-
-          // 2. Update data-language attribute
           editorContainer.setAttribute("data-language", newLanguage);
 
-          // 3. Set placeholder code
-          // Only update if the editor is empty or contains the old placeholder (basic check)
           const currentValue = editor.getValue().trim();
-          if (
-            currentValue === "" ||
-            currentValue.startsWith("# Write") ||
-            currentValue.startsWith("// Write") ||
-            currentValue.startsWith("-- Write") ||
-            currentValue.includes("function") ||
-            currentValue.includes("def")
-          ) {
+          if (currentValue === "" || currentValue.startsWith("# Write") || currentValue.startsWith("// Write") || currentValue.startsWith("-- Write")) {
             editor.setValue(placeholder);
           }
         }
       }
 
-      // --- UPDATED runCode FUNCTION (Supports all languages) ---
       function runCode(questionId) {
         const editor = editorInstances[questionId];
         if (!editor) {
@@ -1622,32 +975,20 @@
         const runButton = document.getElementById(`run-btn-${questionId}`);
         const editorContainer = document.getElementById(`editor-${questionId}`);
 
-        // Determine the selected language
-        const language =
-          editorContainer.getAttribute("data-language") || "python";
+        const language = editorContainer.getAttribute("data-language") || "python";
 
-        // UI setup for running state
         outputElement.textContent = "Running...";
-        outputElement.classList.remove(
-          "hidden",
-          "bg-red-900",
-          "text-green-300",
-          "bg-blue-900",
-          "text-blue-300" // Remove mock color
-        );
+        outputElement.classList.remove("hidden", "bg-red-900", "text-green-300", "bg-blue-900", "text-blue-300");
         outputElement.classList.add("bg-gray-700", "text-white");
         runButton.disabled = true;
-        runButton.innerHTML =
-          '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
+        runButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
 
-        // Dispatch based on selected language
         if (language === "javascript") {
           runJavaScript(code, questionId, outputElement, runButton);
           return;
         }
 
         if (language === "python") {
-          // Python case uses Skulpt (Client-Side)
           Sk.pre = "output-" + questionId;
 
           Sk.configure({
@@ -1662,15 +1003,13 @@
             })
             .then(
               function (mod) {
-                runButton.innerHTML =
-                  '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+                runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
               },
               function (err) {
                 outputElement.textContent = "Error:\n" + err.toString();
                 outputElement.classList.remove("bg-gray-700", "text-white");
                 outputElement.classList.add("bg-red-900", "text-red-300");
-                runButton.innerHTML =
-                  '<i class="fas fa-play mr-1"></i> Run Code (Browser)';
+                runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
               }
             )
             .finally(() => {
@@ -1679,32 +1018,36 @@
           return;
         }
 
-        // --- Other Languages (C, Java, SQL, C++) use Mock Runner ---
         mockServerRunner(language, outputElement, runButton);
       }
 
-      // --- MONACO EDITOR & INIT LOGIC ---
       document.addEventListener("DOMContentLoaded", function () {
-        // --- START TIMER INIT: POLLING & LOCAL TICKER ---
+        console.log('Page Loading...');
+        
+        // Load saved states from LocalStorage
+        loadStatesFromLocalStorage();
+
+        if (allQuestionIds.length > 0) {
+          goToQuestion(allQuestionIds[0]);
+        }
+
+        updateQuestionSummary();
+
         const linkIdFromDjango = "{{ link_id }}";
         const formId = "assessment-form";
 
-        // 1. Local Ticker: हर 1 सेकंड में UI को अपडेट करें
         setInterval(() => {
           if (totalSeconds > 0 && !submissionLocked) {
             totalSeconds--;
             updateTimerDisplay(totalSeconds);
           }
-          // अगर 0 पर पहुंच गया तो auto-submit logic चलाओ (safety के लिए)
           if (totalSeconds <= 0 && !submissionLocked) {
             if (window.pollingInterval) clearInterval(window.pollingInterval);
             lockAndAutoSubmit("time_up");
           }
         }, 1000);
 
-        // 2. Server Polling: हर 15 सेकंड में सर्वर से सटीक समय प्राप्त करें
         window.pollingInterval = setInterval(() => {
-          // Only poll if not already locked
           if (!submissionLocked) {
             pollTimeRemaining(linkIdFromDjango, formId);
           } else {
@@ -1712,132 +1055,1358 @@
           }
         }, POLLING_RATE_SECONDS * 1000);
 
-        // 3. पेज लोड पर तुरंत एक बार कॉल करें (Initial Time प्राप्त करने के लिए)
         pollTimeRemaining(linkIdFromDjango, formId);
 
-        // Monaco Editor Initialization
         require.config({
           paths: {
             vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
           },
         });
 
-        // **UPDATED MONACO INITIALIZATION BLOCK**
         require(["vs/editor/editor.main"], function () {
           console.log("Monaco Editor: Loader script finished loading.");
-          document
-            .querySelectorAll(".code-editor")
-            .forEach((editorContainer) => {
-              const questionId = editorContainer.id.replace("editor-", "");
-              const textarea = document.getElementById(
-                `textarea-${questionId}`
-              );
+          document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+            const questionId = editorContainer.id.replace("editor-", "");
+            const textarea = document.getElementById(`textarea-${questionId}`);
 
-              const languageSelector = document.getElementById(
-                `language-selector-${questionId}`
-              );
-              const initialLanguage = languageSelector
-                ? languageSelector.value // Use the selected value (now defaults to Python)
-                : "python";
+            const languageSelector = document.getElementById(`language-selector-${questionId}`);
+            const initialLanguage = languageSelector ? languageSelector.value : "python";
 
-              // Map language name to Monaco ID for initial setup
-              let monacoLanguage = initialLanguage;
-              let initialPlaceholder = "# Write your Python code here";
+            let monacoLanguage = initialLanguage;
+            let initialPlaceholder = "# Write your Python code here";
 
-              switch (initialLanguage) {
-                case "javascript":
-                  monacoLanguage = "javascript";
-                  initialPlaceholder = "// Write your JavaScript code here";
-                  break;
-                case "java":
-                  monacoLanguage = "java";
-                  initialPlaceholder = "// Write your Java code here";
-                  break;
-                case "cpp":
-                case "c":
-                  monacoLanguage = "cpp";
-                  initialPlaceholder = "// Write your C/C++ code here";
-                  break;
-                case "sql":
-                  monacoLanguage = "sql";
-                  initialPlaceholder = "-- Write your SQL query here";
-                  break;
-                default:
-                  // Python default is handled by the initial setup
-                  monacoLanguage = "python";
-                  break;
-              }
+            switch (initialLanguage) {
+              case "javascript":
+                monacoLanguage = "javascript";
+                initialPlaceholder = "// Write your JavaScript code here";
+                break;
+              case "java":
+                monacoLanguage = "java";
+                initialPlaceholder = "// Write your Java code here";
+                break;
+              case "cpp":
+              case "c":
+                monacoLanguage = "cpp";
+                initialPlaceholder = "// Write your C/C++ code here";
+                break;
+              case "sql":
+                monacoLanguage = "sql";
+                initialPlaceholder = "-- Write your SQL query here";
+                break;
+              default:
+                monacoLanguage = "python";
+                break;
+            }
 
-              editorContainer.setAttribute("data-language", initialLanguage); // Set initial language data attribute
+            editorContainer.setAttribute("data-language", initialLanguage);
 
-              if (!textarea) {
-                console.error(
-                  "Monaco Init Error: Hidden textarea not found for ID:",
-                  questionId
-                );
-                return;
-              }
+            if (!textarea) {
+              console.error("Monaco Init Error: Hidden textarea not found for ID:", questionId);
+              return;
+            }
 
-              if (editorContainer.hasAttribute("data-monaco-initialized"))
-                return;
-              editorContainer.setAttribute("data-monaco-initialized", "true");
+            if (editorContainer.hasAttribute("data-monaco-initialized")) return;
+            editorContainer.setAttribute("data-monaco-initialized", "true");
 
-              try {
-                const editor = monaco.editor.create(editorContainer, {
-                  // Use content from textarea or default placeholder
-                  value: textarea.value || initialPlaceholder,
-                  language: monacoLanguage, // Use the correct Monaco language ID
-                  theme: "vs-light",
-                  minimap: { enabled: false },
-                  automaticLayout: true,
-                  tabSize: 4,
-                });
+            try {
+              const editor = monaco.editor.create(editorContainer, {
+                value: textarea.value || initialPlaceholder,
+                language: monacoLanguage,
+                theme: "vs-light",
+                minimap: { enabled: false },
+                automaticLayout: true,
+                tabSize: 4,
+              });
 
-                editorInstances[questionId] = editor;
-                console.log(
-                  `Monaco Editor: Initialized editor-${questionId} with ${monacoLanguage} (${initialLanguage})`
-                );
+              editorInstances[questionId] = editor;
+              console.log(`Monaco Editor: Initialized editor-${questionId} with ${monacoLanguage} (${initialLanguage})`);
 
-                // Update hidden textarea when editor content changes
-                editor.onDidChangeModelContent(() => {
-                  textarea.value = editor.getValue();
-                });
-              } catch (e) {
-                console.error(
-                  `Monaco Editor: Failed to create editor-${questionId}`,
-                  e
-                );
-                editorContainer.textContent =
-                  "Error: Editor failed to load. Check your network or browser console.";
-              }
-            });
+              editor.onDidChangeModelContent(() => {
+                textarea.value = editor.getValue();
+                markQuestionAsAnswered(questionId);
+              });
+            } catch (e) {
+              console.error(`Monaco Editor: Failed to create editor-${questionId}`, e);
+              editorContainer.textContent = "Error: Editor failed to load. Check your network or browser console.";
+            }
+          });
         }, function (err) {
           console.error("Monaco Editor: Main script failed to load.", err);
         });
-        // **END UPDATED MONACO INITIALIZATION BLOCK**
 
-        // Final submission handler (Saves all code before submission)
-        document
-          .getElementById("assessment-form")
-          .addEventListener("submit", function () {
-            if (window.pollingInterval) clearInterval(window.pollingInterval); // Stop polling on manual submit
+        document.getElementById("assessment-form").addEventListener("submit", function () {
+          if (window.pollingInterval) clearInterval(window.pollingInterval);
+          
+          // Clear LocalStorage on submit
+          clearLocalStorage();
 
-            document
-              .querySelectorAll(".code-editor")
-              .forEach((editorContainer) => {
-                const questionId = editorContainer.id.replace("editor-", "");
-                const textarea = document.getElementById(
-                  `textarea-${questionId}`
-                );
-                const editor = editorInstances[questionId];
+          document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+            const questionId = editorContainer.id.replace("editor-", "");
+            const textarea = document.getElementById(`textarea-${questionId}`);
+            const editor = editorInstances[questionId];
 
-                if (editor) {
-                  // Final save of editor content to the hidden textarea
-                  textarea.value = editor.getValue();
-                }
-              });
+            if (editor) {
+              textarea.value = editor.getValue();
+            }
           });
+        });
       });
+
+      // Auto-save states every 30 seconds as backup
+      setInterval(() => {
+        if (!submissionLocked) {
+          saveStatesToLocalStorage();
+        }
+      }, 30000);
+    </script>
+  </body>
+</html> -->
+
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Online Test - {{ paper.title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/2.0.0/skulpt-stdlib.min.js"></script>
+
+    <script>
+      (function () {
+        const windowName = "dedicatedAssessmentWindow";
+
+        if (window.name !== windowName && !window.opener) {
+          const url = window.location.href;
+
+          const newWindow = window.open(
+            url,
+            windowName,
+            "width=" +
+              screen.availWidth +
+              ",height=" +
+              screen.availHeight +
+              ",resizable=yes,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no"
+          );
+
+          if (newWindow) {
+            setTimeout(function () {
+              window.close();
+            }, 50);
+
+            document.body.style.display = "none";
+            return;
+          }
+        }
+      })();
+    </script>
+    <script>
+      function noBack() {
+        window.history.forward();
+      }
+
+      window.history.forward();
+
+      let isNavigating = false;
+
+      document.addEventListener("DOMContentLoaded", function () {
+        window.addEventListener("popstate", function (event) {
+          alert(
+            "⚠️ WARNING! Navigation Attempt Detected. The Back/Forward button is disabled for this assessment. Repeated attempts to navigate away may result in auto-submission."
+          );
+
+          isNavigating = true;
+          noBack();
+
+          setTimeout(() => {
+            isNavigating = false;
+          }, 500);
+        });
+      });
+    </script>
+
+    <script>
+      let editorInstances = {};
+      let tabChangeCount = 0;
+      const MAX_TAB_CHANGES = 3;
+      let submissionLocked = false;
+
+      function lockAndAutoSubmit(reason) {
+        if (submissionLocked) return;
+        submissionLocked = true;
+
+        if (window.pollingInterval) clearInterval(window.pollingInterval);
+
+        document.title = "Assessment Submitted!";
+
+        const form = document.getElementById("assessment-form");
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        const message =
+          reason === "time_up"
+            ? "🚨 Time is up! Your assessment is being automatically submitted by the server."
+            : "🚨 FINAL WARNING: You have exceeded the tab change limit. Your assessment is being automatically submitted.";
+
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = "Auto-Submitting... 🚫";
+          submitButton.classList.remove("bg-green-600", "hover:bg-green-700");
+          submitButton.classList.add("bg-red-800", "cursor-not-allowed");
+        }
+
+        const timerElement = document.getElementById("timer");
+        if (timerElement) {
+          timerElement.textContent = "TIME UP";
+          timerElement.classList.remove(
+            "bg-red-600",
+            "bg-yellow-500",
+            "text-gray-800"
+          );
+          timerElement.classList.add("bg-red-800", "text-white");
+        }
+
+        alert(message);
+
+        document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+          const questionId = editorContainer.id.replace("editor-", "");
+          const textarea = document.getElementById(`textarea-${questionId}`);
+          const editor = editorInstances[questionId];
+          if (editor) {
+            textarea.value = editor.getValue();
+          }
+        });
+
+        form.submit();
+      }
+
+      function handleVisibilityChange() {
+        if (window.isNavigating || submissionLocked) {
+          return;
+        }
+
+        const originalTitle = "Online Test - {{ paper.title }}";
+
+        if (document.hidden) {
+          document.title = "Breakup";
+
+          tabChangeCount++;
+
+          if (tabChangeCount <= MAX_TAB_CHANGES) {
+            alert(
+              `⚠️ WARNING! Tab Switched. You have ${
+                MAX_TAB_CHANGES - tabChangeCount
+              } warnings remaining.`
+            );
+          } else {
+            lockAndAutoSubmit("tab_switch");
+          }
+        } else {
+          document.title = "Patch Up";
+          setTimeout(() => {
+            if (!submissionLocked) {
+              document.title = originalTitle;
+            }
+          }, 1000);
+        }
+      }
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    </script>
+
+    <script>
+      const OFFLINE_DIALOGUE_ID = "offline-dialogue";
+
+      function showOfflineDialogue() {
+        const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
+        if (dialogue) {
+          dialogue.classList.remove("hidden");
+        }
+      }
+
+      function hideOfflineDialogue() {
+        const dialogue = document.getElementById(OFFLINE_DIALOGUE_ID);
+        if (dialogue) {
+          dialogue.classList.add("hidden");
+        }
+      }
+
+      function checkConnectionAndHide() {
+        if (navigator.onLine) {
+          hideOfflineDialogue();
+        } else {
+          alert(
+            "Still offline. Please check your network cables or Wi-Fi connection."
+          );
+        }
+      }
+
+      function handleOnlineStatus() {
+        if (navigator.onLine) {
+          hideOfflineDialogue();
+          console.log("Internet connection restored.");
+        } else {
+          showOfflineDialogue();
+          console.log("Internet connection lost!");
+        }
+      }
+
+      window.addEventListener("online", handleOnlineStatus);
+      window.addEventListener("offline", handleOnlineStatus);
+
+      document.addEventListener("DOMContentLoaded", handleOnlineStatus);
+    </script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "theme-primary": "#736b8e",
+              "theme-dark": "#5f5778",
+              "theme-light": "#e5e3e9",
+              "gray-text": "#6B7280",
+            },
+          },
+        },
+      };
+    </script>
+    <style type="text/tailwindcss">
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f4f7f9;
+      }
+
+      .question-card {
+        transition: box-shadow 0.2s;
+      }
+
+      .question-card:hover {
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+      }
+
+      .answer-input {
+        @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary;
+      }
+
+      .code-editor {
+        min-height: 250px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+      }
+
+      .question-btn {
+        @apply w-10 h-10 rounded flex items-center justify-center font-semibold text-sm cursor-pointer transition-all;
+      }
+
+      /* COLORS configured here */
+      .question-answered {
+        @apply bg-green-600 text-white border-transparent;
+      }
+
+      .question-current {
+        @apply bg-blue-600 text-white border-transparent;
+      }
+
+      .question-not-answered {
+        @apply bg-red-600 text-white border-transparent;
+      }
+
+      .question-marked {
+        @apply bg-yellow-500 text-gray-900 border-transparent;
+      }
+
+      /* INITIAL GREY COLOR */
+      .question-not-visited {
+        @apply bg-gray-300 text-gray-800 border border-gray-300;
+      }
+
+      .legend-item {
+        @apply flex items-center space-x-2 text-sm;
+      }
+
+      .legend-box {
+        @apply w-6 h-6 rounded;
+      }
+    </style>
+  </head>
+
+  <body
+    class="text-gray-800"
+    onload="noBack()"
+    onpageshow="if (event.persisted) noBack();"
+  >
+    <div
+      id="offline-dialogue"
+      class="fixed inset-0 z-50 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden"
+      role="alert"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+    >
+      <div
+        class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full transform transition-all duration-300 scale-100"
+      >
+        <div class="text-center">
+          <i class="fas fa-wifi fa-3x text-red-600 mb-4"></i>
+          <h3 id="dialog-title" class="text-2xl font-bold text-gray-900 mb-2">
+            You Are Not Connected to the Internet
+          </h3>
+          <p id="dialog-message" class="text-gray-600 mb-6">
+            Please restore your connection immediately. Assessment integrity
+            requires a stable network.
+          </p>
+          <button
+            onclick="checkConnectionAndHide()"
+            class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none"
+          >
+            Check Connection Again
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="min-h-screen flex flex-col">
+      <header class="bg-gradient-to-r from-gray-100 to-gray-200 shadow-md">
+        <div class="max-w-full mx-auto px-6 py-4 flex justify-between items-center">
+          <h1 class="text-xl font-bold text-gray-800">
+            Online Test - {{ paper.title }}
+          </h1>
+
+          <div class="flex items-center space-x-6">
+            <div class="text-right">
+              <div class="text-xs text-gray-600 mb-1">Time Left</div>
+              <div
+                class="bg-white border-2 border-gray-300 text-gray-800 font-bold py-2 px-4 rounded text-lg"
+                id="timer"
+              >
+                00:00:00
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-1 flex overflow-hidden">
+        <form
+          method="post"
+          action="{% url 'test:user_test' link_id=link_id %}"
+          id="assessment-form"
+          class="flex-1 flex"
+        >
+          {% csrf_token %}
+          
+          <div class="flex-1 bg-white overflow-y-auto p-6">
+            <div id="questions-container">
+              {% for section in sections_list %}
+                {% for q in section.questions %}
+                  <div 
+                    class="question-block" 
+                    id="question-{{ q.id }}" 
+                    data-section="{{ section.title }}"
+                    data-question-index="{{ forloop.counter }}"
+                    style="display: none;">
+                    
+                    <div class="mb-4">
+                      <h2 class="text-lg font-bold text-gray-700 mb-2">{{ section.title }}</h2>
+                      <div class="text-sm text-gray-600">Question {{ forloop.counter }}</div>
+                    </div>
+
+                    <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6">
+                      <p class="text-base leading-relaxed text-gray-800">
+                        {{ q.text | safe }}
+                      </p>
+                    </div>
+
+                    <div class="mb-6">
+                      {% if q.type == 'MCQ' %}
+                        <div class="space-y-3">
+                          {% for option in q.options %}
+                          <label class="flex items-start p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all">
+                            <input
+                              type="radio"
+                              name="question_{{ q.id }}"
+                              value="{{ option }}"
+                              class="mt-1 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                              onchange="markQuestionAsAnswered({{ q.id }})"
+                            />
+                            <span class="ml-3 text-sm text-gray-700 flex-1">{{ option }}</span>
+                          </label>
+                          {% endfor %}
+                        </div>
+                      {% elif q.type == 'CODE' %}
+                        <p class="text-sm text-gray-600 mb-3">
+                          Write, run and submit your code below:
+                        </p>
+
+                        <div class="mb-3">
+                          <label
+                            for="language-selector-{{ q.id }}"
+                            class="text-xs font-semibold text-gray-700 mr-2"
+                            >Select Language:</label
+                          >
+                          <select
+                            id="language-selector-{{ q.id }}"
+                            class="p-2 border border-gray-300 rounded-md text-sm"
+                            onchange="changeLanguage({{ q.id }}, this.value)"
+                          >
+                            
+                            <option value="javascript">JavaScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="c">C</option>
+                            <option value="sql">SQL</option>
+                          </select>
+                        </div>
+                        
+                        <div
+                          id="editor-{{ q.id }}"
+                          class="code-editor mb-3"
+                          data-language="python"
+                        ></div>
+
+                        <textarea
+                          name="question_{{ q.id }}"
+                          id="textarea-{{ q.id }}"
+                          class="hidden"
+                        ></textarea>
+
+                        <div
+                          id="output-{{ q.id }}"
+                          class="hidden mt-3 p-3 text-sm rounded-lg whitespace-pre-wrap font-mono"
+                        ></div>
+
+                        <div class="mt-3 flex space-x-3">
+                          <button
+                            type="button"
+                            id="run-btn-{{ q.id }}"
+                            onclick="runCode({{ q.id }})"
+                            class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            <i class="fas fa-play mr-1"></i> Run Code
+                          </button>
+                        </div>
+
+                      {% else %}
+                        <textarea
+                          name="question_{{ q.id }}"
+                          id="textarea-{{ q.id }}"
+                          rows="6"
+                          placeholder="Type your detailed answer here..."
+                          class="answer-input resize-y"
+                          onchange="markQuestionAsAnswered({{ q.id }})"
+                        ></textarea>
+                      {% endif %}
+                    </div>
+
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onclick="markForReviewCurrent()"
+                        id="mark-review-btn-{{ q.id }}"
+                        class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        Mark for review
+                      </button>
+
+                      <div class="flex space-x-3">
+                        <button
+                          type="button"
+                          onclick="previousQuestion()"
+                          class="bg-gray-500 text-white font-medium py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          onclick="nextQuestion()"
+                          class="bg-blue-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="w-80 bg-gray-50 border-l border-gray-200 overflow-y-auto p-6">
+            {% for section in sections_list %}
+            <div class="mb-6">
+              <h3 class="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">{{ section.title }}</h3>
+              <div class="grid grid-cols-5 gap-2 mb-4">
+                {% for q in section.questions %}
+                <div
+                  class="question-btn question-not-visited"
+                  id="palette-btn-{{ q.id }}"
+                  data-question-id="{{ q.id }}"
+                  onclick="goToQuestion({{ q.id }})"
+                >
+                  {{ forloop.counter }}
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+
+            <div class="mt-6 pt-4 border-t border-gray-300">
+              <h4 class="font-bold text-gray-700 mb-4 text-sm">Question Summary</h4>
+              <div class="space-y-3 mb-4">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-green-600"></div>
+                    <span class="text-sm text-gray-700">Answered</span>
+                  </div>
+                  <span id="count-answered" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-red-600"></div>
+                    <span class="text-sm text-gray-700">Not Answered</span>
+                  </div>
+                  <span id="count-not-answered" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-gray-300 border border-gray-400"></div>
+                    <span class="text-sm text-gray-700">Not Visited</span>
+                  </div>
+                  <span id="count-not-visited" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-yellow-500"></div>
+                    <span class="text-sm text-gray-700">Marked for Review</span>
+                  </div>
+                  <span id="count-marked" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-5 h-5 rounded bg-blue-600"></div>
+                    <span class="text-sm text-gray-700">Current</span>
+                  </div>
+                  <span id="count-current" class="font-bold text-gray-800 text-sm">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <button
+                type="submit"
+                class="w-full bg-green-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-lg"
+              >
+                Submit Test
+              </button>
+            </div>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <script>
+      // --- Enhanced LocalStorage Functions for Answers & States ---
+      const STORAGE_KEY = `test_states_{{ link_id }}`;
+      const ANSWERS_STORAGE_KEY = `test_answers_{{ link_id }}`;
+
+      function saveStatesToLocalStorage() {
+        try {
+          const statesToSave = {};
+          allQuestionIds.forEach(qId => {
+            statesToSave[qId] = questionStates[qId];
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(statesToSave));
+          console.log('✓ Question states saved to LocalStorage');
+        } catch (e) {
+          console.error('Error saving states to LocalStorage:', e);
+        }
+      }
+
+      function loadStatesFromLocalStorage() {
+        try {
+          const savedStates = localStorage.getItem(STORAGE_KEY);
+          if (savedStates) {
+            const parsedStates = JSON.parse(savedStates);
+            allQuestionIds.forEach(qId => {
+              if (parsedStates[qId]) {
+                questionStates[qId] = parsedStates[qId];
+              }
+            });
+            console.log('✓ Question states loaded from LocalStorage');
+            return true;
+          }
+        } catch (e) {
+          console.error('Error loading states from LocalStorage:', e);
+        }
+        return false;
+      }
+
+      function saveAnswersToLocalStorage() {
+        try {
+          const answersToSave = {};
+          
+          allQuestionIds.forEach(qId => {
+            // Save MCQ answers
+            const radioInput = document.querySelector(`input[name="question_${qId}"]:checked`);
+            if (radioInput) {
+              answersToSave[qId] = {
+                type: 'mcq',
+                value: radioInput.value
+              };
+            }
+            
+            // Save textarea answers (both regular and code editors)
+            const textarea = document.querySelector(`textarea[name="question_${qId}"]`);
+            if (textarea && textarea.value && !editorInstances[qId]) {
+              // Only save textarea if it's not a code editor textarea
+              answersToSave[qId] = {
+                type: 'textarea',
+                value: textarea.value
+              };
+            }
+            
+            // Save code editor answers
+            const editor = editorInstances[qId];
+            if (editor) {
+              answersToSave[qId] = {
+                type: 'code',
+                value: editor.getValue()
+              };
+            }
+          });
+          
+          localStorage.setItem(ANSWERS_STORAGE_KEY, JSON.stringify(answersToSave));
+          console.log('✓ Answers saved to LocalStorage - Total:', Object.keys(answersToSave).length);
+        } catch (e) {
+          console.error('Error saving answers to LocalStorage:', e);
+        }
+      }
+
+      function loadAnswersFromLocalStorage() {
+        try {
+          const savedAnswers = localStorage.getItem(ANSWERS_STORAGE_KEY);
+          if (savedAnswers) {
+            const parsedAnswers = JSON.parse(savedAnswers);
+            
+            // Restore answers with proper delays
+            Object.keys(parsedAnswers).forEach(qId => {
+              const answer = parsedAnswers[qId];
+              
+              try {
+                if (answer.type === 'mcq') {
+                  const radioInput = document.querySelector(`input[name="question_${qId}"][value="${answer.value}"]`);
+                  if (radioInput) {
+                    radioInput.checked = true;
+                  }
+                } else if (answer.type === 'textarea') {
+                  const textarea = document.querySelector(`textarea[name="question_${qId}"]`);
+                  if (textarea && !editorInstances[qId]) {
+                    textarea.value = answer.value;
+                  }
+                } else if (answer.type === 'code') {
+                  const editor = editorInstances[qId];
+                  if (editor) {
+                    editor.setValue(answer.value);
+                  }
+                }
+              } catch (err) {
+                console.error(`Error restoring answer for question ${qId}:`, err);
+              }
+            });
+            
+            console.log('✓ Answers restored from LocalStorage - Total:', Object.keys(parsedAnswers).length);
+            return true;
+          }
+        } catch (e) {
+          console.error('Error loading answers from LocalStorage:', e);
+        }
+        return false;
+      }
+
+      function clearLocalStorage() {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(ANSWERS_STORAGE_KEY);
+          console.log('✓ LocalStorage cleared - Test submitted');
+        } catch (e) {
+          console.error('Error clearing LocalStorage:', e);
+        }
+      }
+
+      // --- Question Navigation State ---
+      let currentQuestionId = null;
+      let questionStates = {};
+      let allQuestionIds = [];
+
+      // Initialize question states
+      {% for section in sections_list %}
+        {% for q in section.questions %}
+          allQuestionIds.push({{ q.id }});
+          questionStates[{{ q.id }}] = {
+            answered: false,
+            marked: false,
+            visited: false
+          };
+        {% endfor %}
+      {% endfor %}
+
+      function goToQuestion(questionId) {
+        document.querySelectorAll('.question-block').forEach(block => {
+          block.style.display = 'none';
+        });
+
+        const questionBlock = document.getElementById(`question-${questionId}`);
+        if (questionBlock) {
+          questionBlock.style.display = 'block';
+          currentQuestionId = questionId;
+          questionStates[questionId].visited = true;
+          saveStatesToLocalStorage();
+          updateQuestionPalette();
+          updateNavigationButtons();
+          updateQuestionSummary();
+          updateMarkReviewButton(questionId);
+        }
+      }
+
+      function nextQuestion() {
+        const currentIndex = allQuestionIds.indexOf(currentQuestionId);
+        if (currentIndex < allQuestionIds.length - 1) {
+          const nextId = allQuestionIds[currentIndex + 1];
+          goToQuestion(nextId);
+        }
+      }
+
+      function previousQuestion() {
+        const currentIndex = allQuestionIds.indexOf(currentQuestionId);
+        if (currentIndex > 0) {
+          const prevId = allQuestionIds[currentIndex - 1];
+          goToQuestion(prevId);
+        }
+      }
+
+      function updateNavigationButtons() {
+        const currentIndex = allQuestionIds.indexOf(currentQuestionId);
+        const allQuestionBlocks = document.querySelectorAll('.question-block');
+        
+        allQuestionBlocks.forEach(block => {
+          const prevButtons = block.querySelectorAll('button[onclick^="previousQuestion"]');
+          const nextButtons = block.querySelectorAll('button[onclick^="nextQuestion"]');
+          
+          prevButtons.forEach(btn => {
+            if (currentIndex === 0) {
+              btn.disabled = true;
+              btn.classList.add('opacity-50', 'cursor-not-allowed');
+              btn.classList.remove('hover:bg-gray-600');
+            } else {
+              btn.disabled = false;
+              btn.classList.remove('opacity-50', 'cursor-not-allowed');
+              btn.classList.add('hover:bg-gray-600');
+            }
+          });
+          
+          nextButtons.forEach(btn => {
+            if (currentIndex === allQuestionIds.length - 1) {
+              btn.disabled = true;
+              btn.classList.add('opacity-50', 'cursor-not-allowed');
+              btn.classList.remove('hover:bg-blue-700');
+            } else {
+              btn.disabled = false;
+              btn.classList.remove('opacity-50', 'cursor-not-allowed');
+              btn.classList.add('hover:bg-blue-700');
+            }
+          });
+        });
+      }
+
+      function markQuestionAsAnswered(questionId) {
+        questionStates[questionId].answered = true;
+        questionStates[questionId].marked = false;
+        saveStatesToLocalStorage();
+        saveAnswersToLocalStorage();
+        updateQuestionPalette();
+        updateQuestionSummary();
+      }
+
+      function markForReview(questionId) {
+        questionStates[questionId].marked = !questionStates[questionId].marked;
+        console.log(`Question ${questionId} marked state:`, questionStates[questionId].marked);
+        saveStatesToLocalStorage();
+        saveAnswersToLocalStorage();
+        updateQuestionPalette();
+        updateQuestionSummary();
+        updateMarkReviewButton(questionId);
+      }
+
+      function markForReviewCurrent() {
+        if (currentQuestionId) {
+          markForReview(currentQuestionId);
+        } else {
+          console.error('No current question selected');
+        }
+      }
+
+      function updateMarkReviewButton(questionId) {
+        const btn = document.getElementById(`mark-review-btn-${questionId}`);
+        if (btn) {
+          if (questionStates[questionId].marked) {
+            btn.textContent = "Unmark Review";
+            btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+            btn.classList.add('bg-orange-600', 'hover:bg-orange-700');
+          } else {
+            btn.textContent = "Mark for review";
+            btn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+            btn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+          }
+        }
+      }
+
+      function updateQuestionPalette() {
+        allQuestionIds.forEach(qId => {
+          const btn = document.getElementById(`palette-btn-${qId}`);
+          if (btn) {
+            btn.classList.remove('question-answered', 'question-current', 'question-not-answered', 'question-marked', 'question-not-visited');
+            
+            if (qId === currentQuestionId) {
+              btn.classList.add('question-current');
+            } else if (questionStates[qId].marked) {
+              btn.classList.add('question-marked');
+            } else if (questionStates[qId].answered) {
+              btn.classList.add('question-answered');
+            } else if (questionStates[qId].visited) {
+              btn.classList.add('question-not-answered');
+            } else {
+              btn.classList.add('question-not-visited');
+            }
+          }
+        });
+      }
+
+      function updateQuestionSummary() {
+        let counts = {
+          answered: 0,
+          notAnswered: 0,
+          notVisited: 0,
+          marked: 0,
+          current: 0
+        };
+
+        allQuestionIds.forEach(qId => {
+          if (qId === currentQuestionId) {
+            counts.current = 1;
+            if (questionStates[qId].marked) {
+              counts.marked++;
+            }
+          } else if (questionStates[qId].marked) {
+            counts.marked++;
+          } else if (questionStates[qId].answered) {
+            counts.answered++;
+          } else if (questionStates[qId].visited) {
+            counts.notAnswered++;
+          } else {
+            counts.notVisited++;
+          }
+        });
+
+        const answeredEl = document.getElementById('count-answered');
+        const notAnsweredEl = document.getElementById('count-not-answered');
+        const notVisitedEl = document.getElementById('count-not-visited');
+        const markedEl = document.getElementById('count-marked');
+        const currentEl = document.getElementById('count-current');
+
+        if (answeredEl) answeredEl.textContent = counts.answered;
+        if (notAnsweredEl) notAnsweredEl.textContent = counts.notAnswered;
+        if (notVisitedEl) notVisitedEl.textContent = counts.notVisited;
+        if (markedEl) markedEl.textContent = counts.marked;
+        if (currentEl) currentEl.textContent = counts.current;
+      }
+
+      // --- TIMER LOGIC VARIABLES ---
+      let totalSeconds = -1;
+      const POLLING_RATE_SECONDS = 15;
+      window.pollingInterval = null;
+      window.editorInstances = {};
+
+      function formatTime(seconds) {
+        if (seconds < 0) seconds = 0;
+        let hours = parseInt(seconds / 3600, 10);
+        let minutes = parseInt((seconds % 3600) / 60, 10);
+        let secs = parseInt(seconds % 60, 10);
+
+        hours = hours < 10 ? "0" + hours : hours;
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        secs = secs < 10 ? "0" + secs : secs;
+
+        return hours + ":" + minutes + ":" + secs;
+      }
+
+      function updateTimerDisplay(seconds) {
+        let timerElement = document.getElementById("timer");
+        if (!timerElement) return;
+
+        timerElement.textContent = formatTime(seconds);
+        timerElement.classList.remove("text-yellow-600", "text-red-600", "text-gray-800");
+
+        if (seconds <= 60) {
+          timerElement.classList.add("text-red-600");
+        } else if (seconds <= 300) {
+          timerElement.classList.add("text-yellow-600");
+        } else {
+          timerElement.classList.add("text-gray-800");
+        }
+      }
+
+      function pollTimeRemaining(linkId, formId) {
+        const timeUrl = "{% url 'test:get_time_remaining_api' link_id=link_id %}";
+        let timerElement = document.getElementById("timer");
+
+        fetch(timeUrl, {
+          method: "GET",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Server Time API response not ok");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.error) {
+              console.error("Server Time Error:", data.error);
+              if (window.pollingInterval) clearInterval(window.pollingInterval);
+              if (timerElement) timerElement.textContent = "Error";
+              return;
+            }
+
+            totalSeconds = data.remaining_seconds;
+
+            if (data.time_up || totalSeconds <= 0) {
+              if (window.pollingInterval) clearInterval(window.pollingInterval);
+              lockAndAutoSubmit("time_up");
+            } else {
+              updateTimerDisplay(totalSeconds);
+            }
+          })
+          .catch((error) => {
+            console.error("Fetch Error:", error);
+            if (timerElement) timerElement.textContent = "Sync Error";
+          });
+      }
+
+      function outf(text, questionId) {
+        const outputElement = document.getElementById(`output-${questionId}`);
+        outputElement.textContent += text;
+        outputElement.classList.remove("hidden", "bg-red-900", "text-red-300");
+        outputElement.classList.add("bg-gray-800", "text-green-300");
+      }
+
+      function builtinRead(x) {
+        if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+          throw "File not found: '" + x + "'";
+        return Sk.builtinFiles["files"][x];
+      }
+
+      function runJavaScript(code, questionId, outputElement, runButton) {
+        let output = "";
+        const originalConsoleLog = console.log;
+
+        console.log = (...args) => {
+          output += args.map(String).join(" ") + "\n";
+        };
+
+        try {
+          new Function(code)();
+          outputElement.textContent = output.trim() || "Code executed successfully. No output was printed using console.log.";
+          outputElement.classList.remove("bg-gray-700", "text-white", "bg-red-900", "text-red-300");
+          outputElement.classList.add("bg-gray-800", "text-green-300");
+        } catch (err) {
+          outputElement.textContent = "Error:\n" + err.toString();
+          outputElement.classList.remove("bg-gray-700", "text-white");
+          outputElement.classList.add("bg-red-900", "text-red-300");
+        } finally {
+          console.log = originalConsoleLog;
+          runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
+          runButton.disabled = false;
+        }
+      }
+
+      function mockServerRunner(language, outputElement, runButton) {
+        outputElement.textContent = `Execution Simulation for ${language.toUpperCase()}:\n\nNOTE: ${language.toUpperCase()} code cannot be executed directly in the browser.\nYour code is saved and will be executed/evaluated on the server upon final submission.`;
+        outputElement.classList.remove("bg-gray-700", "text-white", "bg-red-900", "text-red-300");
+        outputElement.classList.add("bg-blue-900", "text-blue-300");
+
+        setTimeout(() => {
+          runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
+          runButton.disabled = false;
+        }, 500);
+      }
+
+      function changeLanguage(questionId, newLanguage) {
+        const editor = editorInstances[questionId];
+        const editorContainer = document.getElementById(`editor-${questionId}`);
+
+        let monacoLanguage = newLanguage;
+        let placeholder = "// Write your code here";
+
+        switch (newLanguage) {
+          case "python":
+            placeholder = "# Write your Python code here";
+            break;
+          case "javascript":
+            monacoLanguage = "javascript";
+            placeholder = "// Write your JavaScript code here";
+            break;
+          case "java":
+            monacoLanguage = "java";
+            placeholder = "// Write your Java code here";
+            break;
+          case "cpp":
+          case "c":
+            monacoLanguage = "cpp";
+            placeholder = "// Write your C/C++ code here";
+            break;
+          case "sql":
+            monacoLanguage = "sql";
+            placeholder = "-- Write your SQL query here";
+            break;
+          default:
+            monacoLanguage = "plaintext";
+            placeholder = "// Write your code here";
+            break;
+        }
+
+        if (editor) {
+          monaco.editor.setModelLanguage(editor.getModel(), monacoLanguage);
+          editorContainer.setAttribute("data-language", newLanguage);
+
+          const currentValue = editor.getValue().trim();
+          if (currentValue === "" || currentValue.startsWith("# Write") || currentValue.startsWith("// Write") || currentValue.startsWith("-- Write")) {
+            editor.setValue(placeholder);
+          }
+        }
+      }
+
+      function runCode(questionId) {
+        const editor = editorInstances[questionId];
+        if (!editor) {
+          alert("Error: Code editor not initialized.");
+          return;
+        }
+
+        const code = editor.getValue();
+        const outputElement = document.getElementById(`output-${questionId}`);
+        const runButton = document.getElementById(`run-btn-${questionId}`);
+        const editorContainer = document.getElementById(`editor-${questionId}`);
+
+        const language = editorContainer.getAttribute("data-language") || "python";
+
+        outputElement.textContent = "Running...";
+        outputElement.classList.remove("hidden", "bg-red-900", "text-green-300", "bg-blue-900", "text-blue-300");
+        outputElement.classList.add("bg-gray-700", "text-white");
+        runButton.disabled = true;
+        runButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
+
+        if (language === "javascript") {
+          runJavaScript(code, questionId, outputElement, runButton);
+          return;
+        }
+
+        if (language === "python") {
+          Sk.pre = "output-" + questionId;
+
+          Sk.configure({
+            output: (text) => outf(text, questionId),
+            read: builtinRead,
+            execLimit: 5000,
+          });
+
+          Sk.misceval
+            .asyncToPromise(function () {
+              return Sk.importMainWithBody("<stdin>", false, code, true);
+            })
+            .then(
+              function (mod) {
+                runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
+              },
+              function (err) {
+                outputElement.textContent = "Error:\n" + err.toString();
+                outputElement.classList.remove("bg-gray-700", "text-white");
+                outputElement.classList.add("bg-red-900", "text-red-300");
+                runButton.innerHTML = '<i class="fas fa-play mr-1"></i> Run Code';
+              }
+            )
+            .finally(() => {
+              runButton.disabled = false;
+            });
+          return;
+        }
+
+        mockServerRunner(language, outputElement, runButton);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log('=== PAGE LOADING ===');
+        console.log('Total Questions:', allQuestionIds.length);
+        
+        // Load saved states from LocalStorage
+        loadStatesFromLocalStorage();
+
+        if (allQuestionIds.length > 0) {
+          goToQuestion(allQuestionIds[0]);
+        }
+
+        updateQuestionSummary();
+
+        const linkIdFromDjango = "{{ link_id }}";
+        const formId = "assessment-form";
+
+        setInterval(() => {
+          if (totalSeconds > 0 && !submissionLocked) {
+            totalSeconds--;
+            updateTimerDisplay(totalSeconds);
+          }
+          if (totalSeconds <= 0 && !submissionLocked) {
+            if (window.pollingInterval) clearInterval(window.pollingInterval);
+            lockAndAutoSubmit("time_up");
+          }
+        }, 1000);
+
+        window.pollingInterval = setInterval(() => {
+          if (!submissionLocked) {
+            pollTimeRemaining(linkIdFromDjango, formId);
+          } else {
+            clearInterval(window.pollingInterval);
+          }
+        }, POLLING_RATE_SECONDS * 1000);
+
+        pollTimeRemaining(linkIdFromDjango, formId);
+
+        require.config({
+          paths: {
+            vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
+          },
+        });
+
+        require(["vs/editor/editor.main"], function () {
+          console.log("Monaco Editor: Loader script finished loading.");
+          document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+            const questionId = editorContainer.id.replace("editor-", "");
+            const textarea = document.getElementById(`textarea-${questionId}`);
+
+            const languageSelector = document.getElementById(`language-selector-${questionId}`);
+            const initialLanguage = languageSelector ? languageSelector.value : "python";
+
+            let monacoLanguage = initialLanguage;
+            let initialPlaceholder = "# Write your Python code here";
+
+            switch (initialLanguage) {
+              case "javascript":
+                monacoLanguage = "javascript";
+                initialPlaceholder = "// Write your JavaScript code here";
+                break;
+              case "java":
+                monacoLanguage = "java";
+                initialPlaceholder = "// Write your Java code here";
+                break;
+              case "cpp":
+              case "c":
+                monacoLanguage = "cpp";
+                initialPlaceholder = "// Write your C/C++ code here";
+                break;
+              case "sql":
+                monacoLanguage = "sql";
+                initialPlaceholder = "-- Write your SQL query here";
+                break;
+              default:
+                monacoLanguage = "python";
+                break;
+            }
+
+            editorContainer.setAttribute("data-language", initialLanguage);
+
+            if (!textarea) {
+              console.error("Monaco Init Error: Hidden textarea not found for ID:", questionId);
+              return;
+            }
+
+            if (editorContainer.hasAttribute("data-monaco-initialized")) return;
+            editorContainer.setAttribute("data-monaco-initialized", "true");
+
+            try {
+              const editor = monaco.editor.create(editorContainer, {
+                value: textarea.value || initialPlaceholder,
+                language: monacoLanguage,
+                theme: "vs-light",
+                minimap: { enabled: false },
+                automaticLayout: true,
+                tabSize: 4,
+              });
+
+              editorInstances[questionId] = editor;
+              console.log(`Monaco Editor: Initialized editor-${questionId}`);
+
+              editor.onDidChangeModelContent(() => {
+                textarea.value = editor.getValue();
+                markQuestionAsAnswered(questionId);
+              });
+            } catch (e) {
+              console.error(`Monaco Editor: Failed to create editor-${questionId}`, e);
+              editorContainer.textContent = "Error: Editor failed to load. Check your network or browser console.";
+            }
+          });
+
+          // Load saved answers AFTER Monaco editors are initialized
+          setTimeout(() => {
+            console.log('Loading answers from LocalStorage...');
+            loadAnswersFromLocalStorage();
+            updateQuestionSummary();
+          }, 1500);
+        }, function (err) {
+          console.error("Monaco Editor: Main script failed to load.", err);
+        });
+
+        document.getElementById("assessment-form").addEventListener("submit", function () {
+          if (window.pollingInterval) clearInterval(window.pollingInterval);
+          
+          // Save final answers before clearing
+          saveAnswersToLocalStorage();
+          
+          // Clear LocalStorage on submit
+          clearLocalStorage();
+
+          document.querySelectorAll(".code-editor").forEach((editorContainer) => {
+            const questionId = editorContainer.id.replace("editor-", "");
+            const textarea = document.getElementById(`textarea-${questionId}`);
+            const editor = editorInstances[questionId];
+
+            if (editor) {
+              textarea.value = editor.getValue();
+            }
+          });
+        });
+      });
+
+      // Auto-save states AND answers every 10 seconds
+      setInterval(() => {
+        if (!submissionLocked) {
+          saveStatesToLocalStorage();
+          saveAnswersToLocalStorage();
+        }
+      }, 10000);
     </script>
   </body>
 </html>
