@@ -937,16 +937,103 @@ def regenerate_question(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+# @login_required
+# @require_POST
+# def deactivate_paper(request, paper_id):
+#     """
+#     Soft deletes a question paper by setting its is_active flag to False.
+#     """
+#     try:
+
+#         paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
+
+#         paper.is_active = False
+#         paper.save()
+
+#         return JsonResponse(
+#             {
+#                 "status": "success",
+#                 "message": f'Paper "{paper.title}" has been deactivated successfully.',
+#             }
+#         )
+
+#     except QuestionPaper.DoesNotExist:
+#         return JsonResponse(
+#             {
+#                 "status": "error",
+#                 "message": "Paper not found or you do not have permission to perform this action.",
+#             },
+#             status=404,
+#         )
+#     except Exception as e:
+#         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+# app/views.py
+
+# ... (baaki saare imports)
+from django.utils import timezone  # Yeh add karein
+import datetime  # Yeh add karein
+# ... (baaki saare imports)
+
+
 @login_required
 @require_POST
 def deactivate_paper(request, paper_id):
     """
-    Soft deletes a question paper by setting its is_active flag to False.
+    Soft deletes a paper.
+    NEW: Checks for genuinely active test takers (within their time limit).
     """
     try:
-
         paper = get_object_or_404(QuestionPaper, pk=paper_id, created_by=request.user)
 
+        # --- YEH HAI BEHTAR CHECK ---
+        
+        # 1. Paper ka duration (minutes mein) lein
+        duration_minutes = paper.duration
+        
+        active_takers_exist = False  # Pehle se False maan lein
+
+        if duration_minutes and duration_minutes > 0:
+            # 2. "Cutoff" time calculate karein.
+            # Agar test 60 min ka hai, toh hum sirf unhe dhoondhenge
+            # jinhone pichle 60 minute ke andar test start kiya tha.
+            # Jo 60 min se pehle start kiye the, unka time waise hi khatam ho chuka hai.
+            cutoff_time = timezone.now() - datetime.timedelta(minutes=duration_minutes)
+
+            # 3. Query: Kya koi aisa user hai jo...
+            #    - test complete nahi kiya hai (is_completed=False)
+            #    - AND test pichle [duration] minutes ke andar start kiya tha? 
+            #      (matlab unka time abhi chal raha hai)
+            active_takers_exist = TestRegistration.objects.filter(
+                question_paper=paper,
+                is_completed=False,
+                start_time__gt=cutoff_time  # Check: start_time cutoff ke BAAD ka hai
+            ).exists()
+
+        else:
+            # 4. Agar paper ka duration 0 ya None hai, toh purana (safe) logic use karein
+            #    (jo check karta hai ki kya koi bhi incomplete test hai)
+            active_takers_exist = TestRegistration.objects.filter(
+                question_paper=paper,
+                is_completed=False,
+                start_time__isnull=False
+            ).exists()
+
+        # --- CHECK KHATAM ---
+
+        if active_takers_exist:
+            # Agar active takers hain, toh error message ke saath 400 status return karein
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": (
+                        f'Cannot deactivate paper "{paper.title}". '
+                        "One or more users are currently within their active test session."
+                    ),
+                },
+                status=400,
+            )
+
+        # Agar koi active taker nahi hai, toh paper ko deactivate karein
         paper.is_active = False
         paper.save()
 
@@ -965,9 +1052,9 @@ def deactivate_paper(request, paper_id):
             },
             status=404,
         )
+        
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
-
 
 from django.contrib.auth import get_user_model
 
