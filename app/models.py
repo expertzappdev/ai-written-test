@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db import models
 import re
+from django.db import models  # ✅ YEH ZAROORI HAI
 
 User = get_user_model()
 
@@ -112,6 +113,7 @@ class PaperSection(models.Model):
     )
     title = models.CharField(max_length=200)
     order = models.PositiveIntegerField(default=0)
+    weightage = models.FloatField(default=0.0, help_text="Weightage percentage for this section")
 
     class Meta:
         ordering = ["order"]
@@ -173,6 +175,7 @@ class UserResponse(models.Model):
     question = models.ForeignKey(Question, on_delete=models.DO_NOTHING)
     registration = models.ForeignKey(TestRegistration, on_delete=models.DO_NOTHING)
     is_correct = models.BooleanField(null=True, blank=True)
+    
     class Meta:
         db_table = "user_tests_userresponse"
         managed = False

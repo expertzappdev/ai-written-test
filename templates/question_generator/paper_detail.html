@@ -524,14 +524,33 @@ IMPROVED MCQ DISPLAY - Matches answer with actual option content
 
           </div>
 
-        <div class="pt-6">
+          <div class="pt-6">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Questions:</h3>
             <div class="space-y-6">
               {% for section in paper.paper_sections.all %}
               <div class="section-container">
-                <h4 class="text-lg font-semibold text-theme-primary mb-3">
+                <div class="flex justify-between items-center mb-3">
+  
+  <h4 class="text-lg font-semibold text-theme-primary">
+    {{ section.title }}
+  </h4>
+  
+  {% if section.weightage and section.weightage > 0 %}
+  <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-300">
+    Weightage: {{ section.weightage|floatformat:0 }}%
+  </span>
+  {% endif %}
+
+</div>
+                <!-- <h4 class="text-lg font-semibold text-theme-primary mb-3">
                   {{ section.title }}
                 </h4>
+                {% if section.weightage and section.weightage > 0 %}
+                <span
+                  class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-300">
+                  Weightage: {{ section.weightage|floatformat:0 }}%
+                </span>
+                {% endif %} -->
                 <div class="space-y-4">
                   {% for question in section.questions.all %}
                   <div class="question-item pl-4 border-l-2 border-theme-primary">
@@ -541,10 +560,10 @@ IMPROVED MCQ DISPLAY - Matches answer with actual option content
                     </p>
 
                     {% if question.question_type == 'MCQ' %}
-                    
+
                     {# Normalize answer for matching (Using striptags and lower for robust comparison) #}
                     {% with answer_clean=question.answer|striptags|lower %}
-                    
+
                     {# 💡 FIX START: Find the full correct option text to display in the summary #}
                     {% with correct_option_text=None %}
                     {% for option in question.options %}
@@ -648,7 +667,7 @@ IMPROVED MCQ DISPLAY - Matches answer with actual option content
                     </option>
                     <option value="shortlisted" {% if selected_shortlist_status == 'shortlisted' %}selected{% endif %}>
                       Shortlisted</option>
-                   <option value="not_shortlisted" {% if selected_shortlist_status == 'not_shortlisted' %}selected{% endif %}>Not Shortlisted</option>
+                    <option value="not_shortlisted" {% if selected_shortlist_status == 'not_shortlisted' %}selected{% endif %}>Not Shortlisted</option>
 
                   </select>
 

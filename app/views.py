@@ -17,6 +17,12 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, render, redirect
 from .models import QuestionPaper, Question
 from django.contrib.auth.models import User
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+from .models import QuestionPaper, PaperSection, Question  # Import your models
+
 from .forms import (
     LoginForm,
     UserRegistrationForm,
@@ -241,66 +247,149 @@ def generate_questions(request):
     return render(request, "question_generator/generator.html", context)
 
 
-@login_required
+# @login_required
+# @require_POST
+# @transaction.atomic
+# def save_paper(request):
+#     """Saves the generated paper and calculates the total question count."""
+#     try:
+#         data = json.loads(request.body)
+
+#         total_questions_count = 0
+#         for section_data in data.get("sections", []):
+#             total_questions_count += len(section_data.get("questions", []))
+
+#         paper = QuestionPaper.objects.create(
+#             created_by=request.user,
+#             title=data.get("title", "Generated Assessment"),
+#             job_title=data.get("job_title"),
+#             department_name=data.get("department"),
+#             min_exp=data.get("min_exp"),
+#             max_exp=data.get("max_exp"),
+#             is_active=True,
+#             duration=data.get("duration"),
+#             is_public_active=False,
+#             is_private_link_active=False, 
+#              # ✨ NAYA FIELD ADD KAREIN
+#             status = models.CharField(
+#                 max_length=20,
+#                 choices=[
+#                     ('draft', 'Draft'),
+#                     ('active', 'Active'),
+#                     ('inactive', 'Inactive'),
+#                     ('archived', 'Archived'),
+#                 ],
+#                 default='draft',  # ✅ DEFAULT VALUE ZAROORI HAI
+#                 help_text="Current status of the question paper"
+#             ) ,
+#             skills_list=(
+#                 ", ".join(data.get("skills", []))
+#                 if isinstance(data.get("skills"), list)
+#                 else data.get("skills")
+#             ),
+#             total_questions=total_questions_count,
+#         )
+
+#         for section_index, section_data in enumerate(data.get("sections", [])):
+#             section = PaperSection.objects.create(
+#                 question_paper=paper,
+#                 title=section_data.get("title"),
+#                 order=section_index,
+#             )
+#             for q_index, question_data in enumerate(section_data.get("questions", [])):
+
+#                 Question.objects.create(
+#                     section=section,
+#                     text=question_data.get("text"),
+#                     answer=question_data.get("answer"),
+#                     options=question_data.get("options"),
+#                     order=q_index,
+#                     question_type=question_data.get("type", "UN"),
+#                 )
+
+#         return JsonResponse(
+#             {
+#                 "success": True,
+#                 "message": "Paper saved successfully!",
+#                 "redirect_url": "/dashboard/",
+#             }
+#         )
+#     except Exception as e:
+#         print(f"Error saving paper: {e}")
+#         return JsonResponse({"success": False, "error": str(e)}, status=400)
+from django.views.decorators.http import require_POST
+from django.db import transaction
+from django.http import JsonResponse
+import json
+from .models import QuestionPaper, PaperSection, Question
+
+# app/views.py
+
 @require_POST
 @transaction.atomic
 def save_paper(request):
-    """Saves the generated paper and calculates the total question count."""
     try:
         data = json.loads(request.body)
-
+        sections_data = data.get("sections", [])
         total_questions_count = 0
-        for section_data in data.get("sections", []):
-            total_questions_count += len(section_data.get("questions", []))
-
+        
+        # --- DEBUGGING PRINT (Aap ise baad mein hata sakte hain) ---
+        print("-------------- DEBUG: DATA RECEIVED ----------- ---")
+        print(data)
+        
+        # Create the main QuestionPaper object
         paper = QuestionPaper.objects.create(
             created_by=request.user,
-            title=data.get("title", "Generated Assessment"),
-            job_title=data.get("job_title"),
-            department_name=data.get("department"),
-            min_exp=data.get("min_exp"),
-            max_exp=data.get("max_exp"),
+            title=data.get("title", ""),
+            job_title=data.get("job_title", ""),             # <-- FIX: "jobtitle" -> "job_title"
+            department_name=data.get("department", ""),
+            min_exp=data.get("min_exp", 0),                 # <-- FIX: "minexp" -> "min_exp"
+            max_exp=data.get("max_exp", 0),                 # <-- FIX: "maxexp" -> "max_exp"
+            duration=data.get("duration", 0),
+            skills_list=data.get("skills", ""),             # <-- FIX: skills_list ko data.get se lein
             is_active=True,
-            duration=data.get("duration"),
             is_public_active=False,
-            is_private_link_active=False,  
-            skills_list=(
-                ", ".join(data.get("skills", []))
-                if isinstance(data.get("skills"), list)
-                else data.get("skills")
-            ),
-            total_questions=total_questions_count,
+            is_private_link_active=False,
+            cutoff_score=data.get("cutoff_score", 20)      # <-- FIX: "cutoffscore" -> "cutoff_score"
         )
-
-        for section_index, section_data in enumerate(data.get("sections", [])):
+        
+        # Create sections and questions
+        for section_index, section_data in enumerate(sections_data):
             section = PaperSection.objects.create(
                 question_paper=paper,
-                title=section_data.get("title"),
+                title=section_data.get("title", f"Section {section_index}"),
                 order=section_index,
+                weightage=section_data.get("weightage", 0.0),  # Yeh line pehle se sahi thi
             )
-            for q_index, question_data in enumerate(section_data.get("questions", [])):
-
+            
+            questions = section_data.get("questions", [])
+            total_questions_count += len(questions)
+            
+            for q_index, question_data in enumerate(questions):
                 Question.objects.create(
                     section=section,
-                    text=question_data.get("text"),
-                    answer=question_data.get("answer"),
-                    options=question_data.get("options"),
+                    text=question_data.get("text", ""),
+                    answer=question_data.get("answer", ""),
+                    options=question_data.get("options", None),
                     order=q_index,
-                    question_type=question_data.get("type", "UN"),
+                    question_type=question_data.get("type", "MCQ")
                 )
-
-        return JsonResponse(
-            {
-                "success": True,
-                "message": "Paper saved successfully!",
-                "redirect_url": "/dashboard/",
-            }
-        )
+        
+        # Update total_questions count
+        paper.total_questions = total_questions_count
+        paper.save(update_fields=["total_questions"])
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Paper saved successfully!",
+            "redirecturl": "/dashboard"
+        })
     except Exception as e:
-        print(f"Error saving paper: {e}")
-        return JsonResponse({"success": False, "error": str(e)}, status=400)
-
-
+        print(f"Error saving paper: {str(e)}")
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
 @login_required
 def list_papers(request):
     papers = QuestionPaper.objects.filter(created_by=request.user).order_by(
@@ -468,6 +557,20 @@ def paper_edit_view(request, paper_id):
             total_questions_count = 0
 
             for section in paper.paper_sections.all():
+                # ▼▼▼ YEH NAYA LOGIC ADD KAREIN ▼▼▼
+                # Section ka weightage save karein
+                weightage_key = f"section-weightage-{section.id}"
+                if weightage_key in request.POST:
+                    try:
+                        # Value ko float mein convert karein, default 0.0
+                        new_weightage = float(request.POST[weightage_key] or 0.0)
+                        section.weightage = new_weightage
+                        # Section ko database mein save karein
+                        section.save(update_fields=["weightage"]) 
+                    except (ValueError, TypeError):
+                        # Agar koi galat value (jaise text) daalta hai, toh use ignore karein
+                        pass
+                # ▲▲▲ NAYA LOGIC KHATAM ▲▲▲
                 for question in section.questions.all():
                     question_text_name = f"question-text-{question.id}"
                     question_answer_name = f"question-answer-{question.id}"
@@ -524,34 +627,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# def department_create_view(request):
-#     if request.method == "POST":
-#         form = DepartmentForm(request.POST)
-#         if form.is_valid():
-#             try:
-#                 form.save()
-
-#                 messages.success(request, "Department created successfully!")
-#                 return redirect("dashboard")
-#             except Exception as e:
-
-#                 logger.error(f"Error creating department: {e}", exc_info=True)
-
-#                 messages.error(
-#                     request,
-#                     "Could not create the department. Please try again or contact support.",
-#                 )
-
-#                 return redirect("department_create")
-#         else:
-
-#             messages.warning(request, "Please correct the errors below.")
-#     else:
-#         form = DepartmentForm()
-
-#     context = {"form": form}
-#     return render(request, "partials/department/department_create.html", context)
-# app/views.py
 
 @login_required
 def department_create_view(request):
@@ -744,97 +819,227 @@ def toggle_paper_public_status(request, paper_id):
         )
 
 
-def test_result(request, registration_id):
-    """
-    Displays test results with clear indication of unattempted questions.
-    """
+# def test_result(request, registration_id):
+#     """
+#     Displays test results with clear indication of unattempted questions.
+#     """
+#     registration = get_object_or_404(TestRegistration, pk=registration_id)
+#     user_responses = UserResponse.objects.filter(
+#         registration=registration
+#     ).select_related("question")
+
+#     paper = registration.question_paper
+#     total_questions = paper.total_questions
+#     cutoff_score = paper.cutoff_score
+
+#     score = 0
+#     results_data = []
+#     unattempted_count = 0  # ✅ NEW: Track unattempted questions
+
+#     for response in user_responses:
+#         question = response.question
+#         user_answer = response.user_answer.strip()
+#         is_correct = False
+#         attempt_status = "incorrect"  # ✅ NEW: Default status
+
+#         # ✅ Check if question was attempted
+#         if not user_answer:
+#             attempt_status = "unattempted"
+#             unattempted_count += 1
+#         else:
+#             # Question attempt kiya gaya hai, ab evaluate karo
+#             if question.question_type == "MCQ":
+#                 model_answer = question.answer.strip()
+#                 is_correct = user_answer.lower() == model_answer.lower()
+#             else:
+#                 # Map internal question type to evaluator type
+#                 qtype = question.question_type.upper()
+#                 if qtype in ("CODE", "CODING"):
+#                     evaluator_type = "coding"
+#                 elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
+#                     evaluator_type = "short"
+#                 elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
+#                     evaluator_type = "true_false"
+#                 else:
+#                     evaluator_type = "short"
+
+#                 # evaluate_answer_with_ai returns (is_correct, details)
+#                 is_correct, _ = evaluate_answer_with_ai(
+#                     question_text=question.text,
+#                     user_answer=user_answer,
+#                     model_answer=question.answer.strip(),
+#                     question_type=evaluator_type,
+#                 )
+
+#             # Set status based on correctness
+#             if is_correct:
+#                 score += 1
+#                 attempt_status = "correct"
+#             else:
+#                 attempt_status = "incorrect"
+
+#         results_data.append(
+#             {
+#                 "question_text": response.question.text,
+#                 "user_answer": (
+#                     response.user_answer if user_answer else "Not Attempted"
+#                 ),  # ✅ NEW
+#                 "correct_answer": response.question.answer,
+#                 "is_correct": is_correct,
+#                 "attempt_status": attempt_status,  # ✅ NEW: Pass status to template
+#             }
+#         )
+
+#     incorrect_answers = total_questions - score - unattempted_count  # ✅ UPDATED
+#     percentage = round((score / total_questions) * 100) if total_questions > 0 else 0
+
+#     status = "Pass" if percentage >= cutoff_score else "Fail"
+
+#     context = {
+#         "registration": registration,
+#         "results": results_data,
+#         "score": score,
+#         "total_questions": total_questions,
+#         "incorrect_answers": incorrect_answers,
+#         "unattempted_count": unattempted_count,  # ✅ NEW
+#         "percentage": percentage,
+#         "title": f"Test Report for {registration.email}",
+#         "status": status,
+#         "cutoff_score": cutoff_score,
+#     }
+
+#     return render(request, "partials/users/test_report.html", context)
+# app/views.py
+
+def testresult(request, registration_id):
+    """Displays test results with section-wise weightage breakdown."""
     registration = get_object_or_404(TestRegistration, pk=registration_id)
     user_responses = UserResponse.objects.filter(
         registration=registration
-    ).select_related("question")
-
+    ).select_related('question')
+    
     paper = registration.question_paper
     total_questions = paper.total_questions
     cutoff_score = paper.cutoff_score
-
+    
+    # Overall scoring
     score = 0
     results_data = []
-    unattempted_count = 0  # ✅ NEW: Track unattempted questions
-
+    
+    # Section-wise scoring
+    section_scores = []
+    total_weighted_score = 0  # <-- YEH LINE ADD KAREIN
+    
+    for section in paper.paper_sections.all():
+        section_questions = section.questions.all()
+        section_total = len(section_questions)
+        section_correct = 0
+        
+        for response in user_responses:
+            question = response.question
+            if question.section == section:
+                user_answer = response.user_answer.strip()
+                is_correct = False
+                
+                if not user_answer:
+                    is_correct = False
+                elif question.question_type == "MCQ":
+                    model_answer = question.answer.strip()
+                    is_correct = user_answer.lower() == model_answer.lower()
+                else:
+                    qtype = question.question_type.upper()
+                    if qtype in ["CODE", "CODING"]:
+                        evaluator_type = "coding"
+                    elif qtype in ["SA", "SHORT", "SUBJECTIVE"]:
+                        evaluator_type = "short"
+                    elif qtype in ["TF", "TRUEFALSE", "BOOLEAN"]:
+                        evaluator_type = "truefalse"
+                    else:
+                        evaluator_type = "short"
+                    
+                    is_correct, _ = evaluate_answer_with_ai(
+                        question_text=question.text,
+                        user_answer=user_answer,
+                        model_answer=question.answer.strip(),
+                        question_type=evaluator_type,
+                    )
+                
+                if is_correct:
+                    section_correct += 1
+                    score += 1 # Yeh raw score hai (e.g., 15/20)
+        
+        # Calculate section percentage and weighted score
+        section_percentage = round((section_correct / section_total) * 100, 2) if section_total > 0 else 0
+        weighted_score = round((section_percentage * section.weightage) / 100, 2) if section.weightage else 0
+        
+        total_weighted_score += weighted_score  # <-- YEH LINE ADD KAREIN (Total mein add karein)
+        
+        section_scores.append({
+            'title': section.title,
+            'weightage': section.weightage,        # (e.g., 20)
+            'correct': section_correct,
+            'total': section_total,
+            'percentage': section_percentage,      # (e.g., 80.0)
+            'weighted_score': weighted_score,      # (e.g., 16.0)
+        })
+    
+    # ... (Build results_data for individual questions... yeh code same rahega) ...
     for response in user_responses:
         question = response.question
         user_answer = response.user_answer.strip()
         is_correct = False
-        attempt_status = "incorrect"  # ✅ NEW: Default status
-
-        # ✅ Check if question was attempted
+        
         if not user_answer:
-            attempt_status = "unattempted"
-            unattempted_count += 1
+            is_correct = False
+        elif question.question_type == "MCQ":
+            model_answer = question.answer.strip()
+            is_correct = user_answer.lower() == model_answer.lower()
         else:
-            # Question attempt kiya gaya hai, ab evaluate karo
-            if question.question_type == "MCQ":
-                model_answer = question.answer.strip()
-                is_correct = user_answer.lower() == model_answer.lower()
+            qtype = question.question_type.upper()
+            if qtype in ["CODE", "CODING"]:
+                evaluator_type = "coding"
+            elif qtype in ["SA", "SHORT", "SUBJECTIVE"]:
+                evaluator_type = "short"
+            elif qtype in ["TF", "TRUEFALSE", "BOOLEAN"]:
+                evaluator_type = "truefalse"
             else:
-                # Map internal question type to evaluator type
-                qtype = question.question_type.upper()
-                if qtype in ("CODE", "CODING"):
-                    evaluator_type = "coding"
-                elif qtype in ("SA", "SHORT", "SUBJECTIVE"):
-                    evaluator_type = "short"
-                elif qtype in ("TF", "TRUE_FALSE", "BOOLEAN"):
-                    evaluator_type = "true_false"
-                else:
-                    evaluator_type = "short"
-
-                # evaluate_answer_with_ai returns (is_correct, details)
-                is_correct, _ = evaluate_answer_with_ai(
-                    question_text=question.text,
-                    user_answer=user_answer,
-                    model_answer=question.answer.strip(),
-                    question_type=evaluator_type,
-                )
-
-            # Set status based on correctness
-            if is_correct:
-                score += 1
-                attempt_status = "correct"
-            else:
-                attempt_status = "incorrect"
-
-        results_data.append(
-            {
-                "question_text": response.question.text,
-                "user_answer": (
-                    response.user_answer if user_answer else "Not Attempted"
-                ),  # ✅ NEW
-                "correct_answer": response.question.answer,
-                "is_correct": is_correct,
-                "attempt_status": attempt_status,  # ✅ NEW: Pass status to template
-            }
-        )
-
-    incorrect_answers = total_questions - score - unattempted_count  # ✅ UPDATED
-    percentage = round((score / total_questions) * 100) if total_questions > 0 else 0
-
+                evaluator_type = "short"
+            
+            is_correct, _ = evaluate_answer_with_ai(
+                question_text=question.text,
+                user_answer=user_answer,
+                model_answer=question.answer.strip(),
+                question_type=evaluator_type,
+            )
+        
+        results_data.append({
+            'question_text': question.text,
+            'user_answer': user_answer if user_answer else "(No answer)",
+            'correct_answer': question.answer,
+            'is_correct': is_correct,
+        })
+        
+    incorrect_answers = total_questions - score
+    
+    # --- AB HUM 'percentage' KO BHI WEIGHTED SCORE SE REPLACE KAR DENGE ---
+    percentage = round(total_weighted_score, 2) # <-- YEH LINE BADLEIN
     status = "Pass" if percentage >= cutoff_score else "Fail"
-
+    
     context = {
-        "registration": registration,
-        "results": results_data,
-        "score": score,
-        "total_questions": total_questions,
-        "incorrect_answers": incorrect_answers,
-        "unattempted_count": unattempted_count,  # ✅ NEW
-        "percentage": percentage,
-        "title": f"Test Report for {registration.email}",
-        "status": status,
-        "cutoff_score": cutoff_score,
+        'registration': registration,
+        'results': results_data,
+        'score': score,
+        'total_questions': total_questions,
+        'incorrect_answers': incorrect_answers,
+        'percentage': percentage, # Yeh ab weighted score hai
+        'title': f"Test Report for {registration.email}",
+        'status': status,
+        'cutoff_score': cutoff_score,
+        'section_scores': section_scores,
+        'total_weighted_score': total_weighted_score, # <-- YEH LINE ADD KAREIN
     }
-
-    return render(request, "partials/users/test_report.html", context)
-
+    
+    return render(request, 'partials/users/test_report.html', context)
 
 @csrf_exempt
 def partial_update_view(request, paper_id):

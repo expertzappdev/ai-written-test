@@ -170,7 +170,25 @@
                   </div>
 
                   <!-- Cutoff Score Field -->
-                  <div>
+                   <div>
+  <label
+    for="{{ form.cutoff_score.id_for_label }}"
+    class="block text-sm font-medium text-gray-700 mb-1"
+  >
+    Cutoff Score (%)
+  </label>
+  <input
+    type="number"
+    name="{{ form.cutoff_score.name }}"
+    id="{{ form.cutoff_score.id_for_label }}"
+    value="{{ form.cutoff_score.value|default_if_none:'' }}"
+    class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
+  />
+  {% if form.cutoff_score.errors %}
+  <p class="error-message">{{ form.cutoff_score.errors.0 }}</p>
+  {% endif %}
+</div>
+                  <!-- <div>
                     <label
                       for="{{ form.cutoff_score.id_for_label }}"
                       class="block text-sm font-medium text-gray-700 mb-1"
@@ -178,7 +196,7 @@
                       Cutoff Score (%)
                     </label>
                     {{ form.cutoff_score }}
-                  </div>
+                  </div> -->
                 </div>
               </div>
 
@@ -188,11 +206,30 @@
                   Questions & Answers
                 </h3>
                 <div class="space-y-6">
-                  {% for section in paper.paper_sections.all %}
-                  <div class="section-container">
-                    <h4 class="text-lg font-semibold text-theme-primary mb-3">
-                      {{ section.title }}
-                    </h4>
+                 {% for section in paper.paper_sections.all %}
+              <div class="section-container">
+
+                <div class="flex justify-between items-center mb-4">
+                  <h4 class="text-lg font-semibold text-theme-primary">
+                    {{ section.title }}
+                  </h4>
+                  
+                  <div class="flex items-center gap-2">
+                    <label for="section-weightage-{{ section.id }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      Weightage (%):
+                    </label>
+                    <input
+                      type="number"
+                      name="section-weightage-{{ section.id }}"
+                      id="section-weightage-{{ section.id }}"
+                      value="{{ section.weightage|floatformat:0 }}"
+                      class="w-24 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-theme-primary focus:border-theme-primary"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+               
                     <div class="space-y-4">
                       {% for question in section.questions.all %}
                       <div
