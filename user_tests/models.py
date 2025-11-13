@@ -28,6 +28,10 @@ class TestRegistration(models.Model):
     start_time = models.DateTimeField(auto_now_add=True)
     is_completed = models.BooleanField(default=False)
 
+
+        # NEW: Track if evaluation is done
+    is_evaluated = models.BooleanField(default=False)
+    evaluated_at = models.DateTimeField(null=True, blank=True)
     class Meta:
         # **THE FIX:** Use the old table name to match the existing data
         db_table = 'app_testregistration'
@@ -59,6 +63,7 @@ class UserResponse(models.Model):
     # User ne kya answer diya (MCQ ho ya subjective)
     user_answer = models.TextField(blank=True, null=True)
     is_correct = models.BooleanField(null=True, blank=True)
+    
     class Meta:
         # Ek user ek test mein ek question ka sirf ek hi answer de sakta hai
         unique_together = ('registration', 'question')

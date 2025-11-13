@@ -628,6 +628,11 @@ logger = logging.getLogger(__name__)
 
 
 
+
+#     context = {"form": form}
+#     return render(request, "partials/department/department_create.html", context)
+# app/views.py
+
 @login_required
 def department_create_view(request):
     if request.method == "POST":
